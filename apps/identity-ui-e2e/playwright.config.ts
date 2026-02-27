@@ -26,7 +26,7 @@ export default defineConfig({
     webServer: {
         command: 'npx nx run identity-ui:serve',
         url: 'http://localhost:4300',
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer: true,
         cwd: workspaceRoot,
     },
     projects: [

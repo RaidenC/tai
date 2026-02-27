@@ -88,6 +88,22 @@ jobs:
   e2e:
     needs: ci
     runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: portal
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -103,11 +119,39 @@ jobs:
           node-version: 22
           cache: 'npm'
 
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
       - name: Install Playwright Browsers
         run: npx playwright install --with-deps
+
+      - name: Setup Local DNS
+        run: |
+          echo "127.0.0.1 acme.localhost" | sudo tee -a /etc/hosts
+
+      - name: Start Background Services
+        env:
+          ConnectionStrings__DefaultConnection: Host=localhost;Database=portal;Username=postgres;Password=postgres
+        run: |
+          # Start Backend
+          npx nx run portal-api:serve --launchProfile=http &
+          npx nx run portal-gateway:serve &
+          
+          # Start Portal Web
+          npx nx run portal-web:serve --port=4200 &
+          
+          # Start Identity UI (needed for redirects)
+          npx nx run identity-ui:serve &
+          
+          # Wait for services to be ready
+          # portal-api (5031), portal-gateway (5217), portal-web (4200), identity-ui (4300)
+          npx wait-on http://localhost:5031/identity http://localhost:5217/identity http://localhost:4200 http://localhost:4300 --timeout 180000
+        continue-on-error: true
 
       - name: Run E2E Affected
         run: npx nx affected -t e2e
