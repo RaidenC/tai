@@ -1,12 +1,12 @@
 import { TestBed } from '@angular/core/testing';
-import { AuthService, User } from './auth.service';
+import { AuthService } from './auth.service';
 import { OidcSecurityService, UserDataResult } from 'angular-auth-oidc-client';
 import { BehaviorSubject, of } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 describe('AuthService', () => {
   let service: AuthService;
-  let oidcSecurityServiceMock: any;
+  let oidcSecurityServiceMock: Partial<OidcSecurityService>;
 
   const mockUserDataSubject = new BehaviorSubject<UserDataResult>({ 
     userData: null, 
@@ -17,7 +17,7 @@ describe('AuthService', () => {
     oidcSecurityServiceMock = {
       authorize: vi.fn(),
       logoff: vi.fn(() => of(null)),
-      checkAuth: vi.fn(() => of({ isAuthenticated: false, allConfigsAuthenticated: [], userCustomParameters: {}, accessToken: '', idToken: '' })),
+      checkAuth: vi.fn(() => of({ isAuthenticated: false, allConfigsAuthenticated: [], userCustomParameters: {}, accessToken: '', idToken: '', userData: null })),
       userData$: mockUserDataSubject.asObservable(),
     };
 

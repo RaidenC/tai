@@ -13,6 +13,18 @@ export interface User {
 }
 
 /**
+ * RawUserData represents the shape of the user data returned by the OIDC provider.
+ */
+interface RawUserData {
+  sub: string;
+  name?: string;
+  preferred_username?: string;
+  email: string;
+  role?: string | string[];
+  roles?: string | string[];
+}
+
+/**
  * AuthService is the primary gateway for authentication in the frontend.
  * It uses 'angular-auth-oidc-client' to handle the protocol details.
  */
@@ -36,7 +48,7 @@ export class AuthService {
         return null; // No user logged in.
       }
 
-      const data = result.userData;
+      const data = result.userData as RawUserData;
       return {
         id: data.sub, // 'sub' is the standard OIDC unique identifier (Subject).
         name: data.name || data.preferred_username || 'User',
@@ -73,7 +85,7 @@ export class AuthService {
    * checkAuth() should be called at app startup.
    * It checks the URL for an authorization code and handles the code-to-token exchange.
    */
-  public checkAuth(): Observable<any> {
+  public checkAuth(): Observable<unknown> {
     return this.oidcSecurityService.checkAuth();
   }
 
@@ -81,7 +93,7 @@ export class AuthService {
    * extractRoles(data) handles the variation in where roles might be stored in a JWT.
    * Different identity providers use 'role' (string) or 'roles' (array).
    */
-  private extractRoles(data: any): string[] {
+  private extractRoles(data: RawUserData): string[] {
     const roles = data.role || data.roles || [];
     return Array.isArray(roles) ? roles : [roles];
   }

@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
-import { HttpClient, provideHttpClient, withInterceptors, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { dpopInterceptor } from './dpop.interceptor';
 import { DPoPService } from './dpop.service';
 import { firstValueFrom } from 'rxjs';
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi, Mock } from 'vitest';
 
 /**
  * DPoP Interceptor Unit Tests
@@ -17,7 +17,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 describe('dpopInterceptor', () => {
   let httpClient: HttpClient;
   let httpMock: HttpTestingController;
-  let dpopServiceSpy: any;
+  let dpopServiceSpy: {
+    getDPoPHeader: Mock;
+  };
 
   beforeEach(() => {
     // JUNIOR RATIONALE: We reset the testing environment before each test to 
@@ -93,9 +95,10 @@ describe('dpopInterceptor', () => {
     try {
       await requestPromise;
       expect(true).toBe(false); // We should never get here!
-    } catch (err: any) {
+    } catch (err: unknown) {
       // The error from the crypto service should flow all the way to the caller.
-      expect(err.message).toContain('Crypto Error');
+      const error = err as Error;
+      expect(error.message).toContain('Crypto Error');
     }
 
     // IMPORTANT: If the header generation fails, the interceptor should 

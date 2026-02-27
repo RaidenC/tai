@@ -53,7 +53,7 @@ export const dpopInterceptor: HttpInterceptorFn = (req, next) => {
   };
 
   return executeWithDPoP().pipe(
-    catchError((error: any) => {
+    catchError((error: unknown) => {
       // If the server returns a 401 Unauthorized, it might be because our 
       // DPoP nonce is missing or expired.
       if (error instanceof HttpErrorResponse && error.status === 401) {

@@ -6,7 +6,7 @@ import { of } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 describe('App', () => {
-    let authServiceMock: any;
+    let authServiceMock: Partial<AuthService>;
 
     beforeEach(async () => {
         authServiceMock = {
