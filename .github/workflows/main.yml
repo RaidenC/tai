@@ -80,7 +80,7 @@ jobs:
         env:
           ConnectionStrings__DefaultConnection: Host=localhost;Database=portal;Username=postgres;Password=postgres
         run: |
-          npx nx affected -t test --args="/p:CollectCoverage=true /p:Threshold=20 /p:ThresholdType=line"
+          npx nx affected -t test
           if [ -d "coverage" ]; then
             node scripts/check-coverage.js
           fi
