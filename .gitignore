@@ -30,5 +30,8 @@ Thumbs.db
 
 .angular
 
+# Testing & Coverage
+coverage/
+**/TestResults/
+**/coverage.json
 __screenshots__/
-TestResults/

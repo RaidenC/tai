@@ -20,7 +20,7 @@ public class TenantDataController : Controller {
   [HttpGet("tenants/{id}")]
   public async Task<IActionResult> GetTenant(Guid id) {
     var tenantId = new TenantId(id);
-    
+
     // JUNIOR RATIONALE: Because of the Global Query Filter in PortalDbContext,
     // this query will automatically include "WHERE Id = @CurrentTenantId".
     // If the user tries to access a different tenant's ID, this will return null.

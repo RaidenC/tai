@@ -17,10 +17,10 @@ namespace Tai.Portal.Api.IntegrationTests;
 /// </summary>
 public class OidcSecurityHandshakeTests : IClassFixture<WebApplicationFactory<Program>> {
   private readonly WebApplicationFactory<Program> _factory;
-  
+
   // JUNIOR RATIONALE: To talk to the API, we must present the secret "Passcode" 
   // that proves we are coming through the trusted Gateway. 
-  private string GatewaySecret => Environment.GetEnvironmentVariable("GATEWAY_SECRET") ?? 
+  private string GatewaySecret => Environment.GetEnvironmentVariable("GATEWAY_SECRET") ??
                                   "portal-poc-secret-2026";
 
   public OidcSecurityHandshakeTests(WebApplicationFactory<Program> factory) {
@@ -35,7 +35,7 @@ public class OidcSecurityHandshakeTests : IClassFixture<WebApplicationFactory<Pr
     // 1. Arrange: Setup a virtual client that trusts our Gateway Secret.
     var client = _factory.CreateClient();
     client.DefaultRequestHeaders.Add("X-Gateway-Secret", GatewaySecret);
-    
+
     // JUNIOR RATIONALE: In OIDC, "PKCE" is like a secret handshake. 
     // The browser first sends a 'Challenge', and then later sends a 'Verifier'.
     // If the 'Verifier' is missing, it means someone might be trying to steal 
@@ -43,7 +43,7 @@ public class OidcSecurityHandshakeTests : IClassFixture<WebApplicationFactory<Pr
     var content = new FormUrlEncodedContent(new Dictionary<string, string> {
       ["grant_type"] = "authorization_code",
       ["client_id"] = "portal-web",
-      ["code"] = "any-random-code", 
+      ["code"] = "any-random-code",
       ["redirect_uri"] = "http://localhost:4200"
       // Note: "code_verifier" is missing here on purpose!
     });
@@ -53,7 +53,7 @@ public class OidcSecurityHandshakeTests : IClassFixture<WebApplicationFactory<Pr
 
     // 3. Assert: Verify the server said "No".
     Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    
+
     var error = await response.Content.ReadFromJsonAsync<OpenIddictResponse>();
     Assert.NotNull(error);
     Assert.Equal(OpenIddictConstants.Errors.InvalidRequest, error.Error);
@@ -67,14 +67,14 @@ public class OidcSecurityHandshakeTests : IClassFixture<WebApplicationFactory<Pr
   public async Task TokenEndpoint_RejectsRequest_WhenPkceVerifierIsInvalid() {
     // JUNIOR RATIONALE: Even if you provide a verifier, it must match the challenge 
     // sent earlier. If it's different, it's a security violation.
-    
+
     var client = _factory.CreateClient();
     client.DefaultRequestHeaders.Add("X-Gateway-Secret", GatewaySecret);
-    
+
     var content = new FormUrlEncodedContent(new Dictionary<string, string> {
       ["grant_type"] = "authorization_code",
       ["client_id"] = "portal-web",
-      ["code"] = "some-code", 
+      ["code"] = "some-code",
       ["redirect_uri"] = "http://localhost:4200",
       ["code_verifier"] = "wrong-verifier-that-does-not-match"
     });
@@ -83,7 +83,7 @@ public class OidcSecurityHandshakeTests : IClassFixture<WebApplicationFactory<Pr
 
     // OpenIddict returns 400 Bad Request for invalid grants/verifiers.
     Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    
+
     var error = await response.Content.ReadFromJsonAsync<OpenIddictResponse>();
     Assert.NotNull(error);
     // 'invalid_grant' is the OIDC error for a verifier/code mismatch.
@@ -102,18 +102,18 @@ public class OidcSecurityHandshakeTests : IClassFixture<WebApplicationFactory<Pr
      * will revoke ALL tokens associated with that user if they see a code reuse, 
      * because it's a sign of a hack.
      */
-    
+
     // Note: To fully test this, we would need to generate a REAL valid code first.
     // For this POC integration test, we verify that any attempt to use a non-existent 
     // or previously used code results in a rejection.
-    
+
     var client = _factory.CreateClient();
     client.DefaultRequestHeaders.Add("X-Gateway-Secret", GatewaySecret);
-    
+
     var content = new FormUrlEncodedContent(new Dictionary<string, string> {
       ["grant_type"] = "authorization_code",
       ["client_id"] = "portal-web",
-      ["code"] = "already-used-code", 
+      ["code"] = "already-used-code",
       ["redirect_uri"] = "http://localhost:4200",
       ["code_verifier"] = "valid-verifier"
     });

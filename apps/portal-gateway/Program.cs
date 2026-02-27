@@ -36,8 +36,8 @@ builder.Services.AddRateLimiter(options => {
 // --- YARP Reverse Proxy Configuration ---
 // Add the YARP (Yet Another Reverse Proxy) services and load its configuration
 // from the "ReverseProxy" section of our appsettings.json file.
-var gatewaySecret = builder.Configuration["GATEWAY_SECRET"] ?? 
-                    builder.Configuration["Gateway:Secret"] ?? 
+var gatewaySecret = builder.Configuration["GATEWAY_SECRET"] ??
+                    builder.Configuration["Gateway:Secret"] ??
                     "portal-poc-secret-2026";
 
 builder.Services.AddReverseProxy()
