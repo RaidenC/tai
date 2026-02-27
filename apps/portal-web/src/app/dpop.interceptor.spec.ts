@@ -80,32 +80,24 @@ describe('dpopInterceptor', () => {
     await requestPromise;
   });
 
-  it('should handle DPoP generation failure gracefully', async () => {
-    // JUNIOR RATIONALE: What if the user's computer is too old or has 
-    // broken crypto settings? We want to make sure the app reports 
-    // an error instead of hanging or sending an unsecure request.
-    
-    // Force our Spy to fail.
-    dpopServiceSpy.getDPoPHeader.mockRejectedValue(new Error('Crypto Error'));
-
-    const requestPromise = firstValueFrom(httpClient.get('/api/secure'));
-
-    await new Promise(resolve => setTimeout(resolve, 0));
-
-    try {
-      await requestPromise;
-      expect(true).toBe(false); // We should never get here!
-    } catch (err: unknown) {
-      // The error from the crypto service should flow all the way to the caller.
-      const error = err as Error;
-      expect(error.message).toContain('Crypto Error');
-    }
-
-    // IMPORTANT: If the header generation fails, the interceptor should 
-    // BLOCK the request from ever leaving the browser.
-    httpMock.expectNone('/api/secure');
-  });
-
+      it('should handle DPoP generation failure gracefully', async () => {
+        // JUNIOR RATIONALE: What if the user's computer is too old or has 
+        // broken crypto settings? We want to make sure the app reports 
+        // an error instead of hanging or sending an unsecure request.
+        
+        // Force our Spy to fail.
+        dpopServiceSpy.getDPoPHeader.mockRejectedValue(new Error('Crypto Error'));
+  
+        const requestObservable = httpClient.get('/api/secure');
+  
+        // JUNIOR RATIONALE: Our interceptor is 'async'. We expect the request 
+        // to fail because the crypto part failed.
+        await expect(firstValueFrom(requestObservable)).rejects.toThrow('Crypto Error');
+  
+        // IMPORTANT: If the header generation fails, the interceptor should 
+        // BLOCK the request from ever leaving the browser.
+        httpMock.expectNone('/api/secure');
+      });
   it('should retry request with new nonce when server returns 401 with DPoP-Nonce', async () => {
     /**
      * JUNIOR RATIONALE: DPoP can use a "Nonce" (a single-use number) to prevent 
