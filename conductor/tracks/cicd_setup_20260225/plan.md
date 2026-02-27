@@ -20,4 +20,5 @@
 
 - [x] Task: Integrate Playwright E2E tests into the CI pipeline. (7a1b6c2)
 - [x] Task: Add a "Security Scan" step (e.g., using Gitleaks or similar). (7a1b6c2)
+- [x] Task: Implement 90% test coverage enforcement in the CI pipeline for both .NET and Angular projects. (fbea624)
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Final Integration' (7a1b6c2)
