@@ -80,7 +80,7 @@ export class Login {
    * and perform 302 redirects within the same browser context, which is 
    * essential for the OIDC flow in this POC.
    */
-  public onLoginSubmitted(data: any): void {
+  public onLoginSubmitted(data: { email: string; password: string }): void {
     this.credentials = data;
     
     // We must wait for the next tick to ensure the DOM is updated 

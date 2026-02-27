@@ -43,9 +43,9 @@ describe('App', () => {
     });
 
     it('should render app shell when authenticated', async () => {
-        // @ts-ignore - access protected
+        // @ts-expect-error - access protected
         authServiceMock.isAuthenticated$ = of(true);
-        // @ts-ignore - access protected
+        // @ts-expect-error - access protected
         authServiceMock.user$ = of({ id: '1', name: 'John Doe', email: 'john@tai.com', roles: [] });
         
         const fixture = TestBed.createComponent(App);
@@ -56,7 +56,7 @@ describe('App', () => {
     });
 
     it('should call logout when app shell emits logout', async () => {
-        // @ts-ignore - access protected
+        // @ts-expect-error - access protected
         authServiceMock.isAuthenticated$ = of(true);
         
         const fixture = TestBed.createComponent(App);
@@ -67,12 +67,12 @@ describe('App', () => {
     });
 
     it('should render welcome content if title is not portal-web', async () => {
-        // @ts-ignore - access protected
+        // @ts-expect-error - access protected
         authServiceMock.isAuthenticated$ = of(true);
         
         const fixture = TestBed.createComponent(App);
         const app = fixture.componentInstance;
-        // @ts-ignore - access protected
+        // @ts-expect-error - access protected
         app.title = 'other';
         fixture.detectChanges();
         await fixture.whenStable();

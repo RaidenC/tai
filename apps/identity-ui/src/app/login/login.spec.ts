@@ -53,7 +53,7 @@ describe('Login', () => {
     const mockForm = {
       submit: vi.fn()
     };
-    // @ts-ignore - mocking viewChild return
+    // @ts-expect-error - mocking viewChild return
     vi.spyOn(component, 'hiddenForm').mockReturnValue({ nativeElement: mockForm });
 
     component.onLoginSubmitted(mockData);
@@ -67,7 +67,7 @@ describe('Login', () => {
     vi.useFakeTimers();
     const mockData = { email: 'test@test.com', password: 'password' };
     
-    // @ts-ignore - mocking viewChild return null
+    // @ts-expect-error - mocking viewChild return null
     vi.spyOn(component, 'hiddenForm').mockReturnValue(null);
 
     component.onLoginSubmitted(mockData);
@@ -78,7 +78,7 @@ describe('Login', () => {
   });
 
   it('should generate correct apiLoginUrl', () => {
-    // @ts-ignore - access protected
+    // @ts-expect-error - access protected
     const url = component.apiLoginUrl;
     expect(url).toContain(':5217/identity/Account/Login');
   });
