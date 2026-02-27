@@ -24,7 +24,7 @@ describe('Login', () => {
   it('should compute error message for invalid_credentials', () => {
     fixture.componentRef.setInput('error', 'invalid_credentials');
     fixture.detectChanges();
-    // We use @ts-ignore or access protected via any for testing if needed, 
+    // We use @ts-expect-error or access protected via any for testing if needed, 
     // but better check if it's rendered in template or use a public getter if available.
     // In this case, we check the template.
     const compiled = fixture.nativeElement as HTMLElement;
