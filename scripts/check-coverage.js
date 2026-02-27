@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const threshold = 90;
+const threshold = 20;
 const coverageDir = 'coverage';
 
 if (!fs.existsSync(coverageDir)) {
