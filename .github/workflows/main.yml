@@ -75,7 +75,11 @@ jobs:
       - name: Test Affected
         env:
           ConnectionStrings__DefaultConnection: Host=localhost;Database=portal;Username=postgres;Password=postgres
-        run: npx nx affected -t test
+        run: |
+          npx nx affected -t test --args="/p:CollectCoverage=true /p:Threshold=90 /p:ThresholdType=line"
+          if [ -d "coverage" ]; then
+            node scripts/check-coverage.js
+          fi
 
   e2e:
     needs: ci

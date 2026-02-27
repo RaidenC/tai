@@ -11,7 +11,8 @@
         "test": {
             "cache": true,
             "options": {
-                "watch": false
+                "watch": false,
+                "coverage": true
             }
         },
         "lint": {
