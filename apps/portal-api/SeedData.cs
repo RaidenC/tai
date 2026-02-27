@@ -22,7 +22,7 @@ public static class SeedData {
 
       using (var scope = services.CreateScope()) {
         var context = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
-        
+
         // JUNIOR RATIONALE: We use a PostgreSQL "Advisory Lock" to ensure that 
         // even if multiple processes (like parallel tests) try to seed the 
         // same database at the same time, only one actually does it. 
