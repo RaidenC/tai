@@ -1,0 +1,40 @@
+# --- Build & Dependency Artifacts ---
+# Exclude these to prevent the AI from indexing thousands of library files
+**/node_modules/
+**/bin/
+**/obj/
+**/dist/
+**/build/
+**/.angular/
+
+# --- IDE & System ---
+.git/
+.vs/
+.vscode/
+.idea/
+.DS_Store
+
+# --- AI Chat History ---
+# Critical for token savings: Exclude past chat logs to prevent context window bloat
+copilot/copilot-conversations/
+
+# --- Logs & Temporary Files ---
+**/coverage/
+*.log
+*.tmp
+
+# --- Large Media/Binaries ---
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp4
+*.svg
+*.pdf
+*.zip
+
+# --- Exceptions: Allow Course Screenshots ---
+# Allow AI to see diagrams/slides in the Resources folder for Course Scribe
+!03_Resources/**/*.png
+!03_Resources/**/*.jpg
+!03_Resources/**/*.jpeg

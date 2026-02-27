@@ -1,0 +1,33 @@
+# .NET
+[Bb]in/
+[Oo]bj/
+[Tt]emp/
+[Tt]mp/
+*.user
+*.userosscache
+*.sln.doccache
+*.suo
+*.userprefs
+.vs/
+.vscode/
+
+# Node/Angular
+node_modules/
+dist/
+.angular/
+.nx/cache/
+.nx/workspace-data/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Other
+*.swp
+*.bak
+
+.angular
+
+__screenshots__/
+TestResults/

@@ -1,0 +1,49 @@
+<!-- 
+    Login UI Container
+    Persona: Frontend Security Architect.
+    Context: Identity UI for TAI Portal (POC).
+-->
+<div class="login-container" style="max-width: 400px; margin: 100px auto; padding: 2rem; border: 1px solid #ddd; border-radius: 8px; font-family: sans-serif;">
+    
+    <header style="margin-bottom: 2rem;">
+        <h1 style="margin: 0; font-size: 1.5rem; color: #111827;">Welcome to Portal</h1>
+        <p style="margin: 0.5rem 0 0; font-size: 0.875rem; color: #6b7280;">Secure Identity Portal</p>
+    </header>
+    
+    <!-- 
+        Secure Login Form Component (from Design System)
+        This component handles reactive validation, CSP compliance, 
+        and anti-credential harvesting measures.
+    -->
+    @if (errorMessage()) {
+      <div class="error-alert" style="margin-bottom: 1rem; padding: 0.75rem; background-color: #fef2f2; border: 1px solid #fee2e2; border-radius: 0.375rem; color: #b91c1c; font-size: 0.875rem;">
+          {{ errorMessage() }}
+      </div>
+    }
+
+    <tai-login-form (submitted)="onLoginSubmitted($event)"></tai-login-form>
+    
+    <!-- 
+        Hidden Native Form:
+        Used to perform the native browser POST to the .NET Backend.
+        Matches the [FromForm] expectations of the AccountController.
+    -->
+    <form 
+        #hiddenPostForm 
+        [action]="apiLoginUrl" 
+        method="post" 
+        style="display: none;">
+        
+        <input type="hidden" name="returnUrl" [value]="returnUrl() || '/'" />
+        <!-- 'username' field corresponds to the 'email' field in our internal model for this POC -->
+        <input type="hidden" name="username" [value]="credentials.email" />
+        <input type="hidden" name="password" [value]="credentials.password" />
+    </form>
+    
+    <footer style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #f3f4f6; font-size: 0.75rem; color: #9ca3af; text-align: center;">
+        &copy; 2026 TAI Financial Services. All rights reserved.
+        <div style="margin-top: 0.5rem;">
+            Debug: returnUrl is {{ returnUrl() || 'ROOT' }}
+        </div>
+    </footer>
+</div>

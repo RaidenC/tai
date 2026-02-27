@@ -1,0 +1,8 @@
+{
+  "track_id": "multi_tenancy_20260223",
+  "type": "feature",
+  "status": "new",
+  "created_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "updated_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "description": "Multi-Tenancy & Data Isolation: Implement host-based tenant resolution and EF Core global query filters for PostgreSQL."
+}

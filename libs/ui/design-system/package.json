@@ -1,0 +1,17 @@
+{
+    "name": "@tai/ui-design-system",
+    "version": "0.0.1",
+    "peerDependencies": {
+        "@angular/common": "^21.1.0",
+        "@angular/core": "^21.1.0",
+        "@angular/forms": "^21.1.0",
+        "@angular/platform-browser": "^21.1.0",
+        "@angular/cdk": "^21.1.0",
+        "@storybook/angular": "^10.2.10",
+        "@storybook/test": "^8.0.0",
+        "axe-playwright": "^2.0.0",
+        "storybook": "10.2.10",
+        "vitest": "^4.0.0"
+    },
+    "sideEffects": false
+}

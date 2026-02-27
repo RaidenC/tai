@@ -1,0 +1,24 @@
+@if (isAuthenticated$ | async) {
+  <tai-app-shell 
+    [user]="user$ | async" 
+    [menuItems]="menuItems" 
+    (logout)="logout()">
+    
+    <router-outlet></router-outlet>
+    
+    @if (!(title === 'portal-web')) {
+      <div class="welcome-content">
+          <h1>Welcome to Portal</h1>
+          <p>Your centralized financial risk management dashboard.</p>
+      </div>
+    }
+  </tai-app-shell>
+} @else {
+  <div class="login-container">
+    <div class="login-card">
+      <h1>Portal</h1>
+      <p>Secure Enterprise Gateway</p>
+      <button (click)="login()" class="login-btn">Sign In with TAI Identity</button>
+    </div>
+  </div>
+}

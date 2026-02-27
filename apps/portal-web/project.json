@@ -1,0 +1,103 @@
+{
+    "name": "portal-web",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "projectType": "application",
+    "prefix": "app",
+    "sourceRoot": "apps/portal-web/src",
+    "tags": [],
+    "targets": {
+        "build": {
+            "executor": "@angular/build:application",
+            "outputs": ["{options.outputPath}"],
+            "options": {
+                "outputPath": "dist/apps/portal-web",
+                "browser": "apps/portal-web/src/main.ts",
+                "tsConfig": "apps/portal-web/tsconfig.app.json",
+                "inlineStyleLanguage": "scss",
+                "assets": [
+                    {
+                        "glob": "**/*",
+                        "input": "apps/portal-web/public"
+                    }
+                ],
+                "styles": ["apps/portal-web/src/styles.scss"],
+                "polyfills": ["zone.js"]
+            },
+            "configurations": {
+                "production": {
+                    "budgets": [
+                        {
+                            "type": "initial",
+                            "maximumWarning": "500kb",
+                            "maximumError": "1mb"
+                        },
+                        {
+                            "type": "anyComponentStyle",
+                            "maximumWarning": "4kb",
+                            "maximumError": "8kb"
+                        }
+                    ],
+                    "outputHashing": "all"
+                },
+                "development": {
+                    "optimization": false,
+                    "extractLicenses": false,
+                    "sourceMap": true
+                }
+            },
+            "defaultConfiguration": "production"
+        },
+        "serve": {
+            "continuous": true,
+            "executor": "@angular/build:dev-server",
+            "configurations": {
+                "production": {
+                    "buildTarget": "portal-web:build:production"
+                },
+                "development": {
+                    "buildTarget": "portal-web:build:development"
+                }
+            },
+            "defaultConfiguration": "development"
+        },
+        "lint": {
+            "executor": "@nx/eslint:lint"
+        },
+        "test": {
+            "executor": "@angular/build:unit-test",
+            "options": {
+                "watch": false
+            }
+        },
+        "serve-static": {
+            "continuous": true,
+            "executor": "@nx/web:file-server",
+            "options": {
+                "buildTarget": "portal-web:build",
+                "port": 4200,
+                "staticFilePath": "dist/apps/portal-web/browser",
+                "spa": true
+            }
+        },
+        "storybook": {
+            "executor": "@storybook/angular:start-storybook",
+            "options": {
+                "port": 6006,
+                "configDir": "apps/portal-web/.storybook",
+                "compodoc": false,
+                "tsConfig": "apps/portal-web/.storybook/tsconfig.json",
+                "browserTarget": "portal-web:build"
+            }
+        },
+        "build-storybook": {
+            "executor": "@storybook/angular:build-storybook",
+            "options": {
+                "configDir": "apps/portal-web/.storybook",
+                "outputDir": "dist/storybook/portal-web",
+                "compodoc": false,
+                "tsConfig": "apps/portal-web/.storybook/tsconfig.json",
+                "browserTarget": "portal-web:build"
+            }
+        }
+    }
+}

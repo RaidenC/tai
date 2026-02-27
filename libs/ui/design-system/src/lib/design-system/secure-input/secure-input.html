@@ -1,0 +1,43 @@
+<div class="secure-input-container">
+  <!-- 
+    Accessible Label:
+    Ensures that the input field is correctly associated with its description 
+    for screen readers (Accessibility / Compliance).
+  -->
+  <label [for]="id()" class="secure-input-label">{{ label() }}</label>
+  
+  <!-- 
+    The Input Element:
+    Avoiding Angular Material to maintain 100% control over the DOM.
+    Strictly controlling attributes like autocomplete and type to prevent 
+    stealer log extraction.
+  -->
+  <input
+    [id]="id()"
+    [type]="type()"
+    [placeholder]="placeholder()"
+    [value]="value()"
+    [disabled]="isDisabled()"
+    [attr.autocomplete]="type() === 'password' ? 'new-password' : (type() === 'email' ? 'email' : 'off')"
+    (input)="onInput($event)"
+    (blur)="onBlur()"
+    class="secure-input-field"
+    [class.error]="errorMessage() && isTouched()"
+    [class.secure-password-input]="type() === 'password'"
+    aria-invalid="false"
+  />
+
+  <!-- 
+    Trusted HTML Sink:
+    The dynamic error message is sanitized using the TrustedTypesService 
+    before being bound to [innerHTML] to prevent DOM-based XSS attacks.
+  -->
+  @if (errorMessage() && isTouched()) {
+    <div
+      class="error-message"
+      [innerHTML]="trustedErrorMessage()"
+      aria-live="polite"
+      role="alert"
+    ></div>
+  }
+</div>

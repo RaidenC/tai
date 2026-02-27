@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/apps/" />
+  <Folder Name="/apps/portal-gateway.integration-tests/">
+    <Project Path="apps/portal-gateway.integration-tests/Tai.Portal.Gateway.IntegrationTests.csproj" />
+  </Folder>
+  <Folder Name="/apps/portal-gateway/">
+    <Project Path="apps/portal-gateway/Tai.Portal.Gateway.csproj" />
+  </Folder>
+  <Project Path="apps/portal-api/portal-api.csproj" />
+  <Project Path="libs/core/application/Tai.Portal.Core.Application.csproj" />
+  <Project Path="libs/core/application.tests/Tai.Portal.Core.Application.Tests.csproj" />
+  <Project Path="libs/core/domain/Tai.Portal.Core.Domain.csproj" />
+  <Project Path="libs/core/domain.tests/Tai.Portal.Core.Domain.Tests.csproj" />
+  <Project Path="libs/core/infrastructure/Tai.Portal.Core.Infrastructure.csproj" />
+  <Project Path="libs/core/infrastructure.tests/Tai.Portal.Core.Infrastructure.Tests.csproj" />
+</Solution>

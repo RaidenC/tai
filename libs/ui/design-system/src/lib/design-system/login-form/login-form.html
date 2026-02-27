@@ -1,0 +1,42 @@
+<form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form-container" role="form">
+  <!-- 
+    Email Identity Input:
+    Uses the SecureInputComponent to ensure strict CSP and 
+    Stealer Log defense for the corporate email field.
+  -->
+  <tai-secure-input
+    label="Corporate Email"
+    type="email"
+    placeholder="e.g. jdoe@tai.com"
+    formControlName="email"
+    [errorMessage]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched ? 'A valid corporate email is required.' : ''"
+  >
+  </tai-secure-input>
+
+  <!-- 
+    Password Input:
+    Strictly isolated DOM with CSS masking and new-password 
+    autocomplete to mitigate credential harvesting malware.
+  -->
+  <tai-secure-input
+    label="Password"
+    type="password"
+    placeholder="Enter your secure password"
+    formControlName="password"
+    [errorMessage]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched ? 'Password must be at least 8 characters.' : ''"
+  >
+  </tai-secure-input>
+
+  <!-- 
+    Submit Action:
+    The ngSubmit directive provides a robust, semantic way to handle
+    form submissions that is fully compatible with modern testing libraries.
+  -->
+  <button
+    type="submit"
+    class="submit-button"
+    [disabled]="loginForm.invalid"
+  >
+    Sign In to Portal
+  </button>
+</form>

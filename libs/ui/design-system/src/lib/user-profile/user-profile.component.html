@@ -1,0 +1,39 @@
+<!-- 
+  Audit-Proof Identity Display:
+  Proves that user initials (JD for John Doe) are accurately derived from the 
+  server-provided name, ensuring visual identity invariants without exposing 
+  full identity data in every view.
+-->
+<div class="user-profile">
+  <button class="user-profile-trigger"
+          [cdkMenuTriggerFor]="profileMenu"
+          aria-label="User Profile"
+          [attr.aria-haspopup]="'true'">
+    @if (user?.avatar) {
+      <img [src]="user?.avatar"
+           [alt]="user?.name"
+           class="user-avatar" />
+    } @else {
+      {{ initials }}
+    }
+  </button>
+</div>
+
+<!-- 
+  Audit-Proof Session Control:
+  Uses Angular CDK cdkMenu to provide a standard, accessible interface for session 
+  termination (Logout), adhering to enterprise UX and security requirements.
+-->
+<ng-template #profileMenu>
+  <ul class="user-profile-menu" cdkMenu>
+    <li>
+      <button class="user-profile-menu-item" cdkMenuItem>My Profile</button>
+    </li>
+    <li>
+      <button class="user-profile-menu-item" cdkMenuItem>Account Settings</button>
+    </li>
+    <li>
+      <button class="user-profile-menu-item logout" cdkMenuItem (click)="onLogout()">Logout</button>
+    </li>
+  </ul>
+</ng-template>

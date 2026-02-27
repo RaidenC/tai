@@ -1,0 +1,20 @@
+{
+  "name": "core-domain",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/core/domain",
+  "projectType": "library",
+  "tags": ["type:domain", "scope:core"],
+  "targets": {
+    "build": {
+      "executor": "@nx-dotnet/core:build",
+      "options": {
+        "configuration": "Debug"
+      },
+      "configurations": {
+        "production": {
+          "configuration": "Release"
+        }
+      }
+    }
+  }
+}

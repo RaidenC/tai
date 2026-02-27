@@ -1,0 +1,15 @@
+{
+  "name": "core-domain-tests",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/core/domain.tests",
+  "projectType": "library",
+  "tags": ["type:test", "scope:core"],
+  "targets": {
+    "test": {
+      "executor": "@nx-dotnet/core:test",
+      "options": {
+        "configuration": "Debug"
+      }
+    }
+  }
+}

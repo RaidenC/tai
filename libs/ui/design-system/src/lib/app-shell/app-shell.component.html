@@ -1,0 +1,13 @@
+<div class="app-shell">
+  <aside class="shell-sidebar">
+    <tai-sidebar [menuItems]="menuItems"></tai-sidebar>
+  </aside>
+  
+  <header class="shell-header">
+    <tai-user-profile [user]="user" (logout)="onLogout()"></tai-user-profile>
+  </header>
+  
+  <main class="shell-main">
+    <ng-content></ng-content>
+  </main>
+</div>
