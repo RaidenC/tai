@@ -30,22 +30,33 @@ public static class SeedData {
       string[] roleNames = { "Admin", "User" };
       foreach (var roleName in roleNames) {
         if (!roleManager.RoleExistsAsync(roleName).GetAwaiter().GetResult()) {
-          roleManager.CreateAsync(new IdentityRole(roleName)).GetAwaiter().GetResult();
+          try {
+            roleManager.CreateAsync(new IdentityRole(roleName)).GetAwaiter().GetResult();
+          } catch (DbUpdateException) {
+            // JUNIOR RATIONALE: In a multi-threaded test environment, another 
+            // process might have created the role between our check and 
+            // our create call. We ignore this error as the goal (the role 
+            // existing) is met.
+          }
         }
       }
 
       // Seed Tenants
       var taiTenantId = new TenantId(Guid.Parse("00000000-0000-0000-0000-000000000001"));
       if (context.Set<Tenant>().IgnoreQueryFilters().FirstOrDefault(t => t.Id == taiTenantId) is null) {
-        context.Set<Tenant>().Add(new Tenant(taiTenantId, "TAI Financial Services", "localhost"));
+        try {
+          context.Set<Tenant>().Add(new Tenant(taiTenantId, "TAI Financial Services", "localhost"));
+          context.SaveChanges();
+        } catch (DbUpdateException) { /* Already exists */ }
       }
 
       var acmeTenantId = new TenantId(Guid.Parse("00000000-0000-0000-0000-000000000002"));
       if (context.Set<Tenant>().IgnoreQueryFilters().FirstOrDefault(t => t.Id == acmeTenantId) is null) {
-        context.Set<Tenant>().Add(new Tenant(acmeTenantId, "ACME Credit Union", "acme.localhost"));
+        try {
+          context.Set<Tenant>().Add(new Tenant(acmeTenantId, "ACME Credit Union", "acme.localhost"));
+          context.SaveChanges();
+        } catch (DbUpdateException) { /* Already exists */ }
       }
-
-      context.SaveChanges();
 
       // Seed Users
       var taiAdminId = "00000000-0000-0000-0000-000000000010";
@@ -57,8 +68,10 @@ public static class SeedData {
           Email = taiAdminEmail,
           EmailConfirmed = true,
         };
-        userManager.CreateAsync(user, "Password123!").GetAwaiter().GetResult();
-        userManager.AddToRoleAsync(user, "Admin").GetAwaiter().GetResult();
+        try {
+          userManager.CreateAsync(user, "Password123!").GetAwaiter().GetResult();
+          userManager.AddToRoleAsync(user, "Admin").GetAwaiter().GetResult();
+        } catch (DbUpdateException) { /* Already exists */ }
       }
 
       var acmeAdminId = "00000000-0000-0000-0000-000000000020";
@@ -70,8 +83,10 @@ public static class SeedData {
           Email = acmeAdminEmail,
           EmailConfirmed = true,
         };
-        userManager.CreateAsync(user, "Password123!").GetAwaiter().GetResult();
-        userManager.AddToRoleAsync(user, "Admin").GetAwaiter().GetResult();
+        try {
+          userManager.CreateAsync(user, "Password123!").GetAwaiter().GetResult();
+          userManager.AddToRoleAsync(user, "Admin").GetAwaiter().GetResult();
+        } catch (DbUpdateException) { /* Already exists */ }
       }
 
       var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
