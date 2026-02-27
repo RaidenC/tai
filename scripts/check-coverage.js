@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const threshold = 20;
+const threshold = 80;
 const coverageDir = 'coverage';
 
 if (!fs.existsSync(coverageDir)) {
@@ -33,12 +33,18 @@ coverageFiles.forEach(file => {
   let totalStatements = 0;
   let coveredStatements = 0;
 
-  Object.values(data).forEach(fileData => {
-    const statements = fileData.s;
-    Object.values(statements).forEach(count => {
-      totalStatements++;
-      if (count > 0) coveredStatements++;
-    });
+  Object.entries(data).forEach(([filePath, fileData]) => {
+    // Project specific filtering logic
+    const projectName = file.split('/')[1]; // e.g., 'identity-ui'
+    const isProjectFile = filePath.includes(`apps/${projectName}/src`) || filePath.includes(`libs/${projectName}/src`);
+    
+    if (isProjectFile) {
+      const statements = fileData.s;
+      Object.values(statements).forEach(count => {
+        totalStatements++;
+        if (count > 0) coveredStatements++;
+      });
+    }
   });
 
   const percentage = totalStatements === 0 ? 100 : (coveredStatements / totalStatements) * 100;

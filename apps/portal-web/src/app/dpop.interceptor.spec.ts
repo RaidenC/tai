@@ -134,4 +134,108 @@ describe('dpopInterceptor', () => {
     const response = await requestPromise;
     expect(response).toEqual({ success: true });
   });
+
+  it('should not add DPoP header to external URLs', async () => {
+    const url = 'https://google.com';
+    const requestPromise = firstValueFrom(httpClient.get(url));
+    
+    const req = httpMock.expectOne(url);
+    expect(req.request.headers.has('DPoP')).toBe(false);
+    
+    req.flush({});
+    await requestPromise;
+  });
+
+  it('should pass through non-401 errors', async () => {
+    const url = '/api/data';
+    const requestPromise = firstValueFrom(httpClient.get(url));
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const req = httpMock.expectOne(url);
+    req.flush('Server Error', { status: 500, statusText: 'Internal Server Error' });
+
+    await expect(requestPromise).rejects.toThrow();
+  });
+
+  it('should bind DPoP to access token if Authorization header exists', async () => {
+    const url = '/api/secure';
+    const token = 'my-secret-token';
+    const requestPromise = firstValueFrom(httpClient.get(url, {
+      headers: { Authorization: `Bearer ${token}` }
+    }));
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(dpopServiceSpy.getDPoPHeader).toHaveBeenCalledWith(
+      'GET',
+      url,
+      token,
+      undefined
+    );
+
+    const req = httpMock.expectOne(url);
+    req.flush({});
+    await requestPromise;
+  });
+
+  it('should not retry if 401 has no DPoP-Nonce header', async () => {
+    const url = '/api/secure';
+    const requestPromise = firstValueFrom(httpClient.get(url));
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const req = httpMock.expectOne(url);
+    req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+
+    await expect(requestPromise).rejects.toThrow();
+    expect(dpopServiceSpy.getDPoPHeader).toHaveBeenCalledTimes(1);
+  });
+
+  it('should add DPoP header to portal API requests', async () => {
+    const url = 'https://api.portal.com/v1/data';
+    const requestPromise = firstValueFrom(httpClient.get(url));
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const req = httpMock.expectOne(url);
+    expect(req.request.headers.has('DPoP')).toBe(true);
+    req.flush({});
+    await requestPromise;
+  });
+
+  it('should not bind DPoP if Authorization header is malformed', async () => {
+    const url = '/api/secure';
+    const requestPromise = firstValueFrom(httpClient.get(url, {
+      headers: { Authorization: 'MalformedHeader' }
+    }));
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(dpopServiceSpy.getDPoPHeader).toHaveBeenCalledWith(
+      'GET',
+      url,
+      undefined,
+      undefined
+    );
+
+    const req = httpMock.expectOne(url);
+    req.flush({});
+    await requestPromise;
+  });
+
+  it('should bind DPoP if Authorization header is DPoP scheme', async () => {
+    const url = '/api/secure';
+    const token = 'my-dpop-token';
+    const requestPromise = firstValueFrom(httpClient.get(url, {
+      headers: { Authorization: `DPoP ${token}` }
+    }));
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    expect(dpopServiceSpy.getDPoPHeader).toHaveBeenCalledWith(
+      'GET',
+      url,
+      token,
+      undefined
+    );
+
+    const req = httpMock.expectOne(url);
+    req.flush({});
+    await requestPromise;
+  });
 });

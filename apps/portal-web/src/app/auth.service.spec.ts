@@ -1,19 +1,21 @@
 import { TestBed } from '@angular/core/testing';
 import { AuthService } from './auth.service';
 import { OidcSecurityService, UserDataResult } from 'angular-auth-oidc-client';
-import { BehaviorSubject, of } from 'rxjs';
+import { BehaviorSubject, of, take, firstValueFrom, skip } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { provideRouter } from '@angular/router';
 
 describe('AuthService', () => {
   let service: AuthService;
   let oidcSecurityServiceMock: Partial<OidcSecurityService>;
-
-  const mockUserDataSubject = new BehaviorSubject<UserDataResult>({ 
-    userData: null, 
-    allUserData: []
-  });
+  let mockUserDataSubject: BehaviorSubject<UserDataResult>;
 
   beforeEach(() => {
+    mockUserDataSubject = new BehaviorSubject<UserDataResult>({ 
+      userData: null, 
+      allUserData: []
+    });
+
     oidcSecurityServiceMock = {
       authorize: vi.fn(),
       logoff: vi.fn(() => of(null)),
@@ -24,10 +26,10 @@ describe('AuthService', () => {
     TestBed.configureTestingModule({
       providers: [
         AuthService,
-        { provide: OidcSecurityService, useValue: oidcSecurityServiceMock }
+        { provide: OidcSecurityService, useValue: oidcSecurityServiceMock },
+        provideRouter([])
       ]
     });
-
     service = TestBed.inject(AuthService);
   });
 
@@ -45,69 +47,65 @@ describe('AuthService', () => {
     expect(oidcSecurityServiceMock.logoff).toHaveBeenCalled();
   });
 
-  it('should update isAuthenticated$ based on user$ state', () => {
-    return new Promise<void>((resolve) => {
-      const mockRawUser = {
-        sub: '123',
-        name: 'Test User',
-        email: 'test@tai.com',
-        role: ['Admin']
-      };
-
-      mockUserDataSubject.next({ 
-        userData: mockRawUser, 
-        allUserData: [{ configId: 'test', userData: mockRawUser }]
-      });
-
-      service.isAuthenticated$.subscribe(isAuthenticated => {
-        if (isAuthenticated) {
-          expect(isAuthenticated).toBe(true);
-          resolve();
-        }
-      });
-    });
+  it('should call checkAuth when checkAuth is called', () => {
+    service.checkAuth();
+    expect(oidcSecurityServiceMock.checkAuth).toHaveBeenCalled();
   });
 
-  it('should map and emit user data when oidcSecurityService.userData$ emits', () => {
-    return new Promise<void>((resolve) => {
-      const mockRawUser = {
-        sub: '123',
-        name: 'Test User',
-        email: 'test@tai.com',
-        role: ['Admin']
-      };
+  it('should update isAuthenticated$ based on user$ state', async () => {
+    const mockRawUser = {
+      sub: '123',
+      name: 'Test User',
+      email: 'test@tai.com',
+      role: ['Admin']
+    };
 
-      mockUserDataSubject.next({ 
-        userData: mockRawUser, 
-        allUserData: [{ configId: 'test', userData: mockRawUser }]
-      });
+    const userPromise = firstValueFrom(service.user$.pipe(skip(1)));
 
-      service.user$.subscribe(user => {
-        if (user) {
-          expect(user.id).toBe('123');
-          expect(user.name).toBe('Test User');
-          expect(user.email).toBe('test@tai.com');
-          expect(user.roles).toContain('Admin');
-          resolve();
-        }
-      });
+    mockUserDataSubject.next({ 
+      userData: mockRawUser, 
+      allUserData: [{ configId: 'test', userData: mockRawUser }]
     });
+
+    const user = await userPromise;
+    expect(user).toBeTruthy();
+    expect(user?.id).toBe('123');
+    expect(user?.name).toBe('Test User');
+    expect(user?.email).toBe('test@tai.com');
+    expect(user?.roles).toContain('Admin');
   });
 
-  it('should emit null user when userData is null', () => {
-    return new Promise<void>((resolve) => {
-      mockUserDataSubject.next({ 
-        userData: null, 
-        allUserData: []
-      });
-      service.user$.subscribe(user => {
-        if (user === null) {
-          expect(user).toBeNull();
-          resolve();
-        }
-      });
+  it('should extract roles from single string', async () => {
+    const mockRawUser = {
+      sub: '456',
+      name: 'Single Role User',
+      email: 'single@tai.com',
+      role: 'Editor'
+    };
+
+    const userPromise = firstValueFrom(service.user$.pipe(skip(1)));
+
+    mockUserDataSubject.next({ 
+      userData: mockRawUser, 
+      allUserData: []
     });
+
+    const user = await userPromise;
+    expect(user).toBeTruthy();
+    expect(user?.id).toBe('456');
+    expect(user?.roles).toContain('Editor');
+    expect(user?.roles.length).toBe(1);
+  });
+
+  it('should emit null user when userData is null', async () => {
+    const userPromise = firstValueFrom(service.user$.pipe(take(1)));
+
+    mockUserDataSubject.next({ 
+      userData: null, 
+      allUserData: []
+    });
+
+    const user = await userPromise;
+    expect(user).toBeNull();
   });
 });
-
-

@@ -68,4 +68,32 @@ describe('SecureInputComponent', () => {
     expect(errorEl).toBeTruthy();
     expect(errorEl.nativeElement.textContent).toContain('Invalid email');
   });
+
+  it('should handle disabled state', () => {
+    component.setDisabledState(true);
+    fixture.detectChanges();
+    const input = fixture.debugElement.query(By.css('input')).nativeElement as HTMLInputElement;
+    expect(input.disabled).toBe(true);
+  });
+
+  it('should apply autocomplete="email" for email type', () => {
+    fixture.componentRef.setInput('type', 'email');
+    fixture.detectChanges();
+    const input = fixture.debugElement.query(By.css('input')).nativeElement as HTMLInputElement;
+    expect(input.getAttribute('autocomplete')).toBe('email');
+  });
+
+  it('should apply autocomplete="off" for other types', () => {
+    fixture.componentRef.setInput('type', 'text');
+    fixture.detectChanges();
+    const input = fixture.debugElement.query(By.css('input')).nativeElement as HTMLInputElement;
+    expect(input.getAttribute('autocomplete')).toBe('off');
+  });
+
+  it('should render placeholder', () => {
+    fixture.componentRef.setInput('placeholder', 'Enter text');
+    fixture.detectChanges();
+    const input = fixture.debugElement.query(By.css('input')).nativeElement as HTMLInputElement;
+    expect(input.getAttribute('placeholder')).toBe('Enter text');
+  });
 });
