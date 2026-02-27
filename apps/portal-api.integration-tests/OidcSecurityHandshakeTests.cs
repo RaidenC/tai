@@ -20,7 +20,8 @@ public class OidcSecurityHandshakeTests : IClassFixture<WebApplicationFactory<Pr
   
   // JUNIOR RATIONALE: To talk to the API, we must present the secret "Passcode" 
   // that proves we are coming through the trusted Gateway. 
-  private const string GatewaySecret = "portal-poc-secret-2026";
+  private string GatewaySecret => Environment.GetEnvironmentVariable("GATEWAY_SECRET") ?? 
+                                  "portal-poc-secret-2026";
 
   public OidcSecurityHandshakeTests(WebApplicationFactory<Program> factory) {
     _factory = factory;

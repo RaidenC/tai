@@ -16,7 +16,8 @@ echo "[CSP-AUDIT] Scanning: $TARGET_URL"
 # -s: Silent mode (don't show progress)
 # -I: Head only (we only care about the metadata, not the page content)
 # -H: Add our Gateway Secret so the server lets us in.
-HEADERS=$(curl -s -I -H "X-Gateway-Secret: portal-poc-secret-2026" "$TARGET_URL")
+SECRET=${GATEWAY_SECRET:-"portal-poc-secret-2026"}
+HEADERS=$(curl -s -I -H "X-Gateway-Secret: $SECRET" "$TARGET_URL")
 
 # 3. Look for the CSP header in the response
 # 'grep -i' searches for the text while ignoring case.

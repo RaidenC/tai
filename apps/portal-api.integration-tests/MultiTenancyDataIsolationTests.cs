@@ -22,7 +22,8 @@ namespace Tai.Portal.Api.IntegrationTests;
  */
 public class MultiTenancyDataIsolationTests : IClassFixture<WebApplicationFactory<Program>> {
   private readonly WebApplicationFactory<Program> _factory;
-  private const string GatewaySecret = "portal-poc-secret-2026";
+  private string GatewaySecret => Environment.GetEnvironmentVariable("GATEWAY_SECRET") ?? 
+                                  "portal-poc-secret-2026";
 
   // Pre-seeded IDs from SeedData.cs
   private readonly Guid TaiTenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");

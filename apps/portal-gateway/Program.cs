@@ -1,6 +1,7 @@
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
+using Yarp.ReverseProxy.Transforms;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,8 +36,18 @@ builder.Services.AddRateLimiter(options => {
 // --- YARP Reverse Proxy Configuration ---
 // Add the YARP (Yet Another Reverse Proxy) services and load its configuration
 // from the "ReverseProxy" section of our appsettings.json file.
+var gatewaySecret = builder.Configuration["GATEWAY_SECRET"] ?? 
+                    builder.Configuration["Gateway:Secret"] ?? 
+                    "portal-poc-secret-2026";
+
 builder.Services.AddReverseProxy()
-    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
+    .AddTransforms(builderContext => {
+      // JUNIOR RATIONALE: We dynamically inject the Gateway Secret into every 
+      // request sent to the Backend API. This acts as our "Caller ID." 
+      // By doing this in code, we can easily use environment variables.
+      builderContext.AddRequestHeader("X-Gateway-Secret", gatewaySecret);
+    });
 
 // --- Forwarded Headers Configuration ---
 // Configure how the app handles headers that are forwarded by proxies (like YARP itself
