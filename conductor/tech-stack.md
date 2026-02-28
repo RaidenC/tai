@@ -29,6 +29,7 @@
 ## Infrastructure & Tooling
 - **Monorepo Management:** **Nx** for build orchestration and linting enforcement.
 - **CI/CD Pipeline:** **GitHub Actions** using **Nx Affected** for optimized build/test cycles.
+- **Security Scanning:** Automated **Gitleaks** integration to prevent credential exposure.
 - **Containerization:** **Docker** multi-stage builds for production-grade API and Gateway images.
 - **Runtime:** **Standard JIT Compilation** (.NET Core CLR) to ensure maximum ecosystem compatibility; **NativeAOT is strictly prohibited**.
 - **Security:** BFF (Backend-for-Frontend) pattern; all tokens managed server-side via Secure, HttpOnly, SameSite=Strict cookies.
