@@ -16,7 +16,7 @@ test.describe('Multi-Tenancy Isolation', () => {
     const response = await request.get(`${API_URL}/identity/diag/headers`, {
       headers: {
         'Host': 'localhost',
-        'X-Gateway-Secret': 'portal-poc-secret-2026'
+        'X-Gateway-Secret': process.env['GATEWAY_SECRET'] || 'portal-poc-secret-2026'
       }
     });
 
@@ -31,7 +31,7 @@ test.describe('Multi-Tenancy Isolation', () => {
     const response = await request.get(`${API_URL}/identity/diag/headers`, {
       headers: {
         'Host': 'acme.localhost',
-        'X-Gateway-Secret': 'portal-poc-secret-2026'
+        'X-Gateway-Secret': process.env['GATEWAY_SECRET'] || 'portal-poc-secret-2026'
       }
     });
 
@@ -50,7 +50,7 @@ test.describe('Multi-Tenancy Isolation', () => {
     const response = await request.get(`${API_URL}/identity/diag/user/${ACME_USER_ID}`, {
       headers: {
         'X-Tenant-Host': 'localhost',
-        'X-Gateway-Secret': 'portal-poc-secret-2026'
+        'X-Gateway-Secret': process.env['GATEWAY_SECRET'] || 'portal-poc-secret-2026'
       }
     });
 

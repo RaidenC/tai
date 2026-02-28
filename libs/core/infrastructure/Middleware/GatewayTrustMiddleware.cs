@@ -17,9 +17,14 @@ public class GatewayTrustMiddleware {
 
   public GatewayTrustMiddleware(RequestDelegate next, IConfiguration configuration) {
     _next = next;
-    // JUNIOR RATIONALE: We store the secret in 'appsettings.json'. 
-    // In production, this would be an Environment Variable or Key Vault secret.
-    _expectedSecret = configuration["Gateway:Secret"] ?? string.Empty;
+    // JUNIOR RATIONALE: We prioritize 'GATEWAY_SECRET' (environment variable) 
+    // over 'Gateway:Secret' (appsettings.json). We check for null/empty to 
+    // ensure a smooth fallback if the environment variable isn't set.
+    var secret = configuration["GATEWAY_SECRET"];
+    if (string.IsNullOrWhiteSpace(secret)) {
+      secret = configuration["Gateway:Secret"];
+    }
+    _expectedSecret = secret ?? string.Empty;
   }
 
   public async Task InvokeAsync(HttpContext context) {

@@ -96,6 +96,6 @@ test.describe('Real-World Multi-Tenant Handshake', () => {
     await expect(page.locator('.error-alert')).toContainText(/Invalid login attempt/i);
 
     // 7. Verify we are NOT in the portal (sidebar is not visible)
-    await expect(page.locator('tai-sidebar')).not.toBeVisible();
+    await expect(page.locator('tai-sidebar')).toBeHidden();
   });
 });

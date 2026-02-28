@@ -26,8 +26,12 @@ Thumbs.db
 # Other
 *.swp
 *.bak
+.env
 
 .angular
 
+# Testing & Coverage
+coverage/
+**/TestResults/
+**/coverage.json
 __screenshots__/
-TestResults/

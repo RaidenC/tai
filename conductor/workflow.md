@@ -21,6 +21,27 @@ Before any task implementation begins, a new Feature Track must be initialized:
 2.  **Planning Phase:** Draft a complete implementation strategy in `plan.md`, including a TDD checklist.
 3.  **Human Approval:** The implementation phase ONLY begins once the human has reviewed and annotated the `plan.md` and provided a "Proceed" signal.
 
+### Collaboration & Pull Requests (PR Workflow)
+
+To ensure the integrity of the **Zero-Trust** architecture and maintain a high-quality audit trail, all implementation work must follow a strict branching and Pull Request strategy.
+
+1.  **Phase Isolation:** Never work directly on the `main` branch. Every new phase of a track must be implemented in a dedicated feature branch.
+2.  **Branch Naming:** Use the pattern `feature/<track-id>/phase-<number>`.
+    *   *Example:* `git checkout -b feature/cicd-setup/phase-2`
+3.  **Agent Automation:** When the agent is tasked with implementing a phase (e.g., via `conductor:implement`), the agent will **automatically** perform the following steps:
+    *   Create the feature branch.
+    *   Execute the TDD cycle and implement the tasks.
+    *   Push the branch to the remote repository.
+    *   Notify the user that the branch is ready for a Pull Request.
+4.  **The Pull Request Gate:**
+    *   Open a Pull Request on GitHub from the feature branch to `main`.
+    *   The **TAI Portal CI** pipeline will automatically run.
+    *   **The PR must stay open until the CI turns Green ✅.**
+    *   If the CI fails, the agent will fix the issues on the same branch and push again.
+5.  **Merge & Cleanup:**
+    *   Once the PR is approved and CI is green, merge the PR into `main`.
+    *   Delete the feature branch locally and remotely to keep the workspace clean.
+
 ### Standard Task Workflow
 
 1. **Select Task:** Choose the next available task from `plan.md` in sequential order
@@ -42,7 +63,7 @@ Before any task implementation begins, a new Feature Track must be initialized:
    - Rerun tests to ensure they still pass after refactoring.
 
 6. **Glue Layer Smoke Test (Fintech Integration Gate):**
-   - **Verification:** Spin up all related services (Web, Gateway, API).
+   - **Verification:** Spin up all related services (Web, Gateway, API, Identity-UI, Database).
    - **Verification:** Ensure all traffic flows through the Gateway (5217).
    - **Verification:** Confirm no internal ports (5031, 4300) leak into browser redirects or OIDC metadata.
    - **Verification:** Verify that CORS preflight (OPTIONS) requests pass through the Gateway to the API.

@@ -22,7 +22,8 @@ namespace Tai.Portal.Api.IntegrationTests;
  */
 public class MultiTenancyDataIsolationTests : IClassFixture<WebApplicationFactory<Program>> {
   private readonly WebApplicationFactory<Program> _factory;
-  private const string GatewaySecret = "portal-poc-secret-2026";
+  private string GatewaySecret => Environment.GetEnvironmentVariable("GATEWAY_SECRET") ??
+                                  "portal-poc-secret-2026";
 
   // Pre-seeded IDs from SeedData.cs
   private readonly Guid TaiTenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");
@@ -47,7 +48,7 @@ public class MultiTenancyDataIsolationTests : IClassFixture<WebApplicationFactor
   public async Task TaiUser_CannotAccess_AcmeTenantRecord() {
     // 1. Arrange: Identify as TAI (localhost)
     var client = _factory.CreateClient(new WebApplicationFactoryClientOptions {
-        BaseAddress = new Uri("http://localhost/")
+      BaseAddress = new Uri("http://localhost/")
     });
     client.DefaultRequestHeaders.Add("X-Gateway-Secret", GatewaySecret);
 
@@ -62,7 +63,7 @@ public class MultiTenancyDataIsolationTests : IClassFixture<WebApplicationFactor
   public async Task AcmeUser_CannotAccess_TaiUserRecord() {
     // 1. Arrange: Identify as ACME (acme.localhost)
     var client = _factory.CreateClient(new WebApplicationFactoryClientOptions {
-        BaseAddress = new Uri("http://acme.localhost/")
+      BaseAddress = new Uri("http://acme.localhost/")
     });
     client.DefaultRequestHeaders.Add("X-Gateway-Secret", GatewaySecret);
 
@@ -77,7 +78,7 @@ public class MultiTenancyDataIsolationTests : IClassFixture<WebApplicationFactor
   public async Task TaiUser_CAN_Access_TaiTenantRecord() {
     // 1. Arrange: Identify as TAI (localhost)
     var client = _factory.CreateClient(new WebApplicationFactoryClientOptions {
-        BaseAddress = new Uri("http://localhost/")
+      BaseAddress = new Uri("http://localhost/")
     });
     client.DefaultRequestHeaders.Add("X-Gateway-Secret", GatewaySecret);
 
@@ -109,9 +110,9 @@ public class TestAuthStartupFilter : IStartupFilter {
   public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) {
     return builder => {
       builder.Use(async (context, nextMiddleware) => {
-        var claims = new[] { 
+        var claims = new[] {
             new Claim(ClaimTypes.Name, "Test User"),
-            new Claim("sub", "test-sub") 
+            new Claim("sub", "test-sub")
         };
         var identity = new ClaimsIdentity(claims, "OpenIddict.Validation.AspNetCore");
         context.User = new ClaimsPrincipal(identity);
@@ -126,9 +127,9 @@ public class TestAuthStartupFilter : IStartupFilter {
  * BypassAuthorizationService: Always grants access regardless of tokens.
  */
 public class BypassAuthorizationService : IAuthorizationService {
-  public Task<AuthorizationResult> AuthorizeAsync(ClaimsPrincipal user, object? resource, IEnumerable<IAuthorizationRequirement> requirements) 
+  public Task<AuthorizationResult> AuthorizeAsync(ClaimsPrincipal user, object? resource, IEnumerable<IAuthorizationRequirement> requirements)
       => Task.FromResult(AuthorizationResult.Success());
 
-  public Task<AuthorizationResult> AuthorizeAsync(ClaimsPrincipal user, object? resource, string policyName) 
+  public Task<AuthorizationResult> AuthorizeAsync(ClaimsPrincipal user, object? resource, string policyName)
       => Task.FromResult(AuthorizationResult.Success());
 }

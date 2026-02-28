@@ -49,4 +49,14 @@ describe('LoginFormComponent', () => {
 
     expect(submitSpy).toHaveBeenCalledWith(credentials);
   });
+
+  it('should not emit the submitted event if the form is invalid', () => {
+    const submitSpy = vi.fn();
+    component.submitted.subscribe(submitSpy);
+
+    component.loginForm.controls.email.setValue('invalid-email');
+    component.onSubmit();
+
+    expect(submitSpy).not.toHaveBeenCalled();
+  });
 });

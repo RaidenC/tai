@@ -18,6 +18,7 @@ public class GatewayTrustMiddlewareTests {
 
     var nextMock = new Mock<RequestDelegate>();
     var configMock = new Mock<IConfiguration>();
+    configMock.Setup(c => c["GATEWAY_SECRET"]).Returns(_secret);
     configMock.Setup(c => c["Gateway:Secret"]).Returns(_secret);
 
     var middleware = new GatewayTrustMiddleware(nextMock.Object, configMock.Object);
@@ -37,6 +38,7 @@ public class GatewayTrustMiddlewareTests {
 
     var nextMock = new Mock<RequestDelegate>();
     var configMock = new Mock<IConfiguration>();
+    configMock.Setup(c => c["GATEWAY_SECRET"]).Returns(_secret);
     configMock.Setup(c => c["Gateway:Secret"]).Returns(_secret);
 
     var middleware = new GatewayTrustMiddleware(nextMock.Object, configMock.Object);
@@ -57,6 +59,7 @@ public class GatewayTrustMiddlewareTests {
 
     var nextMock = new Mock<RequestDelegate>();
     var configMock = new Mock<IConfiguration>();
+    configMock.Setup(c => c["GATEWAY_SECRET"]).Returns(_secret);
     configMock.Setup(c => c["Gateway:Secret"]).Returns(_secret);
 
     var middleware = new GatewayTrustMiddleware(nextMock.Object, configMock.Object);
