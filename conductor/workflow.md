@@ -283,7 +283,28 @@ npx nx run-many -t build
 
 ## Code Review Process
 
+The review process focuses on the qualitative aspects of the implementation, assuming that automated checks (lint, test, coverage) are handled by the CI/CD pipeline.
+
+### 1. Qualitative Review Protocol
+The **Code Review Architect** must focus on:
+- **Logic Flaws:** Identify race conditions, improper async handling, or edge cases.
+- **Testing Gaps:** Ensure the scenarios tested are meaningful and reflect business requirements, not just line coverage.
+- **Architecture & Boundaries:** Verify that changes adhere to Clean Architecture. Ensure infrastructure logic hasn't leaked into the Domain.
+- **Security:** Check for PII leaks in logs, unsafe input handling, or credential exposure.
+
+### 2. Knowledge Base Deliverable
+For every completed track, a "Masterclass" learning material must be generated and saved to `conductor/knowledge-base/tracks/<track_id>.md`.
+
+This material must include:
+- **System Architecture Overview:** Mermaid graphs showing the data/process flow.
+- **Level-Based Breakdown:**
+  - **Senior (L3):** Strategic rationale, scalability, and complex patterns (e.g., Advisory Locks).
+  - **Mid-Level (L2):** Integration details, optimizations, and robust implementation tips.
+  - **Junior (L1):** Basic concepts, clean code principles, and execution basics.
+- **Interview Prep:** Mock Q&A based on the technical challenges encountered during the track.
+
 ### Self-Review Checklist
+
 Before requesting review:
 
 1. **Functionality**
