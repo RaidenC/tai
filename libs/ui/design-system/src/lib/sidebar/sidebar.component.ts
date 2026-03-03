@@ -1,4 +1,4 @@
-import { Component, Input, ChangeDetectionStrategy, booleanAttribute } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy, booleanAttribute } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkMenuModule } from '@angular/cdk/menu';
 
@@ -31,6 +31,6 @@ export interface MenuItem {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SidebarComponent {
-  @Input() menuItems: MenuItem[] = [];
-  @Input({ transform: booleanAttribute }) collapsed = false;
+  menuItems = input<MenuItem[]>([]);
+  collapsed = input(false, { transform: booleanAttribute });
 }

@@ -13,7 +13,7 @@ const config: StorybookConfig = {
     '../../../libs/ui/**/*.mdx',        // Include shared UI library stories
     '../../../libs/ui/**/*.stories.@(js|jsx|mjs|ts|tsx)'
   ],
-  addons: [],
+  addons: ['@storybook/addon-a11y', '@storybook/addon-interactions'],
   framework: {
     name: '@storybook/angular',
     options: {},

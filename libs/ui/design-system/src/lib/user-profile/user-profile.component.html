@@ -4,17 +4,17 @@
   server-provided name, ensuring visual identity invariants without exposing 
   full identity data in every view.
 -->
-<div class="user-profile">
-  <button class="user-profile-trigger"
+<div class="user-profile flex items-center gap-2">
+  <button class="user-profile-trigger flex items-center justify-center w-10 h-10 rounded-full bg-blue-500 text-white font-semibold cursor-pointer border-none transition-colors duration-200 hover:bg-blue-600 focus:outline-2 focus:outline-blue-500 focus:outline-offset-2"
           [cdkMenuTriggerFor]="profileMenu"
           aria-label="User Profile"
           [attr.aria-haspopup]="'true'">
-    @if (user?.avatar) {
-      <img [src]="user?.avatar"
-           [alt]="user?.name"
-           class="user-avatar" />
+    @if (user()?.avatar) {
+      <img [src]="user()?.avatar"
+           [alt]="user()?.name"
+           class="user-avatar w-full h-full rounded-full object-cover" />
     } @else {
-      {{ initials }}
+      {{ initials() }}
     }
   </button>
 </div>
@@ -25,15 +25,15 @@
   termination (Logout), adhering to enterprise UX and security requirements.
 -->
 <ng-template #profileMenu>
-  <ul class="user-profile-menu" cdkMenu>
+  <ul class="user-profile-menu flex flex-col min-w-[150px] bg-white rounded-md shadow-xl border border-gray-200 py-1 mt-2 list-none z-1000 focus:outline-none" cdkMenu>
     <li>
-      <button class="user-profile-menu-item" cdkMenuItem>My Profile</button>
+      <button class="user-profile-menu-item px-4 py-2 text-sm text-gray-700 cursor-pointer bg-transparent border-none w-full text-left transition-colors duration-100 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none" cdkMenuItem>My Profile</button>
     </li>
     <li>
-      <button class="user-profile-menu-item" cdkMenuItem>Account Settings</button>
+      <button class="user-profile-menu-item px-4 py-2 text-sm text-gray-700 cursor-pointer bg-transparent border-none w-full text-left transition-colors duration-100 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none" cdkMenuItem>Account Settings</button>
     </li>
     <li>
-      <button class="user-profile-menu-item logout" cdkMenuItem (click)="onLogout()">Logout</button>
+      <button class="user-profile-menu-item logout px-4 py-2 text-sm text-red-600 border-t border-gray-200 mt-1 pt-2 cursor-pointer bg-transparent border-none w-full text-left transition-colors duration-100 hover:bg-gray-100 focus:bg-gray-100 focus:outline-none" cdkMenuItem (click)="onLogout()">Logout</button>
     </li>
   </ul>
 </ng-template>

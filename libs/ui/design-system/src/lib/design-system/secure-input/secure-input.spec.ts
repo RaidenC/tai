@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ReactiveFormsModule, FormControl } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 import { SecureInputComponent } from './secure-input';
 import { By } from '@angular/platform-browser';
 

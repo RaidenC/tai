@@ -23,19 +23,19 @@ describe('UserProfileComponent', () => {
   it('should calculate initials correctly', () => {
     fixture.componentRef.setInput('user', { name: 'John Doe' });
     fixture.detectChanges();
-    expect(component.initials).toBe('JD');
+    expect(component.initials()).toBe('JD');
 
     fixture.componentRef.setInput('user', { name: 'Alice' });
     fixture.detectChanges();
-    expect(component.initials).toBe('A');
+    expect(component.initials()).toBe('A');
 
     fixture.componentRef.setInput('user', { name: 'Bob Smith Doe' });
     fixture.detectChanges();
-    expect(component.initials).toBe('BD');
+    expect(component.initials()).toBe('BD');
 
     fixture.componentRef.setInput('user', null);
     fixture.detectChanges();
-    expect(component.initials).toBe('');
+    expect(component.initials()).toBe('');
   });
 
   it('should render avatar if provided', () => {

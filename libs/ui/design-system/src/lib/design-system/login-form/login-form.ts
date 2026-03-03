@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter } from '@angular/core';
+import { Component, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
 import { SecureInputComponent } from '../secure-input/secure-input';
@@ -40,7 +40,7 @@ export class LoginFormComponent {
   /**
    * Event emitted when the form passes validation and is submitted by the user.
    */
-  @Output() submitted = new EventEmitter<Required<typeof this.loginForm.value>>();
+  public readonly submitted = output<Required<typeof this.loginForm.value>>();
 
   /**
    * Handles the native form submission event.
@@ -48,7 +48,7 @@ export class LoginFormComponent {
   public onSubmit(): void {
     if (this.loginForm.valid) {
       // getRawValue() ensures we get the non-nullable strings as defined in the model.
-      this.submitted.emit(this.loginForm.getRawValue() as any);
+      this.submitted.emit(this.loginForm.getRawValue() as Required<typeof this.loginForm.value>);
     }
   }
 }
