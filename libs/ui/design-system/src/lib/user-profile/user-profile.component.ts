@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkMenuModule } from '@angular/cdk/menu';
 
@@ -29,23 +29,17 @@ export interface UserProfile {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class UserProfileComponent {
-  private _user: UserProfile | null = null;
-  @Input() set user(val: UserProfile | null) {
-    this._user = val;
-  }
-  get user(): UserProfile | null {
-    return this._user;
-  }
+  user = input<UserProfile | null>(null);
+  logout = output<void>();
 
-  @Output() logout = new EventEmitter<void>();
-
-  get initials(): string {
-    if (!this._user?.name) return '';
-    const names = this._user.name.split(' ');
+  initials = computed(() => {
+    const user = this.user();
+    if (!user?.name) return '';
+    const names = user.name.split(' ');
     if (names.length === 0) return '';
     if (names.length === 1) return names[0].charAt(0).toUpperCase();
     return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
-  }
+  });
 
   onLogout(): void {
     this.logout.emit();

@@ -27,7 +27,8 @@
                         "input": "apps/identity-ui/public"
                     }
                 ],
-                "styles": ["apps/identity-ui/src/styles.css"]
+                "styles": ["apps/identity-ui/src/styles.css"],
+                "polyfills": ["zone.js"]
             },
             "configurations": {
                 "production": {
@@ -64,6 +65,7 @@
         "serve": {
             "continuous": true,
             "executor": "@angular/build:dev-server",
+            "dependsOn": ["build-tailwind"],
             "options": {
                 "port": 4300
             },

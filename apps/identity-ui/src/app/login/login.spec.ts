@@ -49,9 +49,12 @@ describe('Login', () => {
     vi.useFakeTimers();
     const mockData = { email: 'test@test.com', password: 'password' };
     
-    // Mock form.submit
+    // Mock form.submit and elements.namedItem
     const mockForm = {
-      submit: vi.fn()
+      submit: vi.fn(),
+      elements: {
+        namedItem: vi.fn().mockReturnValue({ value: '' })
+      }
     };
     // @ts-expect-error - mocking viewChild return
     vi.spyOn(component, 'hiddenForm').mockReturnValue({ nativeElement: mockForm });

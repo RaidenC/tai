@@ -81,15 +81,17 @@ export class Login {
    * essential for the OIDC flow in this POC.
    */
   public onLoginSubmitted(data: { email: string; password: string }): void {
-    this.credentials = data;
-    
-    // We must wait for the next tick to ensure the DOM is updated 
-    // with the new credential values before submitting.
-    setTimeout(() => {
-      const form = this.hiddenForm()?.nativeElement;
-      if (form) {
-        form.submit();
-      }
-    });
+    const form = this.hiddenForm()?.nativeElement;
+    if (form) {
+      // Manually set the values to avoid any Angular change detection race conditions
+      // across different browsers (which was causing empty credentials to be sent).
+      const usernameInput = form.elements.namedItem('username') as HTMLInputElement;
+      const passwordInput = form.elements.namedItem('password') as HTMLInputElement;
+      
+      if (usernameInput) usernameInput.value = data.email;
+      if (passwordInput) passwordInput.value = data.password;
+      
+      form.submit();
+    }
   }
 }

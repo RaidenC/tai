@@ -65,6 +65,7 @@
         "serve": {
             "continuous": true,
             "executor": "@angular/build:dev-server",
+            "dependsOn": ["build-tailwind"],
             "configurations": {
                 "production": {
                     "buildTarget": "portal-web:build:production"

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SidebarComponent, MenuItem } from '../sidebar/sidebar.component';
 import { UserProfileComponent, UserProfile } from '../user-profile/user-profile.component';
@@ -12,9 +12,9 @@ import { UserProfileComponent, UserProfile } from '../user-profile/user-profile.
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppShellComponent {
-  @Input() user: UserProfile | null = null;
-  @Input() menuItems: MenuItem[] = [];
-  @Output() logout = new EventEmitter<void>();
+  user = input<UserProfile | null>(null);
+  menuItems = input<MenuItem[]>([]);
+  logout = output<void>();
 
   onLogout(): void {
     this.logout.emit();

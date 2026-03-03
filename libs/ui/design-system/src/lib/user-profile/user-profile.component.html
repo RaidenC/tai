@@ -9,12 +9,12 @@
           [cdkMenuTriggerFor]="profileMenu"
           aria-label="User Profile"
           [attr.aria-haspopup]="'true'">
-    @if (user?.avatar) {
-      <img [src]="user?.avatar"
-           [alt]="user?.name"
+    @if (user()?.avatar) {
+      <img [src]="user()?.avatar"
+           [alt]="user()?.name"
            class="user-avatar w-full h-full rounded-full object-cover" />
     } @else {
-      {{ initials }}
+      {{ initials() }}
     }
   </button>
 </div>

@@ -1,10 +1,10 @@
 <div class="grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] min-h-screen bg-gray-50">
   <aside class="row-span-2 bg-gray-900 h-screen sticky top-0">
-    <tai-sidebar [menuItems]="menuItems"></tai-sidebar>
+    <tai-sidebar [menuItems]="menuItems()"></tai-sidebar>
   </aside>
   
   <header class="col-start-2 bg-white h-16 px-6 flex items-center justify-end border-b border-gray-200 shadow-sm">
-    <tai-user-profile [user]="user" (logout)="onLogout()"></tai-user-profile>
+    <tai-user-profile [user]="user()" (logout)="onLogout()"></tai-user-profile>
   </header>
   
   <main class="col-start-2 p-8 overflow-y-auto">
