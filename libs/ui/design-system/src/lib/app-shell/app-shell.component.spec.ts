@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { AppShellComponent } from './app-shell.component';
-import { By } from '@angular/platform-browser';
 import { describe, it, expect, beforeEach } from 'vitest';
 
 describe('AppShellComponent', () => {

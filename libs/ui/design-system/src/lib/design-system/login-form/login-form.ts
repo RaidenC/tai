@@ -48,7 +48,7 @@ export class LoginFormComponent {
   public onSubmit(): void {
     if (this.loginForm.valid) {
       // getRawValue() ensures we get the non-nullable strings as defined in the model.
-      this.submitted.emit(this.loginForm.getRawValue() as any);
+      this.submitted.emit(this.loginForm.getRawValue() as Required<typeof this.loginForm.value>);
     }
   }
 }

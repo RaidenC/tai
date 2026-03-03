@@ -1,6 +1,4 @@
 import type { StorybookConfig } from '@storybook/angular';
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
 
 /**
  * Storybook Main Configuration for SWBC AutoPilot

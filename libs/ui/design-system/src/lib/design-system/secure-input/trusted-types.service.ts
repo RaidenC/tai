@@ -12,6 +12,7 @@ import { Injectable } from '@angular/core';
   providedIn: 'root',
 })
 export class TrustedTypesService {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private policy: any;
 
   constructor() {
@@ -20,6 +21,7 @@ export class TrustedTypesService {
 
   private initializePolicy(): void {
     // Check for browser support of Trusted Types API.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const ttWindow = window as any;
     if (ttWindow.trustedTypes && ttWindow.trustedTypes.createPolicy) {
       try {
@@ -37,7 +39,7 @@ export class TrustedTypesService {
              return html;
           },
         });
-      } catch (err) {
+      } catch {
         // Graceful fallback for environments like Storybook where HMR might re-run constructors.
         this.policy = ttWindow.trustedTypes.getPolicy('tai-security-policy');
       }
@@ -50,6 +52,7 @@ export class TrustedTypesService {
    * @param html The raw HTML string to sanitize.
    * @returns A TrustedHTML object if supported, otherwise the raw string.
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   public createTrustedHTML(html: string): any {
     if (this.policy) {
       return this.policy.createHTML(html);

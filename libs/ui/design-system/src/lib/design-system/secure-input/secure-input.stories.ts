@@ -1,5 +1,5 @@
 import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
-import { ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
+import { ReactiveFormsModule, FormControl } from '@angular/forms';
 import { userEvent, within, expect } from 'storybook/test';
 import { SecureInputComponent } from './secure-input';
 import { CommonModule } from '@angular/common';
