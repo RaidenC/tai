@@ -1,5 +1,4 @@
 import type { Preview } from '@storybook/angular';
-import '../../../apps/portal-web/src/styles.css';
 
 const preview: Preview = {
   tags: ['autodocs'],
