@@ -6,24 +6,39 @@
     "sourceRoot": "apps/identity-ui/src",
     "tags": [],
     "targets": {
+        "build-tailwind": {
+          "executor": "nx:run-commands",
+          "options": {
+            "command": "npx @tailwindcss/cli -i apps/identity-ui/src/styles.scss -o apps/identity-ui/src/styles.css --content \"apps/identity-ui/src/**/*.{html,ts},libs/ui/design-system/src/**/*.{html,ts}\""
+          }
+        },
         "build": {
-            "executor": "@angular/build:application",
+            "executor": "@nx/angular:application",
             "outputs": ["{options.outputPath}"],
+            "dependsOn": ["build-tailwind"],
             "options": {
                 "outputPath": "dist/apps/identity-ui",
                 "browser": "apps/identity-ui/src/main.ts",
                 "tsConfig": "apps/identity-ui/tsconfig.app.json",
-                "inlineStyleLanguage": "scss",
+                "inlineStyleLanguage": "css",
                 "assets": [
                     {
                         "glob": "**/*",
                         "input": "apps/identity-ui/public"
                     }
                 ],
-                "styles": ["apps/identity-ui/src/styles.scss"]
+                "styles": ["apps/identity-ui/src/styles.css"]
             },
             "configurations": {
                 "production": {
+                    "optimization": {
+                        "scripts": true,
+                        "styles": {
+                            "minify": true,
+                            "inlineCritical": false
+                        },
+                        "fonts": true
+                    },
                     "budgets": [
                         {
                             "type": "initial",

@@ -1,4 +1,6 @@
 import type { StorybookConfig } from '@storybook/angular';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 
 /**
  * Storybook Main Configuration for SWBC AutoPilot
@@ -13,7 +15,7 @@ const config: StorybookConfig = {
     '../../../libs/ui/**/*.mdx',        // Include shared UI library stories
     '../../../libs/ui/**/*.stories.@(js|jsx|mjs|ts|tsx)'
   ],
-  addons: [],
+  addons: ['@storybook/addon-a11y', '@storybook/addon-interactions'],
   framework: {
     name: '@storybook/angular',
     options: {},

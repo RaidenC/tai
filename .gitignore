@@ -15,8 +15,7 @@
 node_modules/
 dist/
 .angular/
-.nx/cache/
-.nx/workspace-data/
+.nx/
 *.log
 
 # OS
@@ -29,6 +28,16 @@ Thumbs.db
 .env
 
 .angular
+
+# Generated Tailwind CSS
+**/src/styles.css
+postcss.config.mjs
+postcss.config.js
+
+# Storybook
+storybook-static/
+**/storybook-static/
+*.tsbuildinfo
 
 # Testing & Coverage
 coverage/

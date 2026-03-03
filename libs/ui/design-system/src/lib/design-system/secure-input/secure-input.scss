@@ -2,74 +2,8 @@
  * SecureInputComponent Styles
  * 
  * Strict CSP Architecture:
- * This component uses external SCSS only to ensure that the application 
- * remains compatible with a strict Content-Security-Policy: default-src 'self' 
- * and style-src 'self' without needing unsafe-inline exceptions.
+ * This component now uses Tailwind CSS 4.0 utility classes in the HTML template.
+ * This ensures that the application remains compatible with a strict 
+ * Content-Security-Policy: default-src 'self' and style-src 'self' 
+ * without needing unsafe-inline exceptions.
  */
-
-.secure-input-container {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 1.5rem;
-  width: 100%;
-}
-
-.secure-input-label {
-  font-family: inherit;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 0.5rem;
-}
-
-.secure-input-field {
-  padding: 0.75rem 1rem;
-  font-family: inherit;
-  font-size: 1rem;
-  color: #111827;
-  background-color: #ffffff;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  outline: none;
-
-  &:focus {
-    border-color: #2563eb;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-  }
-
-  &::placeholder {
-    color: #9ca3af;
-  }
-
-  &.error {
-    border-color: #dc2626;
-    &:focus {
-      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
-    }
-  }
-
-  &:disabled {
-    background-color: #f3f4f6;
-    color: #9ca3af;
-    cursor: not-allowed;
-  }
-
-  /**
-   * Autofill Stealer Log Defense: CSS-based masking.
-   * Prevents standard password characters from being visually captured 
-   * by screen scraping malware. This ensures that even if a browser 
-   * incorrectly populates the field, the content remains masked.
-   */
-  &.secure-password-input {
-    -webkit-text-security: disc;
-  }
-}
-
-.error-message {
-  margin-top: 0.5rem;
-  font-size: 0.75rem;
-  color: #dc2626;
-  font-weight: 500;
-}

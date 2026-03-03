@@ -1,36 +1,6 @@
-.app-shell {
-  display: grid;
-  grid-template-areas:
-    "sidebar header"
-    "sidebar main";
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto 1fr;
-  min-height: 100vh;
-  background-color: #f9fafb;
-
-  .shell-sidebar {
-    grid-area: sidebar;
-    background-color: #111827;
-    height: 100vh;
-    position: sticky;
-    top: 0;
-  }
-
-  .shell-header {
-    grid-area: header;
-    background-color: #ffffff;
-    height: 64px;
-    padding: 0 1.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    border-bottom: 1px solid #e5e7eb;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  }
-
-  .shell-main {
-    grid-area: main;
-    padding: 2rem;
-    overflow-y: auto;
-  }
-}
+/**
+ * AppShellComponent Styles
+ * 
+ * Strict CSP Architecture:
+ * This component now uses Tailwind CSS 4.0 utility classes.
+ */

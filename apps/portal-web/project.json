@@ -6,25 +6,40 @@
     "sourceRoot": "apps/portal-web/src",
     "tags": [],
     "targets": {
+        "build-tailwind": {
+          "executor": "nx:run-commands",
+          "options": {
+            "command": "npx @tailwindcss/cli -i apps/portal-web/src/styles.scss -o apps/portal-web/src/styles.css --content \"apps/portal-web/src/**/*.{html,ts},libs/ui/design-system/src/**/*.{html,ts}\""
+          }
+        },
         "build": {
-            "executor": "@angular/build:application",
+            "executor": "@nx/angular:application",
             "outputs": ["{options.outputPath}"],
+            "dependsOn": ["build-tailwind"],
             "options": {
                 "outputPath": "dist/apps/portal-web",
                 "browser": "apps/portal-web/src/main.ts",
                 "tsConfig": "apps/portal-web/tsconfig.app.json",
-                "inlineStyleLanguage": "scss",
+                "inlineStyleLanguage": "css",
                 "assets": [
                     {
                         "glob": "**/*",
                         "input": "apps/portal-web/public"
                     }
                 ],
-                "styles": ["apps/portal-web/src/styles.scss"],
+                "styles": ["apps/portal-web/src/styles.css"],
                 "polyfills": ["zone.js"]
             },
             "configurations": {
                 "production": {
+                    "optimization": {
+                        "scripts": true,
+                        "styles": {
+                            "minify": true,
+                            "inlineCritical": false
+                        },
+                        "fonts": true
+                    },
                     "budgets": [
                         {
                             "type": "initial",
