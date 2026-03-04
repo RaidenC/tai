@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Identity;
 using Tai.Portal.Core.Domain.ValueObjects;
 using Tai.Portal.Core.Domain.Interfaces;
+using Tai.Portal.Core.Domain.Enums;
+using Tai.Portal.Core.Domain.Events;
 
 namespace Tai.Portal.Core.Domain.Entities;
 
@@ -41,6 +44,11 @@ public class ApplicationUser : IdentityUser, IMultiTenantEntity {
     set => field = value?.Trim().ToLowerInvariant();
   }
 
+  public UserStatus Status { get; private set; } = UserStatus.Created;
+
+  private readonly List<IDomainEvent> _domainEvents = new();
+  public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+
   // NativeAOT & EF Core Requirement:
   // EF Core requires a parameterless constructor for materialization.
   // We keep it protected to prevent invalid domain state instantiation by consumer code.
@@ -52,5 +60,44 @@ public class ApplicationUser : IdentityUser, IMultiTenantEntity {
   public ApplicationUser(string userName, TenantId tenantId) : base(userName) {
     // The init accessor logic will run when we assign the property here.
     TenantId = tenantId;
+  }
+
+  public void StartCustomerOnboarding() {
+    if (Status != UserStatus.Created) {
+      throw new InvalidOperationException($"Cannot start onboarding from state {Status}");
+    }
+    Status = UserStatus.PendingVerification;
+    _domainEvents.Add(new UserRegisteredEvent(Id));
+  }
+
+  public void StartStaffOnboarding() {
+    if (Status != UserStatus.Created) {
+      throw new InvalidOperationException($"Cannot start onboarding from state {Status}");
+    }
+    Status = UserStatus.PendingApproval;
+    _domainEvents.Add(new UserRegisteredEvent(Id));
+  }
+
+  public void ApproveAccount(string approvedByUserId) {
+    if (Status != UserStatus.PendingApproval) {
+      throw new InvalidOperationException($"User account cannot be approved in state {Status}");
+    }
+    Status = UserStatus.PendingVerification;
+    _domainEvents.Add(new UserApprovedEvent(Id, approvedByUserId));
+  }
+
+  public void ActivateAccount() {
+    if (Status != UserStatus.PendingVerification) {
+      throw new InvalidOperationException($"User account cannot be activated in state {Status}");
+    }
+    Status = UserStatus.Active;
+  }
+
+  public bool CanLogin() {
+    return Status == UserStatus.Active;
+  }
+
+  public void ClearDomainEvents() {
+    _domainEvents.Clear();
   }
 }
