@@ -1,7 +1,7 @@
 # Implementation Plan: User & Identity Management - Onboarding
 
 ## Phase 1: Core Domain & State Machine (Backend)
-- [ ] Task: Implement User Aggregate Root and State Machine
+- [x] Task: Implement User Aggregate Root and State Machine 8ba1862
     - [ ] Write xUnit tests for User creation and state transitions (Created -> PendingApproval -> PendingVerification -> Active).
     - [ ] Implement `ApplicationUser` aggregate root in `libs/core/domain` with `Status` enum.
     - [ ] Define Domain Events (`UserRegisteredEvent`, `UserApprovedEvent`).
