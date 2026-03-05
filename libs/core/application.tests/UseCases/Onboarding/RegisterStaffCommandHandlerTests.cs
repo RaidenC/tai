@@ -3,9 +3,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using FluentValidation;
-using MediatR;
 using Moq;
-using Microsoft.AspNetCore.Identity;
+using Tai.Portal.Core.Application.Exceptions;
+using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.Enums;
 using Tai.Portal.Core.Domain.ValueObjects;
@@ -15,14 +15,13 @@ using Xunit;
 namespace Tai.Portal.Core.Application.Tests.UseCases.Onboarding;
 
 public class RegisterStaffCommandHandlerTests {
-  private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
+  private readonly Mock<IIdentityService> _mockIdentityService;
   private readonly RegisterStaffCommandHandler _handler;
   private readonly RegisterStaffCommandValidator _validator;
 
   public RegisterStaffCommandHandlerTests() {
-    var store = new Mock<IUserStore<ApplicationUser>>();
-    _mockUserManager = new Mock<UserManager<ApplicationUser>>(store.Object, null, null, null, null, null, null, null, null);
-    _handler = new RegisterStaffCommandHandler(_mockUserManager.Object);
+    _mockIdentityService = new Mock<IIdentityService>();
+    _handler = new RegisterStaffCommandHandler(_mockIdentityService.Object);
     _validator = new RegisterStaffCommandValidator();
   }
 
@@ -31,10 +30,10 @@ public class RegisterStaffCommandHandlerTests {
     // Arrange
     var tenantId = Guid.NewGuid();
     var command = new RegisterStaffCommand(tenantId, "test@staff.com", "StrongPassword123!");
-    
-    _mockUserManager.Setup(x => x.CreateAsync(It.IsAny<ApplicationUser>(), command.Password))
-      .ReturnsAsync(IdentityResult.Success)
-      .Callback<ApplicationUser, string>((user, pass) => {
+
+    _mockIdentityService.Setup(x => x.CreateUserAsync(It.IsAny<ApplicationUser>(), command.Password, It.IsAny<CancellationToken>()))
+      .ReturnsAsync(true)
+      .Callback<ApplicationUser, string, CancellationToken>((user, pass, token) => {
         user.Email.Should().Be("test@staff.com");
         user.TenantId.Value.Should().Be(tenantId);
         user.Status.Should().Be(UserStatus.PendingApproval); // Assert Domain logic was called for staff
@@ -46,7 +45,7 @@ public class RegisterStaffCommandHandlerTests {
 
     // Assert
     result.Should().NotBeNullOrEmpty(); // Should return the generated User ID
-    _mockUserManager.Verify(x => x.CreateAsync(It.IsAny<ApplicationUser>(), command.Password), Times.Once);
+    _mockIdentityService.Verify(x => x.CreateUserAsync(It.IsAny<ApplicationUser>(), command.Password, It.IsAny<CancellationToken>()), Times.Once);
   }
 
   [Theory]

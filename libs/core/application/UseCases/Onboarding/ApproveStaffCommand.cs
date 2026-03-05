@@ -3,7 +3,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentValidation;
 using MediatR;
-using Microsoft.AspNetCore.Identity;
+using Tai.Portal.Core.Application.Exceptions;
+using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Domain.Entities;
 
 namespace Tai.Portal.Core.Application.UseCases.Onboarding;
@@ -20,27 +21,26 @@ public class ApproveStaffCommandValidator : AbstractValidator<ApproveStaffComman
 }
 
 public class ApproveStaffCommandHandler : IRequestHandler<ApproveStaffCommand> {
-  private readonly UserManager<ApplicationUser> _userManager;
+  private readonly IIdentityService _identityService;
 
-  public ApproveStaffCommandHandler(UserManager<ApplicationUser> userManager) {
-    _userManager = userManager;
+  public ApproveStaffCommandHandler(IIdentityService identityService) {
+    _identityService = identityService;
   }
 
   public async Task Handle(ApproveStaffCommand request, CancellationToken cancellationToken) {
-    var user = await _userManager.FindByIdAsync(request.TargetUserId);
+    var user = await _identityService.GetUserByIdAsync(request.TargetUserId, cancellationToken);
 
     if (user == null) {
-      throw new InvalidOperationException($"User with ID {request.TargetUserId} not found.");
+      throw new UserNotFoundException(request.TargetUserId);
     }
 
     // Execute the domain state transition
     user.ApproveAccount(request.ApprovedByAdminId);
 
-    var result = await _userManager.UpdateAsync(user);
+    var success = await _identityService.UpdateUserAsync(user, cancellationToken);
 
-    if (!result.Succeeded) {
-      var errors = string.Join(", ", System.Linq.Enumerable.Select(result.Errors, e => e.Description));
-      throw new InvalidOperationException($"Failed to update user: {errors}");
+    if (!success) {
+      throw new IdentityValidationException("Failed to update user during approval.");
     }
   }
 }

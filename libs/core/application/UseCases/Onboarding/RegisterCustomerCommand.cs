@@ -3,7 +3,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentValidation;
 using MediatR;
-using Microsoft.AspNetCore.Identity;
+using Tai.Portal.Core.Application.Exceptions;
+using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.ValueObjects;
 
@@ -20,10 +21,10 @@ public class RegisterCustomerCommandValidator : AbstractValidator<RegisterCustom
 }
 
 public class RegisterCustomerCommandHandler : IRequestHandler<RegisterCustomerCommand, string> {
-  private readonly UserManager<ApplicationUser> _userManager;
+  private readonly IIdentityService _identityService;
 
-  public RegisterCustomerCommandHandler(UserManager<ApplicationUser> userManager) {
-    _userManager = userManager;
+  public RegisterCustomerCommandHandler(IIdentityService identityService) {
+    _identityService = identityService;
   }
 
   public async Task<string> Handle(RegisterCustomerCommand request, CancellationToken cancellationToken) {
@@ -35,13 +36,10 @@ public class RegisterCustomerCommandHandler : IRequestHandler<RegisterCustomerCo
     // Use the Domain method to initiate the state machine for a customer
     user.StartCustomerOnboarding();
 
-    var result = await _userManager.CreateAsync(user, request.Password);
+    var success = await _identityService.CreateUserAsync(user, request.Password, cancellationToken);
 
-    if (!result.Succeeded) {
-      // In a real app, we'd want a specific DomainException to map to 400 Bad Request, 
-      // but InvalidOperation is fine for the POC to pass the tests.
-      var errors = string.Join(", ", System.Linq.Enumerable.Select(result.Errors, e => e.Description));
-      throw new InvalidOperationException($"Failed to create user: {errors}");
+    if (!success) {
+      throw new IdentityValidationException("Failed to create customer user due to identity constraints.");
     }
 
     return user.Id;

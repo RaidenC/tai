@@ -3,7 +3,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentValidation;
 using MediatR;
-using Microsoft.AspNetCore.Identity;
+using Tai.Portal.Core.Application.Exceptions;
+using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.ValueObjects;
 
@@ -20,10 +21,10 @@ public class RegisterStaffCommandValidator : AbstractValidator<RegisterStaffComm
 }
 
 public class RegisterStaffCommandHandler : IRequestHandler<RegisterStaffCommand, string> {
-  private readonly UserManager<ApplicationUser> _userManager;
+  private readonly IIdentityService _identityService;
 
-  public RegisterStaffCommandHandler(UserManager<ApplicationUser> userManager) {
-    _userManager = userManager;
+  public RegisterStaffCommandHandler(IIdentityService identityService) {
+    _identityService = identityService;
   }
 
   public async Task<string> Handle(RegisterStaffCommand request, CancellationToken cancellationToken) {
@@ -35,11 +36,10 @@ public class RegisterStaffCommandHandler : IRequestHandler<RegisterStaffCommand,
     // Use the Domain method to initiate the state machine for a staff member
     user.StartStaffOnboarding();
 
-    var result = await _userManager.CreateAsync(user, request.Password);
+    var success = await _identityService.CreateUserAsync(user, request.Password, cancellationToken);
 
-    if (!result.Succeeded) {
-      var errors = string.Join(", ", System.Linq.Enumerable.Select(result.Errors, e => e.Description));
-      throw new InvalidOperationException($"Failed to create staff user: {errors}");
+    if (!success) {
+      throw new IdentityValidationException("Failed to create staff user due to identity constraints.");
     }
 
     return user.Id;

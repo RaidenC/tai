@@ -3,9 +3,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using FluentValidation;
-using MediatR;
 using Moq;
-using Microsoft.AspNetCore.Identity;
+using Tai.Portal.Core.Application.Exceptions;
+using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.Enums;
 using Tai.Portal.Core.Domain.ValueObjects;
@@ -15,14 +15,13 @@ using Xunit;
 namespace Tai.Portal.Core.Application.Tests.UseCases.Onboarding;
 
 public class ActivateUserCommandHandlerTests {
-  private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
+  private readonly Mock<IIdentityService> _mockIdentityService;
   private readonly ActivateUserCommandHandler _handler;
   private readonly ActivateUserCommandValidator _validator;
 
   public ActivateUserCommandHandlerTests() {
-    var store = new Mock<IUserStore<ApplicationUser>>();
-    _mockUserManager = new Mock<UserManager<ApplicationUser>>(store.Object, null, null, null, null, null, null, null, null);
-    _handler = new ActivateUserCommandHandler(_mockUserManager.Object);
+    _mockIdentityService = new Mock<IIdentityService>();
+    _handler = new ActivateUserCommandHandler(_mockIdentityService.Object);
     _validator = new ActivateUserCommandValidator();
   }
 
@@ -31,20 +30,20 @@ public class ActivateUserCommandHandlerTests {
     // Arrange
     var userId = "target_user_id";
     var command = new ActivateUserCommand(userId, "123456");
-    
+
     // Create a user in the correct state
     var userToActivate = new ApplicationUser("customer@bank.com", (TenantId)Guid.NewGuid()) { Id = userId };
     userToActivate.StartCustomerOnboarding(); // Moves to PendingVerification
-    
-    _mockUserManager.Setup(x => x.FindByIdAsync(userId)).ReturnsAsync(userToActivate);
-    _mockUserManager.Setup(x => x.UpdateAsync(userToActivate)).ReturnsAsync(IdentityResult.Success);
+
+    _mockIdentityService.Setup(x => x.GetUserByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(userToActivate);
+    _mockIdentityService.Setup(x => x.UpdateUserAsync(userToActivate, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
     // Act
     await _handler.Handle(command, CancellationToken.None);
 
     // Assert
     userToActivate.Status.Should().Be(UserStatus.Active);
-    _mockUserManager.Verify(x => x.UpdateAsync(userToActivate), Times.Once);
+    _mockIdentityService.Verify(x => x.UpdateUserAsync(userToActivate, It.IsAny<CancellationToken>()), Times.Once);
   }
 
   [Fact]
@@ -56,7 +55,7 @@ public class ActivateUserCommandHandlerTests {
     // Create a user in Created state (not ready for activation)
     var userToActivate = new ApplicationUser("customer@bank.com", (TenantId)Guid.NewGuid()) { Id = userId };
 
-    _mockUserManager.Setup(x => x.FindByIdAsync(userId)).ReturnsAsync(userToActivate);
+    _mockIdentityService.Setup(x => x.GetUserByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(userToActivate);
 
     // Act & Assert
     var act = () => _handler.Handle(command, CancellationToken.None);

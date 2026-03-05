@@ -4,9 +4,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
-using Microsoft.AspNetCore.Identity;
+using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.Enums;
+using Tai.Portal.Core.Domain.ValueObjects;
 
 namespace Tai.Portal.Core.Application.UseCases.Onboarding;
 
@@ -15,28 +16,26 @@ public record UserSummaryDto(string Id, string Email, UserStatus Status);
 public record GetPendingApprovalsQuery(Guid TenantId, int Page = 1, int PageSize = 10) : IRequest<List<UserSummaryDto>>;
 
 public class GetPendingApprovalsQueryHandler : IRequestHandler<GetPendingApprovalsQuery, List<UserSummaryDto>> {
-  private readonly UserManager<ApplicationUser> _userManager;
+  private readonly IIdentityService _identityService;
 
-  public GetPendingApprovalsQueryHandler(UserManager<ApplicationUser> userManager) {
-    _userManager = userManager;
+  public GetPendingApprovalsQueryHandler(IIdentityService identityService) {
+    _identityService = identityService;
   }
 
-  public Task<List<UserSummaryDto>> Handle(GetPendingApprovalsQuery request, CancellationToken cancellationToken) {
-    // Note: In a production app, we would typically use IQueryable projections and pagination here.
-    // For the POC, filtering in memory is sufficient to demonstrate the query logic.
-    // In later iterations, a dedicated Read Repository or direct EF Core querying would be used.
+  public async Task<List<UserSummaryDto>> Handle(GetPendingApprovalsQuery request, CancellationToken cancellationToken) {
+    var skip = (request.Page - 1) * request.PageSize;
 
-    // We cannot use await directly with .Where().ToList() on the Users IQueryable from the mock easily without setting up async enumerators.
-    // Given the small data set in tests, we materialise first.
-    var users = _userManager.Users.ToList();
+    var users = await _identityService.GetUsersByStatusAndTenantAsync(
+      UserStatus.PendingApproval,
+      new TenantId(request.TenantId),
+      skip,
+      request.PageSize,
+      cancellationToken);
 
     var pendingUsers = users
-      .Where(u => u.Status == UserStatus.PendingApproval && u.TenantId.Value == request.TenantId)
-      .Skip((request.Page - 1) * request.PageSize)
-      .Take(request.PageSize)
       .Select(u => new UserSummaryDto(u.Id, u.Email, u.Status))
       .ToList();
 
-    return Task.FromResult(pendingUsers);
+    return pendingUsers;
   }
 }

@@ -5,7 +5,8 @@ using FluentAssertions;
 using FluentValidation;
 using MediatR;
 using Moq;
-using Microsoft.AspNetCore.Identity;
+using Tai.Portal.Core.Application.Exceptions;
+using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.Enums;
 using Tai.Portal.Core.Domain.ValueObjects;
@@ -15,14 +16,13 @@ using Xunit;
 namespace Tai.Portal.Core.Application.Tests.UseCases.Onboarding;
 
 public class ApproveStaffCommandHandlerTests {
-  private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
+  private readonly Mock<IIdentityService> _mockIdentityService;
   private readonly ApproveStaffCommandHandler _handler;
   private readonly ApproveStaffCommandValidator _validator;
 
   public ApproveStaffCommandHandlerTests() {
-    var store = new Mock<IUserStore<ApplicationUser>>();
-    _mockUserManager = new Mock<UserManager<ApplicationUser>>(store.Object, null, null, null, null, null, null, null, null);
-    _handler = new ApproveStaffCommandHandler(_mockUserManager.Object);
+    _mockIdentityService = new Mock<IIdentityService>();
+    _handler = new ApproveStaffCommandHandler(_mockIdentityService.Object);
     _validator = new ApproveStaffCommandValidator();
   }
 
@@ -38,8 +38,8 @@ public class ApproveStaffCommandHandlerTests {
     userToApprove.StartStaffOnboarding(); // Moves to PendingApproval
     userToApprove.ClearDomainEvents();
 
-    _mockUserManager.Setup(x => x.FindByIdAsync(userId)).ReturnsAsync(userToApprove);
-    _mockUserManager.Setup(x => x.UpdateAsync(userToApprove)).ReturnsAsync(IdentityResult.Success);
+    _mockIdentityService.Setup(x => x.GetUserByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(userToApprove);
+    _mockIdentityService.Setup(x => x.UpdateUserAsync(userToApprove, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
     // Act
     await _handler.Handle(command, CancellationToken.None);
@@ -48,7 +48,7 @@ public class ApproveStaffCommandHandlerTests {
     userToApprove.Status.Should().Be(UserStatus.PendingVerification);
     userToApprove.ApprovedByUserId.Should().Be(adminId); // Audit Trail Verification
     userToApprove.DomainEvents.Should().ContainSingle(e => e is Tai.Portal.Core.Domain.Events.UserApprovedEvent); // Domain Event Verification
-    _mockUserManager.Verify(x => x.UpdateAsync(userToApprove), Times.Once);
+    _mockIdentityService.Verify(x => x.UpdateUserAsync(userToApprove, It.IsAny<CancellationToken>()), Times.Once);
   }
 
   [Fact]
@@ -61,7 +61,7 @@ public class ApproveStaffCommandHandlerTests {
     // Create a user but DON'T start onboarding (Status = Created)
     var userToApprove = new ApplicationUser("staff@bank.com", (TenantId)Guid.NewGuid()) { Id = userId };
 
-    _mockUserManager.Setup(x => x.FindByIdAsync(userId)).ReturnsAsync(userToApprove);
+    _mockIdentityService.Setup(x => x.GetUserByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(userToApprove);
 
     // Act & Assert
     var act = () => _handler.Handle(command, CancellationToken.None);
@@ -78,7 +78,7 @@ public class ApproveStaffCommandHandlerTests {
     var userToApprove = new ApplicationUser("staff@bank.com", (TenantId)Guid.NewGuid()) { Id = userId };
     userToApprove.StartStaffOnboarding();
 
-    _mockUserManager.Setup(x => x.FindByIdAsync(userId)).ReturnsAsync(userToApprove);
+    _mockIdentityService.Setup(x => x.GetUserByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(userToApprove);
 
     // Act & Assert
     var act = () => _handler.Handle(command, CancellationToken.None);
@@ -89,11 +89,11 @@ public class ApproveStaffCommandHandlerTests {
   public async Task Handle_UserNotFound_ThrowsException() {
     // Arrange
     var command = new ApproveStaffCommand("non_existent_id", "admin_id");
-    _mockUserManager.Setup(x => x.FindByIdAsync(It.IsAny<string>())).ReturnsAsync((ApplicationUser?)null);
+    _mockIdentityService.Setup(x => x.GetUserByIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync((ApplicationUser?)null);
 
     // Act & Assert
     var act = () => _handler.Handle(command, CancellationToken.None);
-    await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*not found*");
+    await act.Should().ThrowAsync<UserNotFoundException>().WithMessage("*not found*");
   }
 
   [Theory]
@@ -122,4 +122,5 @@ public class ApproveStaffCommandHandlerTests {
     // Assert
     result.IsValid.Should().BeFalse();
     result.Errors.Should().Contain(e => e.ErrorMessage == "Users cannot approve their own accounts.");
-  }}
+  }
+}

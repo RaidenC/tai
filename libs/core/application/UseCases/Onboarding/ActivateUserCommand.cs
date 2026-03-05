@@ -3,7 +3,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentValidation;
 using MediatR;
-using Microsoft.AspNetCore.Identity;
+using Tai.Portal.Core.Application.Exceptions;
+using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Domain.Entities;
 
 namespace Tai.Portal.Core.Application.UseCases.Onboarding;
@@ -18,17 +19,17 @@ public class ActivateUserCommandValidator : AbstractValidator<ActivateUserComman
 }
 
 public class ActivateUserCommandHandler : IRequestHandler<ActivateUserCommand> {
-  private readonly UserManager<ApplicationUser> _userManager;
+  private readonly IIdentityService _identityService;
 
-  public ActivateUserCommandHandler(UserManager<ApplicationUser> userManager) {
-    _userManager = userManager;
+  public ActivateUserCommandHandler(IIdentityService identityService) {
+    _identityService = identityService;
   }
 
   public async Task Handle(ActivateUserCommand request, CancellationToken cancellationToken) {
-    var user = await _userManager.FindByIdAsync(request.UserId);
+    var user = await _identityService.GetUserByIdAsync(request.UserId, cancellationToken);
 
     if (user == null) {
-      throw new InvalidOperationException($"User with ID {request.UserId} not found.");
+      throw new UserNotFoundException(request.UserId);
     }
 
     // In a real application, we would verify the OTP code here against a cache or database.
@@ -40,11 +41,10 @@ public class ActivateUserCommandHandler : IRequestHandler<ActivateUserCommand> {
     // Execute the domain state transition
     user.ActivateAccount();
 
-    var result = await _userManager.UpdateAsync(user);
+    var success = await _identityService.UpdateUserAsync(user, cancellationToken);
 
-    if (!result.Succeeded) {
-      var errors = string.Join(", ", System.Linq.Enumerable.Select(result.Errors, e => e.Description));
-      throw new InvalidOperationException($"Failed to update user: {errors}");
+    if (!success) {
+      throw new IdentityValidationException("Failed to update user during activation.");
     }
   }
 }

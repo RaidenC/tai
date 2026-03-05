@@ -3,9 +3,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using FluentValidation;
-using MediatR;
 using Moq;
-using Microsoft.AspNetCore.Identity;
+using Tai.Portal.Core.Application.Exceptions;
+using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.Enums;
 using Tai.Portal.Core.Domain.ValueObjects;
@@ -15,14 +15,13 @@ using Xunit;
 namespace Tai.Portal.Core.Application.Tests.UseCases.Onboarding;
 
 public class RegisterCustomerCommandHandlerTests {
-  private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
+  private readonly Mock<IIdentityService> _mockIdentityService;
   private readonly RegisterCustomerCommandHandler _handler;
   private readonly RegisterCustomerCommandValidator _validator;
 
   public RegisterCustomerCommandHandlerTests() {
-    var store = new Mock<IUserStore<ApplicationUser>>();
-    _mockUserManager = new Mock<UserManager<ApplicationUser>>(store.Object, null, null, null, null, null, null, null, null);
-    _handler = new RegisterCustomerCommandHandler(_mockUserManager.Object);
+    _mockIdentityService = new Mock<IIdentityService>();
+    _handler = new RegisterCustomerCommandHandler(_mockIdentityService.Object);
     _validator = new RegisterCustomerCommandValidator();
   }
 
@@ -32,9 +31,9 @@ public class RegisterCustomerCommandHandlerTests {
     var tenantId = Guid.NewGuid();
     var command = new RegisterCustomerCommand(tenantId, "test@customer.com", "StrongPassword123!");
 
-    _mockUserManager.Setup(x => x.CreateAsync(It.IsAny<ApplicationUser>(), command.Password))
-      .ReturnsAsync(IdentityResult.Success)
-      .Callback<ApplicationUser, string>((user, pass) => {
+    _mockIdentityService.Setup(x => x.CreateUserAsync(It.IsAny<ApplicationUser>(), command.Password, It.IsAny<CancellationToken>()))
+      .ReturnsAsync(true)
+      .Callback<ApplicationUser, string, CancellationToken>((user, pass, token) => {
         user.Email.Should().Be("test@customer.com");
         user.TenantId.Value.Should().Be(tenantId);
         user.Status.Should().Be(UserStatus.PendingVerification); // Assert Domain logic was called
@@ -46,20 +45,19 @@ public class RegisterCustomerCommandHandlerTests {
 
     // Assert
     result.Should().NotBeNullOrEmpty(); // Should return the generated User ID
-    _mockUserManager.Verify(x => x.CreateAsync(It.IsAny<ApplicationUser>(), command.Password), Times.Once);
+    _mockIdentityService.Verify(x => x.CreateUserAsync(It.IsAny<ApplicationUser>(), command.Password, It.IsAny<CancellationToken>()), Times.Once);
   }
 
   [Fact]
   public async Task Handle_CreateFails_ThrowsException() {
     // Arrange
     var command = new RegisterCustomerCommand(Guid.NewGuid(), "test@customer.com", "Weak");
-    var error = new IdentityError { Description = "Password too weak" };
-    _mockUserManager.Setup(x => x.CreateAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
-      .ReturnsAsync(IdentityResult.Failed(error));
+    _mockIdentityService.Setup(x => x.CreateUserAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+      .ReturnsAsync(false);
 
     // Act & Assert
     var act = () => _handler.Handle(command, CancellationToken.None);
-    await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Password too weak*");
+    await act.Should().ThrowAsync<IdentityValidationException>().WithMessage("*identity constraints*");
   }
 
   [Theory]
