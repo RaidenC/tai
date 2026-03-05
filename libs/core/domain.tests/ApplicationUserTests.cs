@@ -55,7 +55,7 @@ public class ApplicationUserTests {
     var user = new ApplicationUser("staff", (TenantId)Guid.NewGuid());
     user.StartStaffOnboarding();
     user.ClearDomainEvents();
-    
+
     // Act
     user.ApproveAccount("admin_user_id");
 
@@ -69,7 +69,7 @@ public class ApplicationUserTests {
     // Arrange
     var user = new ApplicationUser("staff", (TenantId)Guid.NewGuid());
     // User is in Created state, not PendingApproval
-    
+
     // Act
     Action act = () => user.ApproveAccount("admin_user_id");
 
@@ -82,7 +82,7 @@ public class ApplicationUserTests {
     // Arrange
     var user = new ApplicationUser("customer", (TenantId)Guid.NewGuid());
     user.StartCustomerOnboarding();
-    
+
     // Act
     user.ActivateAccount();
 
@@ -95,7 +95,7 @@ public class ApplicationUserTests {
     // Arrange
     var user = new ApplicationUser("staff", (TenantId)Guid.NewGuid());
     // User is in Created state
-    
+
     // Act
     Action act = () => user.ActivateAccount();
 
@@ -107,10 +107,10 @@ public class ApplicationUserTests {
   public void CanLogin_ShouldBeFalse_WhenNotActive() {
     // Arrange
     var user = new ApplicationUser("user", (TenantId)Guid.NewGuid());
-    
+
     // Act & Assert
     user.CanLogin().Should().BeFalse();
-    
+
     user.StartCustomerOnboarding();
     user.CanLogin().Should().BeFalse();
   }
@@ -121,7 +121,7 @@ public class ApplicationUserTests {
     var user = new ApplicationUser("user", (TenantId)Guid.NewGuid());
     user.StartCustomerOnboarding();
     user.ActivateAccount();
-    
+
     // Act & Assert
     user.CanLogin().Should().BeTrue();
   }
