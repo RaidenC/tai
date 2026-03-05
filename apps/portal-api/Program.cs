@@ -9,6 +9,8 @@ using Tai.Portal.Api;
 
 using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Application.Services;
+using Tai.Portal.Core.Application.UseCases.Onboarding;
+using Tai.Portal.Core.Infrastructure.Identity;
 using Tai.Portal.Core.Infrastructure.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,6 +32,12 @@ builder.Services.Configure<ForwardedHeadersOptions>(options => {
 
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ITenantService, TenantService>();
+builder.Services.AddScoped<IIdentityService, IdentityService>();
+builder.Services.AddScoped<IOtpService, OtpService>();
+
+builder.Services.AddMediatR(cfg => {
+  cfg.RegisterServicesFromAssembly(typeof(RegisterCustomerCommand).Assembly);
+});
 
 builder.Services.AddDbContext<PortalDbContext>(options => {
   // Configure the context to use PostgreSQL.
