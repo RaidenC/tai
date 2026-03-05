@@ -25,27 +25,27 @@ public class GetPendingApprovalsQueryHandlerTests {
   }
 
   [Fact]
-  public async Task Handle_ShouldReturnOnly_UsersInPendingApprovalState() {
+  public async Task Handle_ShouldReturnOnly_UsersInPendingApprovalState_ForSpecificTenant() {
     // Arrange
-    var tenantId = (TenantId)Guid.NewGuid();
+    var tenantIdA = (TenantId)Guid.NewGuid();
+    var tenantIdB = (TenantId)Guid.NewGuid();
 
     // 1. Created State (Should NOT be returned)
-    var user1 = new ApplicationUser("user1@test.com", tenantId) { Id = "id1" };
+    var user1 = new ApplicationUser("user1@test.com", tenantIdA) { Id = "id1" };
 
-    // 2. Pending Approval State (SHOULD be returned)
-    var user2 = new ApplicationUser("user2@test.com", tenantId) { Id = "id2", Email = "user2@test.com" };
+    // 2. Pending Approval State for Tenant A (SHOULD be returned)
+    var user2 = new ApplicationUser("user2@test.com", tenantIdA) { Id = "id2", Email = "user2@test.com" };
     user2.StartStaffOnboarding();
 
-    // 3. Active State (Should NOT be returned)
-    var user3 = new ApplicationUser("user3@test.com", tenantId) { Id = "id3" };
-    user3.StartCustomerOnboarding();
-    user3.ActivateAccount();
+    // 3. Pending Approval State for Tenant B (Should NOT be returned - isolation)
+    var user3 = new ApplicationUser("user3@test.com", tenantIdB) { Id = "id3" };
+    user3.StartStaffOnboarding();
 
     // Setup the mock to return an IQueryable of these users
     var usersList = new List<ApplicationUser> { user1, user2, user3 }.AsQueryable();
     _mockUserManager.Setup(x => x.Users).Returns(usersList);
 
-    var query = new GetPendingApprovalsQuery();
+    var query = new GetPendingApprovalsQuery(tenantIdA.Value);
 
     // Act
     var result = await _handler.Handle(query, CancellationToken.None);
@@ -61,6 +61,31 @@ public class GetPendingApprovalsQueryHandlerTests {
   }
 
   [Fact]
+  public async Task Handle_Pagination_ShouldReturnCorrectSubset() {
+    // Arrange
+    var tenantId = (TenantId)Guid.NewGuid();
+    var usersList = Enumerable.Range(1, 15).Select(i => {
+      var user = new ApplicationUser($"user{i}@test.com", tenantId) { Id = $"id{i}" };
+      user.StartStaffOnboarding();
+      return user;
+    }).ToList();
+
+    _mockUserManager.Setup(x => x.Users).Returns(usersList.AsQueryable());
+
+    // Page 1, Size 10
+    var queryPage1 = new GetPendingApprovalsQuery(tenantId.Value, 1, 10);
+    var resultPage1 = await _handler.Handle(queryPage1, CancellationToken.None);
+    resultPage1.Should().HaveCount(10);
+    resultPage1.First().Id.Should().Be("id1");
+
+    // Page 2, Size 10
+    var queryPage2 = new GetPendingApprovalsQuery(tenantId.Value, 2, 10);
+    var resultPage2 = await _handler.Handle(queryPage2, CancellationToken.None);
+    resultPage2.Should().HaveCount(5);
+    resultPage2.First().Id.Should().Be("id11");
+  }
+
+  [Fact]
   public async Task Handle_WhenNoPendingUsers_ShouldReturnEmptyList() {
     // Arrange
     var tenantId = (TenantId)Guid.NewGuid();
@@ -69,7 +94,7 @@ public class GetPendingApprovalsQueryHandlerTests {
     var usersList = new List<ApplicationUser> { user1 }.AsQueryable();
     _mockUserManager.Setup(x => x.Users).Returns(usersList);
 
-    var query = new GetPendingApprovalsQuery();
+    var query = new GetPendingApprovalsQuery(tenantId.Value);
 
     // Act
     var result = await _handler.Handle(query, CancellationToken.None);

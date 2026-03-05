@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -11,7 +12,7 @@ namespace Tai.Portal.Core.Application.UseCases.Onboarding;
 
 public record UserSummaryDto(string Id, string Email, UserStatus Status);
 
-public record GetPendingApprovalsQuery() : IRequest<List<UserSummaryDto>>;
+public record GetPendingApprovalsQuery(Guid TenantId, int Page = 1, int PageSize = 10) : IRequest<List<UserSummaryDto>>;
 
 public class GetPendingApprovalsQueryHandler : IRequestHandler<GetPendingApprovalsQuery, List<UserSummaryDto>> {
   private readonly UserManager<ApplicationUser> _userManager;
@@ -30,7 +31,9 @@ public class GetPendingApprovalsQueryHandler : IRequestHandler<GetPendingApprova
     var users = _userManager.Users.ToList();
 
     var pendingUsers = users
-      .Where(u => u.Status == UserStatus.PendingApproval)
+      .Where(u => u.Status == UserStatus.PendingApproval && u.TenantId.Value == request.TenantId)
+      .Skip((request.Page - 1) * request.PageSize)
+      .Take(request.PageSize)
       .Select(u => new UserSummaryDto(u.Id, u.Email, u.Status))
       .ToList();
 

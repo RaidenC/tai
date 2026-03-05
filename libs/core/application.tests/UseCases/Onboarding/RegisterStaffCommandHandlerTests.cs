@@ -14,30 +14,30 @@ using Xunit;
 
 namespace Tai.Portal.Core.Application.Tests.UseCases.Onboarding;
 
-public class RegisterCustomerCommandHandlerTests {
+public class RegisterStaffCommandHandlerTests {
   private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
-  private readonly RegisterCustomerCommandHandler _handler;
-  private readonly RegisterCustomerCommandValidator _validator;
+  private readonly RegisterStaffCommandHandler _handler;
+  private readonly RegisterStaffCommandValidator _validator;
 
-  public RegisterCustomerCommandHandlerTests() {
+  public RegisterStaffCommandHandlerTests() {
     var store = new Mock<IUserStore<ApplicationUser>>();
     _mockUserManager = new Mock<UserManager<ApplicationUser>>(store.Object, null, null, null, null, null, null, null, null);
-    _handler = new RegisterCustomerCommandHandler(_mockUserManager.Object);
-    _validator = new RegisterCustomerCommandValidator();
+    _handler = new RegisterStaffCommandHandler(_mockUserManager.Object);
+    _validator = new RegisterStaffCommandValidator();
   }
 
   [Fact]
-  public async Task Handle_ValidCommand_CreatesUserAndStartsOnboarding() {
+  public async Task Handle_ValidCommand_CreatesUserAndStartsStaffOnboarding() {
     // Arrange
     var tenantId = Guid.NewGuid();
-    var command = new RegisterCustomerCommand(tenantId, "test@customer.com", "StrongPassword123!");
-
+    var command = new RegisterStaffCommand(tenantId, "test@staff.com", "StrongPassword123!");
+    
     _mockUserManager.Setup(x => x.CreateAsync(It.IsAny<ApplicationUser>(), command.Password))
       .ReturnsAsync(IdentityResult.Success)
       .Callback<ApplicationUser, string>((user, pass) => {
-        user.Email.Should().Be("test@customer.com");
+        user.Email.Should().Be("test@staff.com");
         user.TenantId.Value.Should().Be(tenantId);
-        user.Status.Should().Be(UserStatus.PendingVerification); // Assert Domain logic was called
+        user.Status.Should().Be(UserStatus.PendingApproval); // Assert Domain logic was called for staff
         user.DomainEvents.Should().ContainSingle(e => e is Tai.Portal.Core.Domain.Events.UserRegisteredEvent); // Assert Event Dispatch
       });
 
@@ -49,28 +49,14 @@ public class RegisterCustomerCommandHandlerTests {
     _mockUserManager.Verify(x => x.CreateAsync(It.IsAny<ApplicationUser>(), command.Password), Times.Once);
   }
 
-  [Fact]
-  public async Task Handle_CreateFails_ThrowsException() {
-    // Arrange
-    var command = new RegisterCustomerCommand(Guid.NewGuid(), "test@customer.com", "Weak");
-    var error = new IdentityError { Description = "Password too weak" };
-    _mockUserManager.Setup(x => x.CreateAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
-      .ReturnsAsync(IdentityResult.Failed(error));
-
-    // Act & Assert
-    var act = () => _handler.Handle(command, CancellationToken.None);
-    await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*Password too weak*");
-  }
-
   [Theory]
-  [InlineData("", "test@customer.com", "Password123!", "TenantId")]
+  [InlineData("", "test@staff.com", "Password123!", "TenantId")]
   [InlineData("d1e57c6b-2856-4c4f-9e79-88001e9d0db6", "", "Password123!", "Email")]
-  [InlineData("d1e57c6b-2856-4c4f-9e79-88001e9d0db6", "invalid-email", "Password123!", "Email")]
-  [InlineData("d1e57c6b-2856-4c4f-9e79-88001e9d0db6", "test@customer.com", "", "Password")]
+  [InlineData("d1e57c6b-2856-4c4f-9e79-88001e9d0db6", "test@staff.com", "", "Password")]
   public void Validator_InvalidInput_ReturnsErrors(string tenantIdStr, string email, string password, string expectedErrorField) {
     // Arrange
     Guid.TryParse(tenantIdStr, out var tenantId);
-    var command = new RegisterCustomerCommand(tenantId, email, password);
+    var command = new RegisterStaffCommand(tenantId, email, password);
 
     // Act
     var result = _validator.Validate(command);

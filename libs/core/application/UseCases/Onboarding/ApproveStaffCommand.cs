@@ -14,6 +14,8 @@ public class ApproveStaffCommandValidator : AbstractValidator<ApproveStaffComman
   public ApproveStaffCommandValidator() {
     RuleFor(x => x.TargetUserId).NotEmpty();
     RuleFor(x => x.ApprovedByAdminId).NotEmpty();
+    RuleFor(x => x).Must(x => x.TargetUserId != x.ApprovedByAdminId)
+      .WithMessage("Users cannot approve their own accounts.");
   }
 }
 

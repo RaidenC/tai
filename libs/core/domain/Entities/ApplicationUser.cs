@@ -46,6 +46,8 @@ public class ApplicationUser : IdentityUser, IMultiTenantEntity {
 
   public UserStatus Status { get; private set; } = UserStatus.Created;
 
+  public string? ApprovedByUserId { get; private set; }
+
   private readonly List<IDomainEvent> _domainEvents = new();
   public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
@@ -82,7 +84,11 @@ public class ApplicationUser : IdentityUser, IMultiTenantEntity {
     if (Status != UserStatus.PendingApproval) {
       throw new InvalidOperationException($"User account cannot be approved in state {Status}");
     }
+    if (Id == approvedByUserId) {
+      throw new InvalidOperationException("Users cannot approve their own accounts.");
+    }
     Status = UserStatus.PendingVerification;
+    ApprovedByUserId = approvedByUserId;
     _domainEvents.Add(new UserApprovedEvent(Id, approvedByUserId));
   }
 
