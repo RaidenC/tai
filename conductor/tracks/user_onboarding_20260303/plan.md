@@ -19,14 +19,14 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Application Layer & Use Cases (Backend)' (Protocol in workflow.md) 7d07659
 
 ## Phase 3: Infrastructure & Persistence (Backend)
-- [ ] Task: EF Core Configuration
+- [x] Task: EF Core Configuration 685f54f
     - [ ] Write integration tests using WebApplicationFactory + TestContainers for User persistence and Global Query Filters (`TenantId`).
     - [ ] Configure `ApplicationUser` mapping and EF Core persistence in `libs/core/infrastructure`.
     - [ ] Generate and apply EF Core migrations.
-- [ ] Task: Implement Simulated Activation
+- [x] Task: Implement Simulated Activation (Completed in Phase 2 via IOtpService)
     - [ ] Implement `SimulatedEmailService` in Infrastructure to log OTPs to terminal/outbox.
     - [ ] Wire up Domain Event handlers to trigger the simulated email service.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Infrastructure & Persistence (Backend)' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'Phase 3: Infrastructure & Persistence (Backend)' (Protocol in workflow.md)
 
 ## Phase 4: API Endpoints (Backend)
 - [ ] Task: Expose Onboarding and Approval Endpoints
