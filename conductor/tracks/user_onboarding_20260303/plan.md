@@ -8,7 +8,7 @@
     - [ ] Ensure Domain invariants prevent login (invalid state) when not Active.
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Core Domain & State Machine (Backend)' (Protocol in workflow.md) 61d62ec
 
-## Phase 2: Application Layer & Use Cases (Backend)
+## Phase 2: Application Layer & Use Cases (Backend) [checkpoint: 7d07659]
 - [x] Task: Implement Onboarding CQRS Commands 1513afe
     - [ ] Write xUnit/FluentValidation tests for `RegisterCustomerCommand` and `ApproveStaffCommand`.
     - [ ] Implement `RegisterCustomerCommand` handler.
@@ -16,7 +16,7 @@
 - [x] Task: Implement Pending Approvals Queries 2b4aa05
     - [ ] Write xUnit tests for querying pending users.
     - [ ] Implement CQRS Query to fetch users in `PendingApproval` state.
-- [~] Task: Conductor - User Manual Verification 'Phase 2: Application Layer & Use Cases (Backend)' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Application Layer & Use Cases (Backend)' (Protocol in workflow.md) 7d07659
 
 ## Phase 3: Infrastructure & Persistence (Backend)
 - [ ] Task: EF Core Configuration
