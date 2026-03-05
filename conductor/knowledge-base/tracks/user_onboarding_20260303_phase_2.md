@@ -55,6 +55,10 @@ If we deploy this POC to a cloud environment under massive user load, several ar
         *   **Message Brokers (RabbitMQ, Azure Service Bus, SQS):** These are **Backend-to-Backend** communication tools. They ensure reliable, guaranteed, asynchronous delivery of data between microservices (e.g., from the API to the Email Worker). If the Email Worker is offline, RabbitMQ holds the message until it comes back.
         *   **SignalR (WebSockets):** This is a **Backend-to-Frontend** communication tool. It pushes real-time updates from the server to the user's browser (e.g., popping up a notification that says "Approval Required"). It is *ephemeral*—if the browser is closed, the message is gone; there is no durable queue.
         *   **The Modern Synergy:** In a cloud-native architecture, they work together. When a user is registered, the API publishes a `UserRegisteredEvent` to Azure Service Bus (Durable Backend Queue). A separate Notification Microservice reads that queue and uses SignalR to push the "New User" alert down to the browser of any currently online Tenant Admin (Ephemeral Frontend Push).
+    *   **Architectural Clarification: SignalR vs. REST API:**
+        *   **REST API (HTTP):** Is strictly **Client-Driven (Pull)**. The browser must ask the server "Are there any new approvals?" If the browser doesn't ask, it never finds out. This leads to inefficient "polling" (asking every 5 seconds), which wastes server CPU and database resources.
+        *   **SignalR (WebSockets):** Is **Server-Driven (Push)**. It establishes a persistent, open connection. When a new approval is needed, the server pushes the data down that open pipe instantly, without the browser ever asking. 
+        *   **When to use which:** Use REST for standard CRUD operations (creating users, fetching a list of users). Use SignalR for the "Active Operational Hub" (live alerts, dynamic UI updates when a background task finishes).
 
 ---
 
