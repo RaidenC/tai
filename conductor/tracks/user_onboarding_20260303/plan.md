@@ -13,10 +13,10 @@
     - [ ] Write xUnit/FluentValidation tests for `RegisterCustomerCommand` and `ApproveStaffCommand`.
     - [ ] Implement `RegisterCustomerCommand` handler.
     - [ ] Implement `ApproveStaffCommand` handler.
-- [~] Task: Implement Pending Approvals Queries
+- [x] Task: Implement Pending Approvals Queries 2b4aa05
     - [ ] Write xUnit tests for querying pending users.
     - [ ] Implement CQRS Query to fetch users in `PendingApproval` state.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Application Layer & Use Cases (Backend)' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'Phase 2: Application Layer & Use Cases (Backend)' (Protocol in workflow.md)
 
 ## Phase 3: Infrastructure & Persistence (Backend)
 - [ ] Task: EF Core Configuration

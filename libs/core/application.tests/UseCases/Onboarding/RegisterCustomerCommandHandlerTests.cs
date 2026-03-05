@@ -31,7 +31,7 @@ public class RegisterCustomerCommandHandlerTests {
     // Arrange
     var tenantId = Guid.NewGuid();
     var command = new RegisterCustomerCommand(tenantId, "test@customer.com", "StrongPassword123!");
-    
+
     _mockUserManager.Setup(x => x.CreateAsync(It.IsAny<ApplicationUser>(), command.Password))
       .ReturnsAsync(IdentityResult.Success)
       .Callback<ApplicationUser, string>((user, pass) => {

@@ -31,7 +31,7 @@ public class GetPendingApprovalsQueryHandlerTests {
 
     // 1. Created State (Should NOT be returned)
     var user1 = new ApplicationUser("user1@test.com", tenantId) { Id = "id1" };
-    
+
     // 2. Pending Approval State (SHOULD be returned)
     var user2 = new ApplicationUser("user2@test.com", tenantId) { Id = "id2", Email = "user2@test.com" };
     user2.StartStaffOnboarding();
@@ -53,7 +53,7 @@ public class GetPendingApprovalsQueryHandlerTests {
     // Assert
     result.Should().NotBeNull();
     result.Should().HaveCount(1);
-    
+
     var returnedUser = result.First();
     returnedUser.Id.Should().Be("id2");
     returnedUser.Email.Should().Be("user2@test.com");

@@ -24,11 +24,11 @@ public class GetPendingApprovalsQueryHandler : IRequestHandler<GetPendingApprova
     // Note: In a production app, we would typically use IQueryable projections and pagination here.
     // For the POC, filtering in memory is sufficient to demonstrate the query logic.
     // In later iterations, a dedicated Read Repository or direct EF Core querying would be used.
-    
+
     // We cannot use await directly with .Where().ToList() on the Users IQueryable from the mock easily without setting up async enumerators.
     // Given the small data set in tests, we materialise first.
     var users = _userManager.Users.ToList();
-    
+
     var pendingUsers = users
       .Where(u => u.Status == UserStatus.PendingApproval)
       .Select(u => new UserSummaryDto(u.Id, u.Email, u.Status))

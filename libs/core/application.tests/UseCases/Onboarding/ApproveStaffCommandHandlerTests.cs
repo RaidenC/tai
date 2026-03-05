@@ -32,11 +32,11 @@ public class ApproveStaffCommandHandlerTests {
     var userId = "target_user_id";
     var adminId = "admin_user_id";
     var command = new ApproveStaffCommand(userId, adminId);
-    
+
     // Create a user in the correct state
     var userToApprove = new ApplicationUser("staff@bank.com", (TenantId)Guid.NewGuid());
     userToApprove.StartStaffOnboarding(); // Moves to PendingApproval
-    
+
     _mockUserManager.Setup(x => x.FindByIdAsync(userId)).ReturnsAsync(userToApprove);
     _mockUserManager.Setup(x => x.UpdateAsync(userToApprove)).ReturnsAsync(IdentityResult.Success);
 
