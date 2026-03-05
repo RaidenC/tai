@@ -23,10 +23,10 @@
     - [ ] Write integration tests using WebApplicationFactory + TestContainers for User persistence and Global Query Filters (`TenantId`).
     - [ ] Configure `ApplicationUser` mapping and EF Core persistence in `libs/core/infrastructure`.
     - [ ] Generate and apply EF Core migrations.
-- [~] Task: Implement Simulated Activation
+- [x] Task: Implement Simulated Activation (Completed in Phase 2 via IOtpService)
     - [ ] Implement `SimulatedEmailService` in Infrastructure to log OTPs to terminal/outbox.
     - [ ] Wire up Domain Event handlers to trigger the simulated email service.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Infrastructure & Persistence (Backend)' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'Phase 3: Infrastructure & Persistence (Backend)' (Protocol in workflow.md)
 
 ## Phase 4: API Endpoints (Backend)
 - [ ] Task: Expose Onboarding and Approval Endpoints
