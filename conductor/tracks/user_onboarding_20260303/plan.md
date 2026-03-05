@@ -19,7 +19,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Application Layer & Use Cases (Backend)' (Protocol in workflow.md) 7d07659
 
 ## Phase 3: Infrastructure & Persistence (Backend)
-- [ ] Task: EF Core Configuration
+- [~] Task: EF Core Configuration
     - [ ] Write integration tests using WebApplicationFactory + TestContainers for User persistence and Global Query Filters (`TenantId`).
     - [ ] Configure `ApplicationUser` mapping and EF Core persistence in `libs/core/infrastructure`.
     - [ ] Generate and apply EF Core migrations.

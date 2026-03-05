@@ -40,7 +40,7 @@ public static class SeedData {
           var tenantService = scope.ServiceProvider.GetRequiredService<ITenantService>();
           tenantService.SetTenant(new TenantId(Guid.Empty), isGlobalAccess: true);
 
-          context.Database.EnsureCreated();
+          context.Database.Migrate();
 
           var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
           var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
