@@ -47,7 +47,10 @@ If we deploy this POC to a cloud environment under massive user load, several ar
 *   **Database Bottlenecks:** As write loads increase, the single PostgreSQL instance will become a bottleneck.
     *   **Cloud Fix:** We leverage the CQRS pattern we already built. We can point our `Handlers` (Writes) to an **Amazon Aurora Primary** instance, and point our `Queries` (Reads) to an **Aurora Read Replica**.
 *   **Asynchronous Processing:** Sending real emails/SMS during the HTTP request will drastically reduce API throughput.
-    *   **Cloud Fix:** We would update `RegisterCustomerCommandHandler` to publish an integration event to **Azure Service Bus / AWS SQS** (which is what RabbitMQ is for). A separate background worker microservice would listen to that queue and send the email, freeing up the API to respond to the user in milliseconds.
+    *   **Cloud Fix:** We would update `RegisterCustomerCommandHandler` to publish an integration event to a message broker. A separate background worker microservice would listen to that queue and send the email, freeing up the API to respond to the user in milliseconds.
+    *   **Architectural Trade-off: MassTransit vs. System.Threading.Channels:** If the ultimate goal is to move to a cloud-native queue (like Azure Service Bus or AWS SQS), using **MassTransit** right now with its "In-Memory" transport is the superior choice over standard `System.Threading.Channels`. 
+        *   Why? Because MassTransit abstracts away the broker implementation. You write your Producers and Consumers using MassTransit's `IConsumer<T>` interface today. When it is time to move to the cloud, you simply change one line in `Program.cs` from `UsingInMemory()` to `UsingAzureServiceBus()`. 
+        *   If you use `Channels`, you are writing custom boilerplate for producing/consuming loops. When moving to the cloud, you would have to throw away that code and rewrite it to integrate with the cloud provider's specific SDK. MassTransit acts as an anti-corruption layer for your messaging infrastructure.
 
 ---
 
