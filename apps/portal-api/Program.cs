@@ -33,6 +33,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options => {
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
+builder.Services.AddScoped<IOtpService, OtpService>();
 
 builder.Services.AddMediatR(cfg => {
   cfg.RegisterServicesFromAssembly(typeof(RegisterCustomerCommand).Assembly);

@@ -16,17 +16,19 @@ namespace Tai.Portal.Core.Application.Tests.UseCases.Onboarding;
 
 public class RegisterCustomerCommandHandlerTests {
   private readonly Mock<IIdentityService> _mockIdentityService;
+  private readonly Mock<IOtpService> _mockOtpService;
   private readonly RegisterCustomerCommandHandler _handler;
   private readonly RegisterCustomerCommandValidator _validator;
 
   public RegisterCustomerCommandHandlerTests() {
     _mockIdentityService = new Mock<IIdentityService>();
-    _handler = new RegisterCustomerCommandHandler(_mockIdentityService.Object);
+    _mockOtpService = new Mock<IOtpService>();
+    _handler = new RegisterCustomerCommandHandler(_mockIdentityService.Object, _mockOtpService.Object);
     _validator = new RegisterCustomerCommandValidator();
   }
 
   [Fact]
-  public async Task Handle_ValidCommand_CreatesUserAndStartsOnboarding() {
+  public async Task Handle_ValidCommand_CreatesUserAndStartsOnboarding_AndGeneratesOtp() {
     // Arrange
     var tenantId = Guid.NewGuid();
     var command = new RegisterCustomerCommand(tenantId, "test@customer.com", "StrongPassword123!");
@@ -46,6 +48,9 @@ public class RegisterCustomerCommandHandlerTests {
     // Assert
     result.Should().NotBeNullOrEmpty(); // Should return the generated User ID
     _mockIdentityService.Verify(x => x.CreateUserAsync(It.IsAny<ApplicationUser>(), command.Password, It.IsAny<CancellationToken>()), Times.Once);
+
+    // Verify OTP generation was triggered
+    _mockOtpService.Verify(x => x.GenerateAndStoreOtpAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
   }
 
   [Fact]
@@ -58,6 +63,9 @@ public class RegisterCustomerCommandHandlerTests {
     // Act & Assert
     var act = () => _handler.Handle(command, CancellationToken.None);
     await act.Should().ThrowAsync<IdentityValidationException>().WithMessage("*identity constraints*");
+
+    // Verify OTP was NOT generated
+    _mockOtpService.Verify(x => x.GenerateAndStoreOtpAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
   }
 
   [Theory]

@@ -22,9 +22,11 @@ public class RegisterStaffCommandValidator : AbstractValidator<RegisterStaffComm
 
 public class RegisterStaffCommandHandler : IRequestHandler<RegisterStaffCommand, string> {
   private readonly IIdentityService _identityService;
+  private readonly IOtpService _otpService;
 
-  public RegisterStaffCommandHandler(IIdentityService identityService) {
+  public RegisterStaffCommandHandler(IIdentityService identityService, IOtpService otpService) {
     _identityService = identityService;
+    _otpService = otpService;
   }
 
   public async Task<string> Handle(RegisterStaffCommand request, CancellationToken cancellationToken) {
@@ -41,6 +43,10 @@ public class RegisterStaffCommandHandler : IRequestHandler<RegisterStaffCommand,
     if (!success) {
       throw new IdentityValidationException("Failed to create staff user due to identity constraints.");
     }
+
+    // Note: We DO NOT generate the OTP here for Staff. 
+    // They are in PendingApproval state and must be approved by an Admin first.
+    // The OTP will be generated in the ApproveStaffCommandHandler.
 
     return user.Id;
   }

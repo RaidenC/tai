@@ -16,12 +16,14 @@ namespace Tai.Portal.Core.Application.Tests.UseCases.Onboarding;
 
 public class ActivateUserCommandHandlerTests {
   private readonly Mock<IIdentityService> _mockIdentityService;
+  private readonly Mock<IOtpService> _mockOtpService;
   private readonly ActivateUserCommandHandler _handler;
   private readonly ActivateUserCommandValidator _validator;
 
   public ActivateUserCommandHandlerTests() {
     _mockIdentityService = new Mock<IIdentityService>();
-    _handler = new ActivateUserCommandHandler(_mockIdentityService.Object);
+    _mockOtpService = new Mock<IOtpService>();
+    _handler = new ActivateUserCommandHandler(_mockIdentityService.Object, _mockOtpService.Object);
     _validator = new ActivateUserCommandValidator();
   }
 
@@ -31,11 +33,11 @@ public class ActivateUserCommandHandlerTests {
     var userId = "target_user_id";
     var command = new ActivateUserCommand(userId, "123456");
 
-    // Create a user in the correct state
     var userToActivate = new ApplicationUser("customer@bank.com", (TenantId)Guid.NewGuid()) { Id = userId };
-    userToActivate.StartCustomerOnboarding(); // Moves to PendingVerification
+    userToActivate.StartCustomerOnboarding();
 
     _mockIdentityService.Setup(x => x.GetUserByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(userToActivate);
+    _mockOtpService.Setup(x => x.ValidateOtpAsync(userId, "123456", It.IsAny<CancellationToken>())).ReturnsAsync(true);
     _mockIdentityService.Setup(x => x.UpdateUserAsync(userToActivate, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
     // Act
@@ -44,6 +46,23 @@ public class ActivateUserCommandHandlerTests {
     // Assert
     userToActivate.Status.Should().Be(UserStatus.Active);
     _mockIdentityService.Verify(x => x.UpdateUserAsync(userToActivate, It.IsAny<CancellationToken>()), Times.Once);
+  }
+
+  [Fact]
+  public async Task Handle_InvalidOtp_ThrowsException() {
+    // Arrange
+    var userId = "target_user_id";
+    var command = new ActivateUserCommand(userId, "999999");
+
+    var userToActivate = new ApplicationUser("customer@bank.com", (TenantId)Guid.NewGuid()) { Id = userId };
+    userToActivate.StartCustomerOnboarding();
+
+    _mockIdentityService.Setup(x => x.GetUserByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(userToActivate);
+    _mockOtpService.Setup(x => x.ValidateOtpAsync(userId, "999999", It.IsAny<CancellationToken>())).ReturnsAsync(false); // OTP Failed
+
+    // Act & Assert
+    var act = () => _handler.Handle(command, CancellationToken.None);
+    await act.Should().ThrowAsync<IdentityValidationException>().WithMessage("*Invalid or expired*");
   }
 
   [Fact]
@@ -56,6 +75,7 @@ public class ActivateUserCommandHandlerTests {
     var userToActivate = new ApplicationUser("customer@bank.com", (TenantId)Guid.NewGuid()) { Id = userId };
 
     _mockIdentityService.Setup(x => x.GetUserByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(userToActivate);
+    _mockOtpService.Setup(x => x.ValidateOtpAsync(userId, "123456", It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
     // Act & Assert
     var act = () => _handler.Handle(command, CancellationToken.None);

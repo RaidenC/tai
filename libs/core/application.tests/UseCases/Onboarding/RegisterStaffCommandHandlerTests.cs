@@ -16,17 +16,19 @@ namespace Tai.Portal.Core.Application.Tests.UseCases.Onboarding;
 
 public class RegisterStaffCommandHandlerTests {
   private readonly Mock<IIdentityService> _mockIdentityService;
+  private readonly Mock<IOtpService> _mockOtpService;
   private readonly RegisterStaffCommandHandler _handler;
   private readonly RegisterStaffCommandValidator _validator;
 
   public RegisterStaffCommandHandlerTests() {
     _mockIdentityService = new Mock<IIdentityService>();
-    _handler = new RegisterStaffCommandHandler(_mockIdentityService.Object);
+    _mockOtpService = new Mock<IOtpService>();
+    _handler = new RegisterStaffCommandHandler(_mockIdentityService.Object, _mockOtpService.Object);
     _validator = new RegisterStaffCommandValidator();
   }
 
   [Fact]
-  public async Task Handle_ValidCommand_CreatesUserAndStartsStaffOnboarding() {
+  public async Task Handle_ValidCommand_CreatesUserAndStartsStaffOnboarding_NoOtpGeneratedYet() {
     // Arrange
     var tenantId = Guid.NewGuid();
     var command = new RegisterStaffCommand(tenantId, "test@staff.com", "StrongPassword123!");
@@ -46,6 +48,9 @@ public class RegisterStaffCommandHandlerTests {
     // Assert
     result.Should().NotBeNullOrEmpty(); // Should return the generated User ID
     _mockIdentityService.Verify(x => x.CreateUserAsync(It.IsAny<ApplicationUser>(), command.Password, It.IsAny<CancellationToken>()), Times.Once);
+
+    // Explicitly verify OTP generation was NOT triggered (because they must be approved first)
+    _mockOtpService.Verify(x => x.GenerateAndStoreOtpAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
   }
 
   [Theory]

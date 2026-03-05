@@ -20,9 +20,11 @@ public class ActivateUserCommandValidator : AbstractValidator<ActivateUserComman
 
 public class ActivateUserCommandHandler : IRequestHandler<ActivateUserCommand> {
   private readonly IIdentityService _identityService;
+  private readonly IOtpService _otpService;
 
-  public ActivateUserCommandHandler(IIdentityService identityService) {
+  public ActivateUserCommandHandler(IIdentityService identityService, IOtpService otpService) {
     _identityService = identityService;
+    _otpService = otpService;
   }
 
   public async Task Handle(ActivateUserCommand request, CancellationToken cancellationToken) {
@@ -32,10 +34,10 @@ public class ActivateUserCommandHandler : IRequestHandler<ActivateUserCommand> {
       throw new UserNotFoundException(request.UserId);
     }
 
-    // In a real application, we would verify the OTP code here against a cache or database.
-    // For this mock implementation, any 6-digit code provided to the command is considered valid.
-    if (request.OtpCode.Length != 6) {
-      throw new InvalidOperationException("Invalid OTP Code format.");
+    var isValidOtp = await _otpService.ValidateOtpAsync(request.UserId, request.OtpCode, cancellationToken);
+
+    if (!isValidOtp) {
+      throw new IdentityValidationException("Invalid or expired OTP Code.");
     }
 
     // Execute the domain state transition

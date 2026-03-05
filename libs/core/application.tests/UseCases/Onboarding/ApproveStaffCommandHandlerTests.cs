@@ -17,17 +17,19 @@ namespace Tai.Portal.Core.Application.Tests.UseCases.Onboarding;
 
 public class ApproveStaffCommandHandlerTests {
   private readonly Mock<IIdentityService> _mockIdentityService;
+  private readonly Mock<IOtpService> _mockOtpService;
   private readonly ApproveStaffCommandHandler _handler;
   private readonly ApproveStaffCommandValidator _validator;
 
   public ApproveStaffCommandHandlerTests() {
     _mockIdentityService = new Mock<IIdentityService>();
-    _handler = new ApproveStaffCommandHandler(_mockIdentityService.Object);
+    _mockOtpService = new Mock<IOtpService>();
+    _handler = new ApproveStaffCommandHandler(_mockIdentityService.Object, _mockOtpService.Object);
     _validator = new ApproveStaffCommandValidator();
   }
 
   [Fact]
-  public async Task Handle_ValidCommand_ApprovesUser() {
+  public async Task Handle_ValidCommand_ApprovesUser_AndGeneratesOtp() {
     // Arrange
     var userId = "target_user_id";
     var adminId = "admin_user_id";
@@ -49,6 +51,9 @@ public class ApproveStaffCommandHandlerTests {
     userToApprove.ApprovedByUserId.Should().Be(adminId); // Audit Trail Verification
     userToApprove.DomainEvents.Should().ContainSingle(e => e is Tai.Portal.Core.Domain.Events.UserApprovedEvent); // Domain Event Verification
     _mockIdentityService.Verify(x => x.UpdateUserAsync(userToApprove, It.IsAny<CancellationToken>()), Times.Once);
+
+    // Verify OTP generation was triggered
+    _mockOtpService.Verify(x => x.GenerateAndStoreOtpAsync(userId, It.IsAny<CancellationToken>()), Times.Once);
   }
 
   [Fact]
@@ -66,6 +71,9 @@ public class ApproveStaffCommandHandlerTests {
     // Act & Assert
     var act = () => _handler.Handle(command, CancellationToken.None);
     await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*cannot be approved*");
+
+    // Verify OTP was NOT generated
+    _mockOtpService.Verify(x => x.GenerateAndStoreOtpAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
   }
 
   [Fact]

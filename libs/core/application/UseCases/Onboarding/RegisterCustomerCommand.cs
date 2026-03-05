@@ -22,9 +22,11 @@ public class RegisterCustomerCommandValidator : AbstractValidator<RegisterCustom
 
 public class RegisterCustomerCommandHandler : IRequestHandler<RegisterCustomerCommand, string> {
   private readonly IIdentityService _identityService;
+  private readonly IOtpService _otpService;
 
-  public RegisterCustomerCommandHandler(IIdentityService identityService) {
+  public RegisterCustomerCommandHandler(IIdentityService identityService, IOtpService otpService) {
     _identityService = identityService;
+    _otpService = otpService;
   }
 
   public async Task<string> Handle(RegisterCustomerCommand request, CancellationToken cancellationToken) {
@@ -41,6 +43,9 @@ public class RegisterCustomerCommandHandler : IRequestHandler<RegisterCustomerCo
     if (!success) {
       throw new IdentityValidationException("Failed to create customer user due to identity constraints.");
     }
+
+    // Trigger the simulated activation (generate OTP and log it)
+    await _otpService.GenerateAndStoreOtpAsync(user.Id, cancellationToken);
 
     return user.Id;
   }
