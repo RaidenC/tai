@@ -37,11 +37,13 @@ public class ApplicationUserPersistenceTests : IAsyncLifetime {
   }
 
   [Fact]
-  public async Task CreateUser_ShouldPersistStatusAndTenantId() {
+  public async Task CreateUser_ShouldPersistStatusAndAuditTrail() {
     // Arrange
     var tenantId = (TenantId)Guid.NewGuid();
-    var user = new ApplicationUser("test@bank.com", tenantId) { Email = "test@bank.com" };
-    user.StartStaffOnboarding(); // Sets status to PendingApproval
+    var adminId = "admin_user_id";
+    var user = new ApplicationUser("audit@bank.com", tenantId) { Email = "audit@bank.com" };
+    user.StartStaffOnboarding();
+    user.ApproveAccount(adminId); // Transitions to PendingVerification and sets ApprovedByUserId
 
     // Act
     var result = await _userManager.CreateAsync(user, "StrongPassword123!");
@@ -52,8 +54,51 @@ public class ApplicationUserPersistenceTests : IAsyncLifetime {
     // Re-fetch from DB to ensure it was actually saved using the unique ID
     var savedUser = await _userManager.FindByIdAsync(user.Id);
     savedUser.Should().NotBeNull();
-    savedUser!.Status.Should().Be(UserStatus.PendingApproval);
+    savedUser!.Status.Should().Be(UserStatus.PendingVerification);
     savedUser.TenantId.Value.Should().Be(tenantId.Value);
+    savedUser.ApprovedByUserId.Should().Be(adminId); // Verify Audit Trail
+  }
+
+  [Fact]
+  public async Task GlobalAccess_ShouldBypassTenantIsolation() {
+    // Arrange
+    var tenantA = (TenantId)Guid.NewGuid();
+    var tenantB = (TenantId)Guid.NewGuid();
+
+    var userA = new ApplicationUser("usera@bank.com", tenantA) { Email = "usera@bank.com" };
+    var userB = new ApplicationUser("userb@bank.com", tenantB) { Email = "userb@bank.com" };
+
+    await _userManager.CreateAsync(userA, "Pass123!");
+    await _userManager.CreateAsync(userB, "Pass123!");
+
+    // Act - Enable Global Access
+    _tenantService.SetTenant(tenantA, isGlobalAccess: true);
+
+    // Query all users. The Global Query Filter should be bypassed.
+    var users = _userManager.Users.ToList();
+
+    // Assert
+    users.Should().HaveCountGreaterOrEqualTo(2);
+    users.Should().Contain(u => u.Email == "usera@bank.com");
+    users.Should().Contain(u => u.Email == "userb@bank.com");
+  }
+
+  [Fact]
+  public async Task CreateUser_WithDuplicateEmailInSameTenant_ShouldFail() {
+    // Arrange
+    var tenantId = (TenantId)Guid.NewGuid();
+    var user1 = new ApplicationUser("dup@bank.com", tenantId) { Email = "dup@bank.com" };
+    var user2 = new ApplicationUser("dup@bank.com", tenantId) { Email = "dup@bank.com" };
+
+    await _userManager.CreateAsync(user1, "Pass123!");
+
+    // Act
+    var act = () => _userManager.CreateAsync(user2, "Pass123!");
+
+    // Assert
+    // JUNIOR RATIONALE: ASP.NET Identity uses SaveChanges internally. 
+    // Since our DB unique index is on NormalizedUserName/Email, it will throw a DbUpdateException.
+    await act.Should().ThrowAsync<Microsoft.EntityFrameworkCore.DbUpdateException>();
   }
 
   [Fact]
