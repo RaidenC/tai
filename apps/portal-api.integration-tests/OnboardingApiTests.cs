@@ -32,7 +32,7 @@ public class OnboardingApiTests : IClassFixture<WebApplicationFactory<Program>> 
     var client = _factory.CreateClient(new WebApplicationFactoryClientOptions {
       AllowAutoRedirect = false
     });
-    
+
     client.DefaultRequestHeaders.Add("X-Gateway-Secret", Environment.GetEnvironmentVariable("GATEWAY_SECRET") ?? "portal-poc-secret-2026");
 
     var command = new RegisterCustomerCommand(TaiTenantId, $"newcustomer_{Guid.NewGuid()}@example.com", "Password123!");
@@ -52,7 +52,7 @@ public class OnboardingApiTests : IClassFixture<WebApplicationFactory<Program>> 
     var client = _factory.CreateClient(new WebApplicationFactoryClientOptions {
       AllowAutoRedirect = false
     });
-    
+
     client.DefaultRequestHeaders.Add("X-Gateway-Secret", Environment.GetEnvironmentVariable("GATEWAY_SECRET") ?? "portal-poc-secret-2026");
 
     // Act
@@ -68,14 +68,14 @@ public class OnboardingApiTests : IClassFixture<WebApplicationFactory<Program>> 
     var client = _factory.CreateClient(new WebApplicationFactoryClientOptions {
       AllowAutoRedirect = false
     });
-    
+
     client.DefaultRequestHeaders.Add("X-Gateway-Secret", Environment.GetEnvironmentVariable("GATEWAY_SECRET") ?? "portal-poc-secret-2026");
 
     // We will just try to approve a non-existent user for the test to ensure the endpoint exists and routes
     // But actually, it might return a 500 or 404 because the handler throws UserNotFoundException.
     // Let's create a staff user first, or just check that it doesn't return 404 Not Found for the endpoint itself.
     var request = new { TargetUserId = "00000000-0000-0000-0000-000000000000" };
-    
+
     // Act
     var response = await client.PostAsJsonAsync("/api/onboarding/approve", request);
 
