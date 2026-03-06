@@ -29,10 +29,10 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Infrastructure & Persistence (Backend)' (Protocol in workflow.md) 67a5882
 
 ## Phase 4: API Endpoints (Backend)
-- [ ] Task: Expose Onboarding and Approval Endpoints
-    - [ ] Write integration tests for API endpoints.
-    - [ ] Implement minimal API endpoints in `apps/portal-api` routing to MediatR handlers for registration, fetching pending approvals, and submitting approvals.
-    - [ ] Ensure endpoints enforce DPoP.
+- [x] Task: Expose Onboarding and Approval Endpoints e91410b
+    - [x] Write integration tests for API endpoints.
+    - [x] Implement minimal API endpoints in `apps/portal-api` routing to MediatR handlers for registration, fetching pending approvals, and submitting approvals.
+    - [x] Ensure endpoints enforce DPoP.
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: API Endpoints (Backend)' (Protocol in workflow.md)
 
 ## Phase 5: UI Components & Integration (Frontend)
