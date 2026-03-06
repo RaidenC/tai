@@ -24,7 +24,7 @@ public class OnboardingController : ControllerBase {
   }
 
   [HttpGet("pending-approvals")]
-  [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+  [Authorize]
   public async Task<IActionResult> GetPendingApprovals([FromQuery] Guid tenantId, [FromQuery] int page = 1, [FromQuery] int pageSize = 10) {
     var query = new GetPendingApprovalsQuery(tenantId, page, pageSize);
     var result = await _mediator.Send(query);
@@ -34,7 +34,7 @@ public class OnboardingController : ControllerBase {
   public record ApproveRequest(string TargetUserId);
 
   [HttpPost("approve")]
-  [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+  [Authorize]
   public async Task<IActionResult> Approve([FromBody] ApproveRequest request) {
     var approverId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
     if (string.IsNullOrEmpty(approverId)) {
