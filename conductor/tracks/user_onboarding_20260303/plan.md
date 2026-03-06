@@ -35,7 +35,7 @@
     - [x] Ensure endpoints enforce DPoP.
 - [x] Task: Conductor - User Manual Verification 'Phase 4: API Endpoints (Backend)' (Protocol in workflow.md) b339468
 
-## Phase 5: UI Components & Integration (Frontend)
+## Phase 5: UI Components & Integration (Frontend) [checkpoint: 9165a91]
 - [x] Task: Build Core Onboarding UI Components (Design System) 9a10d94
     - [x] Create `RegistrationForm` using Angular Headless CDK and Tailwind CSS 4.0 in `libs/ui/design-system`.
     - [x] Create `OtpVerificationForm` using Headless CDK and Tailwind 4.0.
@@ -50,7 +50,7 @@
     - [x] Configure `app.routes.ts` in `portal-web` for `/register`, `/verify`, and `/admin/approvals`.
     - [x] Wire up `RegistrationForm` and `OtpVerificationForm` to the `OnboardingStore`.
     - [x] Implement the "Next Action" routing logic: successful OTP verification redirects to `/auth/passkey-setup`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 5: UI Components & Integration (Frontend)' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 5: UI Components & Integration (Frontend)' (Protocol in workflow.md) 9165a91
 
 ## Phase 6: End-to-End Verification
 - [ ] Task: Playwright "Steel Thread" Tests
