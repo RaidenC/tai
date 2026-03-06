@@ -28,12 +28,12 @@
     - [x] Wire up Domain Event handlers to trigger the simulated email service.
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Infrastructure & Persistence (Backend)' (Protocol in workflow.md) 67a5882
 
-## Phase 4: API Endpoints (Backend)
+## Phase 4: API Endpoints (Backend) [checkpoint: b339468]
 - [x] Task: Expose Onboarding and Approval Endpoints e91410b
     - [x] Write integration tests for API endpoints.
     - [x] Implement minimal API endpoints in `apps/portal-api` routing to MediatR handlers for registration, fetching pending approvals, and submitting approvals.
     - [x] Ensure endpoints enforce DPoP.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: API Endpoints (Backend)' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 4: API Endpoints (Backend)' (Protocol in workflow.md) b339468
 
 ## Phase 5: UI Components & Integration (Frontend)
 - [ ] Task: Build Registration UI
