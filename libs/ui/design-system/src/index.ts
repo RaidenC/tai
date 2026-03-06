@@ -5,3 +5,6 @@ export * from './lib/design-system/login-form/login-form';
 export * from './lib/sidebar/sidebar.component';
 export * from './lib/user-profile/user-profile.component';
 export * from './lib/app-shell/app-shell.component';
+export * from './lib/design-system/registration-form/registration-form';
+export * from './lib/design-system/otp-verification-form/otp-verification-form';
+export * from './lib/design-system/pending-approvals-tile/pending-approvals-tile';
