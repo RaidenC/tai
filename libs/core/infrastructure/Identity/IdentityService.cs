@@ -45,7 +45,7 @@ public class IdentityService : IIdentityService {
     // Because UserManager.Users is an IQueryable, we can safely apply LINQ
     // operations here which will be translated to SQL by EF Core.
     return await _userManager.Users
-      .Where(u => u.Status == status && u.TenantId.Value == tenantId.Value)
+      .Where(u => u.Status == status && u.TenantId == tenantId)
       .Skip(skip)
       .Take(take)
       .ToListAsync(cancellationToken);

@@ -18,22 +18,22 @@
     - [ ] Implement CQRS Query to fetch users in `PendingApproval` state.
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Application Layer & Use Cases (Backend)' (Protocol in workflow.md) 7d07659
 
-## Phase 3: Infrastructure & Persistence (Backend)
+## Phase 3: Infrastructure & Persistence (Backend) [checkpoint: 67a5882]
 - [x] Task: EF Core Configuration 685f54f
-    - [ ] Write integration tests using WebApplicationFactory + TestContainers for User persistence and Global Query Filters (`TenantId`).
-    - [ ] Configure `ApplicationUser` mapping and EF Core persistence in `libs/core/infrastructure`.
-    - [ ] Generate and apply EF Core migrations.
+    - [x] Write integration tests using WebApplicationFactory + TestContainers for User persistence and Global Query Filters (`TenantId`).
+    - [x] Configure `ApplicationUser` mapping and EF Core persistence in `libs/core/infrastructure`.
+    - [x] Generate and apply EF Core migrations.
 - [x] Task: Implement Simulated Activation (Completed in Phase 2 via IOtpService)
-    - [ ] Implement `SimulatedEmailService` in Infrastructure to log OTPs to terminal/outbox.
-    - [ ] Wire up Domain Event handlers to trigger the simulated email service.
-- [~] Task: Conductor - User Manual Verification 'Phase 3: Infrastructure & Persistence (Backend)' (Protocol in workflow.md)
+    - [x] Implement `SimulatedEmailService` in Infrastructure to log OTPs to terminal/outbox.
+    - [x] Wire up Domain Event handlers to trigger the simulated email service.
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Infrastructure & Persistence (Backend)' (Protocol in workflow.md) 67a5882
 
-## Phase 4: API Endpoints (Backend)
-- [ ] Task: Expose Onboarding and Approval Endpoints
-    - [ ] Write integration tests for API endpoints.
-    - [ ] Implement minimal API endpoints in `apps/portal-api` routing to MediatR handlers for registration, fetching pending approvals, and submitting approvals.
-    - [ ] Ensure endpoints enforce DPoP.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: API Endpoints (Backend)' (Protocol in workflow.md)
+## Phase 4: API Endpoints (Backend) [checkpoint: b339468]
+- [x] Task: Expose Onboarding and Approval Endpoints e91410b
+    - [x] Write integration tests for API endpoints.
+    - [x] Implement minimal API endpoints in `apps/portal-api` routing to MediatR handlers for registration, fetching pending approvals, and submitting approvals.
+    - [x] Ensure endpoints enforce DPoP.
+- [x] Task: Conductor - User Manual Verification 'Phase 4: API Endpoints (Backend)' (Protocol in workflow.md) b339468
 
 ## Phase 5: UI Components & Integration (Frontend)
 - [ ] Task: Build Registration UI

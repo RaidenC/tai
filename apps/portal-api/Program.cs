@@ -13,6 +13,10 @@ using Tai.Portal.Core.Application.UseCases.Onboarding;
 using Tai.Portal.Core.Infrastructure.Identity;
 using Tai.Portal.Core.Infrastructure.Middleware;
 
+using Tai.Portal.Core.Application.Behaviors;
+using FluentValidation;
+using MediatR;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -35,8 +39,11 @@ builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 
+builder.Services.AddValidatorsFromAssembly(typeof(RegisterCustomerCommand).Assembly);
+
 builder.Services.AddMediatR(cfg => {
   cfg.RegisterServicesFromAssembly(typeof(RegisterCustomerCommand).Assembly);
+  cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationPipelineBehavior<,>));
 });
 
 builder.Services.AddDbContext<PortalDbContext>(options => {
@@ -131,6 +138,28 @@ builder.Services.AddCors(options => {
 });
 
 var app = builder.Build();
+
+app.Use(async (context, next) => {
+  try {
+    await next(context);
+  } catch (FluentValidation.ValidationException ex) {
+    context.Response.StatusCode = 400;
+    var problemDetails = new Microsoft.AspNetCore.Mvc.ValidationProblemDetails {
+      Title = "Validation Failed",
+      Status = 400,
+      Detail = "One or more validation errors occurred."
+    };
+    foreach (var error in ex.Errors) {
+      if (!problemDetails.Errors.ContainsKey(error.PropertyName)) {
+        problemDetails.Errors[error.PropertyName] = new string[] { error.ErrorMessage };
+      } else {
+        var existing = problemDetails.Errors[error.PropertyName];
+        problemDetails.Errors[error.PropertyName] = existing.Concat(new[] { error.ErrorMessage }).ToArray();
+      }
+    }
+    await context.Response.WriteAsJsonAsync(problemDetails);
+  }
+});
 
 // JUNIOR RATIONALE: This tells the API that it's being served from 
 // the '/identity' prefix. This is critical for generating correct 
