@@ -31,7 +31,7 @@ export class VerifyPage {
     effect(() => {
       if (this.store.status() === 'Success') {
         this.store.reset();
-        this.router.navigate(['/auth/passkey-setup']);
+        this.router.navigate(['/create-passkey']);
       }
     });
   }

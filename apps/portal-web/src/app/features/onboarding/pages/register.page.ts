@@ -31,7 +31,7 @@ export class RegisterPage {
     effect(() => {
       if (this.store.status() === 'Success') {
         this.store.reset();
-        this.router.navigate(['/verify']);
+        this.router.navigate(['/create-passkey']);
       }
     });
   }

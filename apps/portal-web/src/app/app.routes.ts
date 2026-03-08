@@ -10,6 +10,10 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./features/onboarding/pages/verify.page').then(m => m.VerifyPage) 
     },
     { 
+        path: 'create-passkey', 
+        loadComponent: () => import('./features/onboarding/pages/create-passkey.page').then(m => m.CreatePasskeyPage) 
+    },
+    { 
         path: 'admin/approvals', 
         loadComponent: () => import('./features/onboarding/pages/approvals.page').then(m => m.ApprovalsPage) 
     },
