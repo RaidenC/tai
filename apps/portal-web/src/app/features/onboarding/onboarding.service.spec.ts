@@ -48,7 +48,7 @@ describe('OnboardingService', () => {
       expect(users).toEqual(mockPendingUsers);
     });
 
-    const req = httpMock.expectOne('/api/onboarding/pending');
+    const req = httpMock.expectOne('/api/onboarding/pending-approvals');
     expect(req.request.method).toBe('GET');
     req.flush(mockPendingUsers);
   });

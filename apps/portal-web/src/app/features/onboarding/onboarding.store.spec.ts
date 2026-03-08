@@ -41,7 +41,10 @@ describe('OnboardingStore', () => {
   });
 
   it('should update status to Error on registration failure', () => {
-    onboardingServiceMock.register.mockReturnValue(throwError(() => new Error('Server error')));
+    const errorResponse = {
+        error: { detail: 'Server error' }
+    };
+    onboardingServiceMock.register.mockReturnValue(throwError(() => errorResponse));
     
     store.register({ email: 'test@example.com', firstName: 'Jane', lastName: 'Doe' });
     

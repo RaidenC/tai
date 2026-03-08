@@ -52,7 +52,7 @@ export class OnboardingService {
    * Fetches the list of users awaiting approval (Tenant Admin).
    */
   public getPendingApprovals(): Observable<PendingUser[]> {
-    return this.http.get<PendingUser[]>(`${this.baseUrl}/pending`);
+    return this.http.get<PendingUser[]>(`${this.baseUrl}/pending-approvals`);
   }
 
   /**

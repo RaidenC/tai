@@ -42,10 +42,16 @@ export const dpopInterceptor: HttpInterceptorFn = (req, next) => {
   const executeWithDPoP = (nonce?: string) => {
     return from(dpopService.getDPoPHeader(req.method, req.url, accessToken, nonce)).pipe(
       switchMap(dpopHeader => {
+        let headers = req.headers.set('DPoP', dpopHeader);
+        
+        // If an access token was found, we must explicitly change the Authorization scheme 
+        // from 'Bearer' (added by the standard auth interceptor) to 'DPoP'.
+        if (accessToken) {
+            headers = headers.set('Authorization', `DPoP ${accessToken}`);
+        }
+
         const clonedReq = req.clone({
-          setHeaders: {
-            DPoP: dpopHeader
-          }
+          headers: headers
         });
         return next(clonedReq);
       })
