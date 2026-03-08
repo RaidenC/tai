@@ -158,6 +158,14 @@ app.Use(async (context, next) => {
       }
     }
     await context.Response.WriteAsJsonAsync(problemDetails);
+  } catch (Tai.Portal.Core.Application.Exceptions.IdentityValidationException ex) {
+    context.Response.StatusCode = 400;
+    var problemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails {
+      Title = "Identity Validation Failed",
+      Status = 400,
+      Detail = ex.Message
+    };
+    await context.Response.WriteAsJsonAsync(problemDetails);
   }
 });
 

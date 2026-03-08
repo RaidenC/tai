@@ -18,9 +18,9 @@ public class IdentityService : IIdentityService {
     _userManager = userManager;
   }
 
-  public async Task<bool> CreateUserAsync(ApplicationUser user, string password, CancellationToken cancellationToken = default) {
+  public async Task<(bool Success, string[] Errors)> CreateUserAsync(ApplicationUser user, string password, CancellationToken cancellationToken = default) {
     var result = await _userManager.CreateAsync(user, password);
-    return result.Succeeded;
+    return (result.Succeeded, result.Errors.Select(e => e.Description).ToArray());
   }
 
   public async Task<ApplicationUser?> GetUserByIdAsync(string userId, CancellationToken cancellationToken = default) {

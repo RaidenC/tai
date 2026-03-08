@@ -38,10 +38,10 @@ public class RegisterCustomerCommandHandler : IRequestHandler<RegisterCustomerCo
     // Use the Domain method to initiate the state machine for a customer
     user.StartCustomerOnboarding();
 
-    var success = await _identityService.CreateUserAsync(user, request.Password, cancellationToken);
+    var (success, errors) = await _identityService.CreateUserAsync(user, request.Password, cancellationToken);
 
     if (!success) {
-      throw new IdentityValidationException("Failed to create customer user due to identity constraints.");
+      throw new IdentityValidationException(string.Join(", ", errors));
     }
 
     // Trigger the simulated activation (generate OTP and log it)

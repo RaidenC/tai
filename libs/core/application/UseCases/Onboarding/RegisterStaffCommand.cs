@@ -38,10 +38,10 @@ public class RegisterStaffCommandHandler : IRequestHandler<RegisterStaffCommand,
     // Use the Domain method to initiate the state machine for a staff member
     user.StartStaffOnboarding();
 
-    var success = await _identityService.CreateUserAsync(user, request.Password, cancellationToken);
+    var (success, errors) = await _identityService.CreateUserAsync(user, request.Password, cancellationToken);
 
     if (!success) {
-      throw new IdentityValidationException("Failed to create staff user due to identity constraints.");
+      throw new IdentityValidationException(string.Join(", ", errors));
     }
 
     // Note: We DO NOT generate the OTP here for Staff. 

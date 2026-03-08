@@ -32,9 +32,9 @@ public class RegisterStaffCommandHandlerTests {
     // Arrange
     var tenantId = Guid.NewGuid();
     var command = new RegisterStaffCommand(tenantId, "test@staff.com", "StrongPassword123!");
-
-    _mockIdentityService.Setup(x => x.CreateUserAsync(It.IsAny<ApplicationUser>(), command.Password, It.IsAny<CancellationToken>()))
-      .ReturnsAsync(true)
+    _mockIdentityService
+      .Setup(s => s.CreateUserAsync(It.IsAny<ApplicationUser>(), "StrongPassword123!", It.IsAny<CancellationToken>()))
+      .ReturnsAsync((true, Array.Empty<string>()))
       .Callback<ApplicationUser, string, CancellationToken>((user, pass, token) => {
         user.Email.Should().Be("test@staff.com");
         user.TenantId.Value.Should().Be(tenantId);
