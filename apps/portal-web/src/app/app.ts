@@ -1,5 +1,5 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from './auth.service';
 import { AppShellComponent, MenuItem } from '@tai/ui-design-system';
@@ -12,6 +12,7 @@ import { AppShellComponent, MenuItem } from '@tai/ui-design-system';
 })
 export class App implements OnInit {
     private readonly authService = inject(AuthService);
+    public readonly router = inject(Router);
     
     protected title = 'portal-web';
     protected user$ = this.authService.user$;
@@ -23,6 +24,7 @@ export class App implements OnInit {
         { label: 'Insurance', link: '/insurance', icon: '🛡️' },
         { label: 'Reports', link: '/reports', icon: '📊' },
         { label: 'Settings', link: '/settings', icon: '⚙️' },
+        { label: 'Users', link: '/users', icon: '👥' },
     ];
 
     ngOnInit() {
