@@ -25,6 +25,7 @@ export class OnboardingStore {
   private readonly _pendingUsers = signal<PendingUser[]>([]);
   private readonly _status = signal<OnboardingStatus>('Idle');
   private readonly _errorMessage = signal<string | null>(null);
+  private readonly _registeredUserId = signal<string | null>(null);
 
   // --- Public Read-Only State (Exposed Signals) ---
   public readonly pendingUsers = this._pendingUsers.asReadonly();
@@ -47,7 +48,8 @@ export class OnboardingStore {
         // Status remains 'Success' or 'Error' after completion
       }))
       .subscribe({
-        next: () => {
+        next: (response) => {
+          this._registeredUserId.set(response);
           this._status.set('Success');
         },
         error: (err) => {
@@ -61,10 +63,17 @@ export class OnboardingStore {
    * Verifies the OTP and transitions the state.
    */
   public verify(code: string): void {
+    const userId = this._registeredUserId();
+    if (!userId) {
+      this._status.set('Error');
+      this._errorMessage.set('No user ID found. Please register first.');
+      return;
+    }
+
     this._status.set('Loading');
     this._errorMessage.set(null);
 
-    this.onboardingService.verifyOtp(code)
+    this.onboardingService.verifyOtp(userId, code)
       .subscribe({
         next: () => {
           this._status.set('Success');

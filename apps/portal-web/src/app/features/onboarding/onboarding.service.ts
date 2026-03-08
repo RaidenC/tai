@@ -44,8 +44,8 @@ export class OnboardingService {
   /**
    * Verifies the 6-digit OTP for a user.
    */
-  public verifyOtp(code: string): Observable<any> {
-    return this.http.post(`${this.baseUrl}/verify`, { code });
+  public verifyOtp(userId: string, code: string): Observable<any> {
+    return this.http.post(`${this.baseUrl}/verify`, { userId, code });
   }
 
   /**

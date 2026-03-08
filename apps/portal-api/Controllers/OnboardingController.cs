@@ -16,6 +16,20 @@ public class OnboardingController : ControllerBase {
     _mediator = mediator;
   }
 
+  public record VerifyRequest(string UserId, string Code);
+
+  [HttpPost("verify")]
+  [AllowAnonymous]
+  public async Task<IActionResult> Verify([FromBody] VerifyRequest request) {
+    try {
+      var command = new ActivateUserCommand(request.UserId, request.Code);
+      await _mediator.Send(command);
+      return Ok();
+    } catch (System.Exception ex) {
+      return BadRequest(new { error = ex.Message });
+    }
+  }
+
   [HttpPost("register")]
   [AllowAnonymous]
   public async Task<IActionResult> Register([FromBody] RegisterCustomerCommand command) {
