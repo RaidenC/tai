@@ -17,6 +17,10 @@ export const appRoutes: Route[] = [
         path: 'admin/approvals', 
         loadComponent: () => import('./features/onboarding/pages/approvals.page').then(m => m.ApprovalsPage) 
     },
+    { 
+        path: 'users', 
+        loadComponent: () => import('./features/users/users.page').then(m => m.UsersPage) 
+    },
     { path: 'unauthorized', redirectTo: '' },
     { path: 'forbidden', redirectTo: '' },
 ];
