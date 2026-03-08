@@ -35,11 +35,10 @@ describe('OnboardingService', () => {
   });
 
   it('should call verifyOtp', () => {
-    service.verifyOtp('123456').subscribe();
-
+    service.verifyOtp('user123', '123456').subscribe();
     const req = httpMock.expectOne('/api/onboarding/verify');
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toEqual({ code: '123456' });
+    expect(req.request.body).toEqual({ userId: 'user123', code: '123456' });
     req.flush({});
   });
 
