@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
@@ -218,6 +219,78 @@ public class OnboardingApiTests : IClassFixture<WebApplicationFactory<Program>> 
     // Assert
     // Using OpenIddict default schemes might return 401
     Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+  }
+
+  [Fact]
+  public async Task Verify_ValidCode_ReturnsOk() {
+    // Arrange
+    var mockOtpService = new Mock<IOtpService>();
+    var factory = CreateFactoryWithMockAuthAndOtp(mockOtpService);
+    var client = factory.CreateClient(new WebApplicationFactoryClientOptions {
+      BaseAddress = new Uri("http://localhost/")
+    });
+    client.DefaultRequestHeaders.Add("X-Gateway-Secret", Environment.GetEnvironmentVariable("GATEWAY_SECRET") ?? "portal-poc-secret-2026");
+
+    string userId;
+    using (var scope = factory.Services.CreateScope()) {
+      var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+      var user = new ApplicationUser($"verify_{Guid.NewGuid()}@tai.com", new TenantId(TaiTenantId)) { EmailConfirmed = true };
+      user.StartCustomerOnboarding();
+      await userManager.CreateAsync(user, "Password123!");
+      userId = user.Id;
+    }
+
+    mockOtpService.Setup(x => x.ValidateOtpAsync(userId, "123456", It.IsAny<CancellationToken>()))
+      .ReturnsAsync(true);
+
+    var request = new { UserId = userId, Code = "123456" };
+
+    // Act
+    var response = await client.PostAsJsonAsync("/api/onboarding/verify", request);
+
+    // Assert
+    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+    // Verify User is Active in DB
+    using (var scope = factory.Services.CreateScope()) {
+      var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+      var updatedUser = await userManager.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == userId);
+      Assert.NotNull(updatedUser);
+      Assert.Equal(UserStatus.Active, updatedUser.Status);
+    }
+  }
+
+  [Fact]
+  public async Task Verify_InvalidCode_ReturnsBadRequest() {
+    // Arrange
+    var mockOtpService = new Mock<IOtpService>();
+    var factory = CreateFactoryWithMockAuthAndOtp(mockOtpService);
+    var client = factory.CreateClient(new WebApplicationFactoryClientOptions {
+      BaseAddress = new Uri("http://localhost/")
+    });
+    client.DefaultRequestHeaders.Add("X-Gateway-Secret", Environment.GetEnvironmentVariable("GATEWAY_SECRET") ?? "portal-poc-secret-2026");
+
+    string userId;
+    using (var scope = factory.Services.CreateScope()) {
+      var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+      var user = new ApplicationUser($"verify_fail_{Guid.NewGuid()}@tai.com", new TenantId(TaiTenantId)) { EmailConfirmed = true };
+      user.StartCustomerOnboarding();
+      await userManager.CreateAsync(user, "Password123!");
+      userId = user.Id;
+    }
+
+    mockOtpService.Setup(x => x.ValidateOtpAsync(userId, "000000", It.IsAny<CancellationToken>()))
+      .ReturnsAsync(false);
+
+    var request = new { UserId = userId, Code = "000000" };
+
+    // Act
+    var response = await client.PostAsJsonAsync("/api/onboarding/verify", request);
+
+    // Assert
+    Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+    Assert.Contains("Invalid or expired OTP", result.GetProperty("error").GetString());
   }
 }
 
