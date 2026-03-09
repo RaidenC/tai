@@ -1,4 +1,5 @@
 import { Route } from '@angular/router';
+import { authGuard } from './navigation.guard';
 
 export const appRoutes: Route[] = [
     { 
@@ -15,11 +16,13 @@ export const appRoutes: Route[] = [
     },
     { 
         path: 'admin/approvals', 
-        loadComponent: () => import('./features/onboarding/pages/approvals.page').then(m => m.ApprovalsPage) 
+        loadComponent: () => import('./features/onboarding/pages/approvals.page').then(m => m.ApprovalsPage),
+        canActivate: [authGuard]
     },
     { 
         path: 'users', 
-        loadComponent: () => import('./features/users/users.page').then(m => m.UsersPage) 
+        loadComponent: () => import('./features/users/users.page').then(m => m.UsersPage),
+        canActivate: [authGuard]
     },
     { path: 'unauthorized', redirectTo: '' },
     { path: 'forbidden', redirectTo: '' },

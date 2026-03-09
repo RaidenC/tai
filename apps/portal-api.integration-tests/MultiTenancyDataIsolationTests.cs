@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Tai.Portal.Core.Domain.ValueObjects;
 using Xunit;
@@ -53,7 +54,7 @@ public class MultiTenancyDataIsolationTests : IClassFixture<WebApplicationFactor
     client.DefaultRequestHeaders.Add("X-Gateway-Secret", GatewaySecret);
 
     // 2. Act: Try to fetch ACME's tenant ID directly.
-    var response = await client.GetAsync($"/identity/api/TenantData/tenants/{AcmeTenantId}");
+    var response = await client.GetAsync($"/api/TenantData/tenants/{AcmeTenantId}");
 
     // 3. Assert: Verify we get 404 Not Found.
     Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -68,7 +69,7 @@ public class MultiTenancyDataIsolationTests : IClassFixture<WebApplicationFactor
     client.DefaultRequestHeaders.Add("X-Gateway-Secret", GatewaySecret);
 
     // 2. Act: Try to fetch TAI's admin user ID directly.
-    var response = await client.GetAsync($"/identity/api/TenantData/users/{TaiUserId}");
+    var response = await client.GetAsync($"/api/TenantData/users/{TaiUserId}");
 
     // 3. Assert: Verify we get 404 Not Found.
     Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -83,7 +84,7 @@ public class MultiTenancyDataIsolationTests : IClassFixture<WebApplicationFactor
     client.DefaultRequestHeaders.Add("X-Gateway-Secret", GatewaySecret);
 
     // 2. Act: Fetch our OWN tenant ID.
-    var response = await client.GetAsync($"/identity/api/TenantData/tenants/{TaiTenantId}");
+    var response = await client.GetAsync($"/api/TenantData/tenants/{TaiTenantId}");
 
     // 3. Assert: Success!
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -114,7 +115,7 @@ public class TestAuthStartupFilter : IStartupFilter {
             new Claim(ClaimTypes.Name, "Test User"),
             new Claim("sub", "test-sub")
         };
-        var identity = new ClaimsIdentity(claims, "OpenIddict.Validation.AspNetCore");
+        var identity = new ClaimsIdentity(claims, IdentityConstants.ApplicationScheme);
         context.User = new ClaimsPrincipal(identity);
         await nextMiddleware();
       });

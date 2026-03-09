@@ -13,6 +13,7 @@ export interface PendingUser {
   id: string;
   email: string;
   name: string;
+  status?: string;
 }
 
 /**
@@ -60,5 +61,12 @@ export class OnboardingService {
    */
   public approveUser(userId: string): Observable<any> {
     return this.http.post(`${this.baseUrl}/approve`, { userId });
+  }
+
+  /**
+   * Fetches all users for the current tenant.
+   */
+  public getUsers(): Observable<PendingUser[]> {
+    return this.http.get<PendingUser[]>('/api/users');
   }
 }

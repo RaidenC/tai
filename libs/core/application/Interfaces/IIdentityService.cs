@@ -13,4 +13,5 @@ public interface IIdentityService {
   Task<ApplicationUser?> GetUserByIdAsync(string userId, CancellationToken cancellationToken = default);
   Task<bool> UpdateUserAsync(ApplicationUser user, CancellationToken cancellationToken = default);
   Task<IEnumerable<ApplicationUser>> GetUsersByStatusAndTenantAsync(UserStatus status, TenantId tenantId, int skip, int take, CancellationToken cancellationToken = default);
+  Task<IEnumerable<ApplicationUser>> GetUsersByTenantAsync(TenantId tenantId, int skip, int take, CancellationToken cancellationToken = default);
 }

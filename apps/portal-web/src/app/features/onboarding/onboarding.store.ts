@@ -1,6 +1,7 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { OnboardingService, RegistrationRequest, PendingUser } from './onboarding.service';
 import { finalize } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 
 export type OnboardingStatus = 'Idle' | 'Loading' | 'Success' | 'Error';
 
@@ -23,12 +24,14 @@ export class OnboardingStore {
 
   // --- Internal State (Private Signals) ---
   private readonly _pendingUsers = signal<PendingUser[]>([]);
+  private readonly _allUsers = signal<PendingUser[]>([]);
   private readonly _status = signal<OnboardingStatus>('Idle');
   private readonly _errorMessage = signal<string | null>(null);
   private readonly _registeredUserId = signal<string | null>(null);
 
   // --- Public Read-Only State (Exposed Signals) ---
   public readonly pendingUsers = this._pendingUsers.asReadonly();
+  public readonly allUsers = this._allUsers.asReadonly();
   public readonly status = this._status.asReadonly();
   public readonly errorMessage = this._errorMessage.asReadonly();
 
@@ -48,13 +51,19 @@ export class OnboardingStore {
         // Status remains 'Success' or 'Error' after completion
       }))
       .subscribe({
-        next: (response) => {
-          this._registeredUserId.set(response);
+        next: (response: { userId: string }) => {
+          this._registeredUserId.set(response.userId);
           this._status.set('Success');
         },
-        error: (err) => {
+        error: (err: HttpErrorResponse) => {
           this._status.set('Error');
-          this._errorMessage.set(err.message || 'Registration failed.');
+          let message = 'Registration failed.';
+          if (err.error?.detail) {
+            message = err.error.detail;
+          } else if (err.error?.errors) {
+            message = Object.values(err.error.errors).flat().join(', ');
+          }
+          this._errorMessage.set(message);
         }
       });
   }
@@ -78,9 +87,13 @@ export class OnboardingStore {
         next: () => {
           this._status.set('Success');
         },
-        error: (err) => {
+        error: (err: HttpErrorResponse) => {
           this._status.set('Error');
-          this._errorMessage.set(err.message || 'Verification failed.');
+          let message = 'Verification failed.';
+          if (err.error?.detail) {
+            message = err.error.detail;
+          }
+          this._errorMessage.set(message);
         }
       });
   }
@@ -97,9 +110,28 @@ export class OnboardingStore {
           this._pendingUsers.set(users);
           this._status.set('Success');
         },
-        error: (err) => {
+        error: (err: HttpErrorResponse) => {
           this._status.set('Error');
-          this._errorMessage.set(err.message || 'Failed to load pending users.');
+          this._errorMessage.set(err.error?.detail || 'Failed to load pending users.');
+        }
+      });
+  }
+
+  /**
+   * Refreshes the list of all users.
+   */
+  public loadUsers(): void {
+    this._status.set('Loading');
+    
+    this.onboardingService.getUsers()
+      .subscribe({
+        next: (users) => {
+          this._allUsers.set(users);
+          this._status.set('Success');
+        },
+        error: (err: HttpErrorResponse) => {
+          this._status.set('Error');
+          this._errorMessage.set(err.error?.detail || 'Failed to load users.');
         }
       });
   }
@@ -115,9 +147,9 @@ export class OnboardingStore {
         next: () => {
           this.loadPendingApprovals(); // Refresh the list after successful approval
         },
-        error: (err) => {
+        error: (err: HttpErrorResponse) => {
           this._status.set('Error');
-          this._errorMessage.set(err.message || 'Approval failed.');
+          this._errorMessage.set(err.error?.detail || 'Approval failed.');
         }
       });
   }

@@ -58,7 +58,7 @@ public class AuthorizationController : Controller {
       return Challenge(
           authenticationSchemes: IdentityConstants.ApplicationScheme,
           properties: new AuthenticationProperties {
-            RedirectUri = Request.PathBase + Request.Path + QueryString.Create(
+            RedirectUri = Request.Path + QueryString.Create(
                   Request.HasFormContentType ? Request.Form.ToList() : Request.Query.ToList())
           });
     }
@@ -71,7 +71,7 @@ public class AuthorizationController : Controller {
       return Challenge(
           authenticationSchemes: IdentityConstants.ApplicationScheme,
           properties: new AuthenticationProperties {
-            RedirectUri = Request.PathBase + Request.Path + QueryString.Create(
+            RedirectUri = Request.Path + QueryString.Create(
                   Request.HasFormContentType ? Request.Form.ToList() : Request.Query.ToList())
           });
     }

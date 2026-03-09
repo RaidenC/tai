@@ -10,13 +10,12 @@ import { test, expect } from '@playwright/test';
  * We check if the API gives us back the right "Secret ID" for each one.
  */
 test.describe('Multi-Tenancy Isolation', () => {
-  const API_URL = 'http://localhost:5031'; // Direct API for diagnostic verification
+  const API_URL = 'http://localhost:5217'; // Gateway for diagnostic verification
 
   test('should resolve to TAI Tenant for localhost', async ({ request }) => {
     const response = await request.get(`${API_URL}/identity/diag/headers`, {
       headers: {
         'Host': 'localhost',
-        'X-Gateway-Secret': process.env['GATEWAY_SECRET'] || 'portal-poc-secret-2026'
       }
     });
 
@@ -31,7 +30,6 @@ test.describe('Multi-Tenancy Isolation', () => {
     const response = await request.get(`${API_URL}/identity/diag/headers`, {
       headers: {
         'Host': 'acme.localhost',
-        'X-Gateway-Secret': process.env['GATEWAY_SECRET'] || 'portal-poc-secret-2026'
       }
     });
 
@@ -50,7 +48,6 @@ test.describe('Multi-Tenancy Isolation', () => {
     const response = await request.get(`${API_URL}/identity/diag/user/${ACME_USER_ID}`, {
       headers: {
         'X-Tenant-Host': 'localhost',
-        'X-Gateway-Secret': process.env['GATEWAY_SECRET'] || 'portal-poc-secret-2026'
       }
     });
 
@@ -60,7 +57,8 @@ test.describe('Multi-Tenancy Isolation', () => {
   });
 
   test('should reject requests without a valid gateway secret', async ({ request }) => {
-    const response = await request.get(`${API_URL}/identity/diag/headers`, {
+    const DIRECT_API_URL = 'http://localhost:5031';
+    const response = await request.get(`${DIRECT_API_URL}/diag/headers`, {
       headers: {
         'Host': 'localhost',
         'X-Gateway-Secret': 'WRONG'

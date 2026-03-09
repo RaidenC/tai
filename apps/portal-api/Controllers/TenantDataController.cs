@@ -8,7 +8,7 @@ using OpenIddict.Validation.AspNetCore;
 
 namespace Tai.Portal.Api.Controllers;
 
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+[Authorize(AuthenticationSchemes = $"{OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme},Identity.Application")]
 [Route("api/[controller]")]
 public class TenantDataController : Controller {
   private readonly PortalDbContext _context;

@@ -50,4 +50,14 @@ public class IdentityService : IIdentityService {
       .Take(take)
       .ToListAsync(cancellationToken);
   }
+
+  public async Task<IEnumerable<ApplicationUser>> GetUsersByTenantAsync(TenantId tenantId, int skip, int take, CancellationToken cancellationToken = default) {
+    return await _userManager.Users
+      .IgnoreQueryFilters()
+      .Where(u => u.TenantId == tenantId)
+      .OrderBy(u => u.UserName)
+      .Skip(skip)
+      .Take(take)
+      .ToListAsync(cancellationToken);
+  }
 }

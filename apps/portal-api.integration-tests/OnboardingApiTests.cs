@@ -39,6 +39,8 @@ public class OnboardingApiTests : IClassFixture<WebApplicationFactory<Program>> 
     _factory = factory;
   }
 
+  private record RegisterResponse(string UserId);
+
   private WebApplicationFactory<Program> CreateFactoryWithMockAuthAndOtp(Mock<IOtpService> mockOtpService, string? overrideUserId = null) {
     return _factory.WithWebHostBuilder(builder => {
       builder.ConfigureTestServices(services => {
@@ -47,8 +49,24 @@ public class OnboardingApiTests : IClassFixture<WebApplicationFactory<Program>> 
 
         var userId = overrideUserId ?? TaiAdminId;
 
-        // Use a StartupFilter to set context.User directly, avoiding scheme conflicts
-        services.AddTransient<IStartupFilter>(sp => new DynamicTestAuthStartupFilter(userId));
+        // Add a mock authentication handler with a UNIQUE name for tests
+        services.AddAuthentication(options => {
+          options.DefaultAuthenticateScheme = "IntegrationTestAuth";
+          options.DefaultChallengeScheme = "IntegrationTestAuth";
+        })
+        .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("IntegrationTestAuth", options => { });
+
+        // Override the DefaultPolicy to use our test scheme
+        services.AddAuthorization(options => {
+          options.DefaultPolicy = new AuthorizationPolicyBuilder()
+              .AddAuthenticationSchemes("IntegrationTestAuth")
+              .RequireAuthenticatedUser()
+              .Build();
+        });
+
+        // We also need to provide the UserId to the handler
+        services.AddSingleton(new TestUserContext { UserId = userId });
+
         services.AddSingleton<IAuthorizationHandler, AllowAnonymousAuthorizationHandler>();
         services.AddSingleton<IAuthorizationService, BypassAuthorizationService>();
       });
@@ -71,7 +89,9 @@ public class OnboardingApiTests : IClassFixture<WebApplicationFactory<Program>> 
 
     // Assert
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    var userId = await response.Content.ReadAsStringAsync();
+    var result = await response.Content.ReadFromJsonAsync<RegisterResponse>();
+    Assert.NotNull(result);
+    var userId = result.UserId;
     Assert.False(string.IsNullOrEmpty(userId));
 
     // Verify side-effects (OTP generated)
@@ -201,24 +221,33 @@ public class OnboardingApiTests : IClassFixture<WebApplicationFactory<Program>> 
   }
 }
 
-public class DynamicTestAuthStartupFilter : IStartupFilter {
-  private readonly string _userId;
-  public DynamicTestAuthStartupFilter(string userId) => _userId = userId;
+public class TestUserContext {
+  public string UserId { get; set; } = string.Empty;
+}
 
-  public Action<Microsoft.AspNetCore.Builder.IApplicationBuilder> Configure(Action<Microsoft.AspNetCore.Builder.IApplicationBuilder> next) {
-    return builder => {
-      builder.Use(async (context, nextMiddleware) => {
-        var claims = new[] {
-            new Claim(ClaimTypes.NameIdentifier, _userId),
-            new Claim(ClaimTypes.Name, "Test User"),
-            new Claim("sub", _userId)
-        };
-        var identity = new ClaimsIdentity(claims, OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
-        context.User = new ClaimsPrincipal(identity);
-        await nextMiddleware();
-      });
-      next(builder);
+public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions> {
+  private readonly TestUserContext _userContext;
+
+  public TestAuthHandler(
+      IOptionsMonitor<AuthenticationSchemeOptions> options,
+      ILoggerFactory logger,
+      UrlEncoder encoder,
+      TestUserContext userContext)
+      : base(options, logger, encoder) {
+    _userContext = userContext;
+  }
+
+  protected override Task<AuthenticateResult> HandleAuthenticateAsync() {
+    var claims = new[] {
+        new Claim(ClaimTypes.NameIdentifier, _userContext.UserId),
+        new Claim(ClaimTypes.Name, "Test User"),
+        new Claim("sub", _userContext.UserId)
     };
+    var identity = new ClaimsIdentity(claims, Scheme.Name);
+    var principal = new ClaimsPrincipal(identity);
+    var ticket = new AuthenticationTicket(principal, Scheme.Name);
+
+    return Task.FromResult(AuthenticateResult.Success(ticket));
   }
 }
 

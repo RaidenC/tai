@@ -11,7 +11,7 @@ using Tai.Portal.Core.Domain.ValueObjects;
 
 namespace Tai.Portal.Core.Application.UseCases.Onboarding;
 
-public record UserSummaryDto(string Id, string Email, UserStatus Status);
+public record UserSummaryDto(string Id, string Email, string Name, string Status);
 
 public record GetPendingApprovalsQuery(Guid TenantId, int Page = 1, int PageSize = 10) : IRequest<List<UserSummaryDto>>;
 
@@ -33,7 +33,7 @@ public class GetPendingApprovalsQueryHandler : IRequestHandler<GetPendingApprova
       cancellationToken);
 
     var pendingUsers = users
-      .Select(u => new UserSummaryDto(u.Id, u.Email, u.Status))
+      .Select(u => new UserSummaryDto(u.Id, u.Email ?? u.UserName ?? "Unknown", u.Email ?? u.UserName ?? "Unknown", u.Status.ToString()))
       .ToList();
 
     return pendingUsers;
