@@ -1,0 +1,144 @@
+import { test, expect } from '@playwright/test';
+
+/**
+ * Onboarding "Steel Thread" E2E Tests
+ * 
+ * Persona: New Banking Customer / Staff Member / Tenant Admin
+ * Context: Full end-to-end flow from registration to active state.
+ */
+test.describe('User Onboarding Flows', () => {
+  const TAI_URL = 'http://localhost:4200';
+  const ACME_URL = 'http://acme.localhost:4200';
+  const API_URL = 'http://localhost:5217'; // Gateway
+  const GATEWAY_SECRET = process.env['GATEWAY_SECRET'] || 'portal-poc-secret-2026';
+
+  test('Customer Self-Service: Should register, verify OTP, and reach success state', async ({ page, request }) => {
+    const email = `customer_${Date.now()}@tai.com`;
+
+    // 1. Navigate to Portal and start registration
+    await page.goto(TAI_URL);
+    
+    // 2. Click "Create New Account" directly on the Portal home page
+    await page.getByRole('button', { name: /Create New Account/i }).click();
+    await expect(page).toHaveURL(/\/register/);
+
+    // 3. Fill Registration Form
+    await page.getByLabel(/First Name/i).fill('E2E');
+    await page.getByLabel(/Last Name/i).fill('Customer');
+    await page.getByLabel(/Email Address/i).fill(email);
+    await page.getByLabel(/Password/i).fill('Password123!');
+    
+    // Intercept registration response
+    const registerResponsePromise = page.waitForResponse(r => r.url().includes('/api/onboarding/register'));
+    await page.getByRole('button', { name: /Register Account/i }).click();
+    const registerResponse = await registerResponsePromise;
+    expect(registerResponse.ok()).toBeTruthy();
+
+    // 4. Should be redirected to /verify
+    await expect(page).toHaveURL(/\/verify/);
+
+    // 5. Retrieve OTP from Diag Endpoint (via email)
+    // Wait for registration to complete in backend
+    await page.waitForTimeout(2000);
+    const otpResponse = await request.get(`${API_URL}/identity/diag/otp-by-email?email=${encodeURIComponent(email)}`, {
+      headers: {
+        'X-Gateway-Secret': GATEWAY_SECRET
+      }
+    });
+    
+    if (!otpResponse.ok()) {
+      console.error(`OTP Fetch failed with status ${otpResponse.status()}`);
+      console.error(await otpResponse.text());
+    }
+    expect(otpResponse.ok()).toBeTruthy();
+    const { code } = await otpResponse.json();
+
+    // 6. Enter OTP
+    const otpInputs = page.locator('tai-otp-verification-form input[type="text"]');
+    for (let i = 0; i < 6; i++) {
+      await otpInputs.nth(i).fill(code[i]);
+    }
+    await page.getByRole('button', { name: /Verify Account/i }).click();
+
+    // 7. Should reach Success / Passkey setup page
+    await expect(page).toHaveURL(/\/create-passkey/, { timeout: 10000 });
+    await expect(page.locator('h2')).toContainText(/Secure Your Account/i);
+  });
+
+  test('Staff Approval: Should require admin approval before OTP verification', async ({ page, request }) => {
+    const email = `staff_${Date.now()}@acme.com`;
+
+    // 1. Register as Staff at ACME Subdomain
+    await page.goto(ACME_URL);
+    await page.getByRole('button', { name: /Create New Account/i }).click();
+    await expect(page).toHaveURL(/\/register/);
+    
+    await page.getByLabel(/First Name/i).fill('E2E');
+    await page.getByLabel(/Last Name/i).fill('Staff');
+    await page.getByLabel(/Email Address/i).fill(email);
+    await page.getByLabel(/Password/i).fill('Password123!');
+    
+    const registerResponsePromise = page.waitForResponse(r => r.url().includes('/api/onboarding/register'));
+    await page.getByRole('button', { name: /Register Account/i }).click();
+    const registerResponse = await registerResponsePromise;
+    expect(registerResponse.ok()).toBeTruthy();
+
+    // 2. Should be redirected to /verify
+    await expect(page).toHaveURL(/\/verify/);
+    
+    // 3. Admin Login (ACME Tenant)
+    const adminPage = await page.context().newPage();
+    await adminPage.goto(ACME_URL);
+    await adminPage.getByRole('button', { name: /Sign In with TAI Identity/i }).click();
+    await adminPage.getByLabel(/Corporate Email/i).fill('admin@acme.com');
+    await adminPage.getByLabel(/Password/i).fill('Password123!');
+    await adminPage.getByRole('button', { name: /Sign In to Portal/i }).click();
+
+    // 4. Navigate to Approvals
+    await expect(adminPage.locator('tai-sidebar')).toBeVisible();
+    await adminPage.locator('button.sidebar-menu-item', { hasText: 'Approvals' }).click();
+    await expect(adminPage).toHaveURL(/\/admin\/approvals/);
+
+    // 5. Approve the new staff member
+    const row = adminPage.locator('tr', { hasText: email });
+    await row.getByRole('button', { name: /Approve/i }).click();
+    await expect(row).toBeHidden(); 
+
+    // 6. Now the staff member can verify OTP
+    await page.waitForTimeout(2000);
+    const otpResponse = await request.get(`${API_URL}/identity/diag/otp-by-email?email=${encodeURIComponent(email)}`, {
+      headers: {
+        'X-Gateway-Secret': GATEWAY_SECRET
+      }
+    });
+    expect(otpResponse.ok()).toBeTruthy();
+    const { code } = await otpResponse.json();
+
+    const otpInputs = page.locator('tai-otp-verification-form input[type="text"]');
+    for (let i = 0; i < 6; i++) {
+      await otpInputs.nth(i).fill(code[i]);
+    }
+    await page.getByRole('button', { name: /Verify Account/i }).click();
+
+    // 7. Success
+    await expect(page).toHaveURL(/\/create-passkey/, { timeout: 10000 });
+  });
+
+  test('User Directory: Should enforce tenant isolation', async ({ page }) => {
+    // 1. Login as TAI Admin
+    await page.goto(TAI_URL);
+    await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click();
+    await page.getByLabel(/Corporate Email/i).fill('admin@tai.com');
+    await page.getByLabel(/Password/i).fill('Password123!');
+    await page.getByRole('button', { name: /Sign In to Portal/i }).click();
+
+    // 2. Navigate to Users
+    await expect(page.locator('tai-sidebar')).toBeVisible();
+    await page.locator('button.sidebar-menu-item', { hasText: 'Users' }).click();
+    await expect(page).toHaveURL(/\/users/);
+
+    // 3. Verify visibility
+    await expect(page.locator('tbody')).toContainText('admin@tai.com');
+    await expect(page.locator('tbody')).not.toContainText('admin@acme.com');
+  });
+});

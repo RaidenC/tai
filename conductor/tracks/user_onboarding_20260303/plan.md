@@ -53,15 +53,15 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 5: UI Components & Integration (Frontend)' (Protocol in workflow.md) 9165a91
 
 ## Phase 6: End-to-End Verification & Testing Backfill
-- [ ] Task: Backfill Backend Unit & Integration Tests
-    - [ ] Implement `GetUsersQueryHandlerTests.cs` for backend filtering and isolation.
-    - [ ] Implement `OnboardingApiTests.cs` coverage for the `/verify` endpoint.
-    - [ ] Implement `UsersApiTests.cs` for directory isolation verification.
-- [ ] Task: Backfill Frontend Unit Tests
-    - [ ] Implement `.spec.ts` for registration, verify, approvals, and users pages.
-    - [ ] Implement `navigation.guard.spec.ts`.
-- [ ] Task: Playwright "Steel Thread" Tests
-    - [ ] Scenario: Customer Self-Service (Register -> Verify -> Success).
-    - [ ] Scenario: Staff Approval (Register -> Admin Login -> Approve -> Verify -> Success).
-    - [ ] Scenario: User Directory Isolation (Admin only sees their tenant users).
-- [ ] Task: Conductor - User Manual Verification 'Phase 6: End-to-End Verification' (Protocol in workflow.md)
+- [x] Task: Backfill Backend Unit & Integration Tests
+    - [x] Implement `GetUsersQueryHandlerTests.cs` for backend filtering and isolation.
+    - [x] Implement `OnboardingApiTests.cs` coverage for the `/verify` endpoint.
+    - [x] Implement `UsersApiTests.cs` for directory isolation verification.
+- [x] Task: Backfill Frontend Unit Tests
+    - [x] Implement `.spec.ts` for registration, verify, approvals, and users pages.
+    - [x] Implement `navigation.guard.spec.ts`.
+- [x] Task: Playwright "Steel Thread" Tests
+    - [x] Scenario: Customer Self-Service (Register -> Verify -> Success).
+    - [x] Scenario: Staff Approval (Register -> Admin Login -> Approve -> Verify -> Success).
+    - [x] Scenario: User Directory Isolation (Admin only sees their tenant users).
+- [x] Task: Conductor - User Manual Verification 'Phase 6: End-to-End Verification' (Protocol in workflow.md)

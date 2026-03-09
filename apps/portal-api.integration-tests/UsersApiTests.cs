@@ -62,7 +62,7 @@ public class UsersApiTests : IClassFixture<WebApplicationFactory<Program>> {
     var client = factory.CreateClient(new WebApplicationFactoryClientOptions {
       BaseAddress = new Uri("http://localhost/")
     });
-    client.DefaultRequestHeaders.Add("X-Gateway-Secret", "portal-poc-secret-2026");
+    client.DefaultRequestHeaders.Add("X-Gateway-Secret", Environment.GetEnvironmentVariable("GATEWAY_SECRET") ?? "portal-poc-secret-2026");
 
     // 1. Seed users for both tenants
     using (var scope = factory.Services.CreateScope()) {
