@@ -94,7 +94,10 @@ test.describe('User Onboarding Flows', () => {
     await expect(adminPage).toHaveURL(/\/admin\/approvals/);
 
     // 5. Approve the new staff member
+    // The list might need a moment to fetch the very latest data from the DB
+    await adminPage.reload(); 
     const row = adminPage.locator('tr', { hasText: email });
+    await expect(row).toBeVisible({ timeout: 10000 });
     await row.getByRole('button', { name: /Approve/i }).click();
     await expect(row).toBeHidden(); 
 

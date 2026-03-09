@@ -34,12 +34,26 @@ public class OnboardingController : ControllerBase {
     }
   }
 
+  public record RegistrationRequest(string Email, string Password, string FirstName, string LastName);
+
   [HttpPost("register")]
   [AllowAnonymous]
-  public async Task<IActionResult> Register([FromBody] RegisterCustomerCommand command) {
-    var resolvedCommand = command with { TenantId = _tenantService.TenantId.Value };
-    var userId = await _mediator.Send(resolvedCommand);
-    return Ok(new { userId });
+  public async Task<IActionResult> Register([FromBody] RegistrationRequest request) {
+    var tenantId = _tenantService.TenantId.Value;
+    
+    // Simple heuristic: if the email matches the tenant domain, it's staff
+    // In a real app, this might be a toggle in the UI or a more complex rule.
+    bool isStaff = request.Email.EndsWith("@tai.com") || request.Email.EndsWith("@acme.com");
+
+    if (isStaff) {
+      var command = new RegisterStaffCommand(tenantId, request.Email, request.Password, request.FirstName, request.LastName);
+      var userId = await _mediator.Send(command);
+      return Ok(new { userId });
+    } else {
+      var command = new RegisterCustomerCommand(tenantId, request.Email, request.Password, request.FirstName, request.LastName);
+      var userId = await _mediator.Send(command);
+      return Ok(new { userId });
+    }
   }
 
   [HttpGet("pending-approvals")]

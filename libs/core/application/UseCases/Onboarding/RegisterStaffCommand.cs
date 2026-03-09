@@ -10,13 +10,15 @@ using Tai.Portal.Core.Domain.ValueObjects;
 
 namespace Tai.Portal.Core.Application.UseCases.Onboarding;
 
-public record RegisterStaffCommand(Guid TenantId, string Email, string Password) : IRequest<string>;
+public record RegisterStaffCommand(Guid TenantId, string Email, string Password, string FirstName, string LastName) : IRequest<string>;
 
 public class RegisterStaffCommandValidator : AbstractValidator<RegisterStaffCommand> {
   public RegisterStaffCommandValidator() {
     RuleFor(x => x.TenantId).NotEmpty();
     RuleFor(x => x.Email).NotEmpty().EmailAddress();
     RuleFor(x => x.Password).NotEmpty();
+    RuleFor(x => x.FirstName).NotEmpty();
+    RuleFor(x => x.LastName).NotEmpty();
   }
 }
 
@@ -32,7 +34,8 @@ public class RegisterStaffCommandHandler : IRequestHandler<RegisterStaffCommand,
   public async Task<string> Handle(RegisterStaffCommand request, CancellationToken cancellationToken) {
     var tenantId = new TenantId(request.TenantId);
     var user = new ApplicationUser(request.Email, tenantId) {
-      Email = request.Email
+      Email = request.Email,
+      UserName = request.Email
     };
 
     // Use the Domain method to initiate the state machine for a staff member
