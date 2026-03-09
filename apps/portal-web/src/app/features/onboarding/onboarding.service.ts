@@ -16,6 +16,10 @@ export interface PendingUser {
   status?: string;
 }
 
+export interface RegistrationResponse {
+  userId: string;
+}
+
 /**
  * OnboardingService
  * 
@@ -38,15 +42,15 @@ export class OnboardingService {
   /**
    * Registers a new customer (Self-service).
    */
-  public register(request: RegistrationRequest): Observable<any> {
-    return this.http.post(`${this.baseUrl}/register`, request);
+  public register(request: RegistrationRequest): Observable<RegistrationResponse> {
+    return this.http.post<RegistrationResponse>(`${this.baseUrl}/register`, request);
   }
 
   /**
    * Verifies the 6-digit OTP for a user.
    */
-  public verifyOtp(userId: string, code: string): Observable<any> {
-    return this.http.post(`${this.baseUrl}/verify`, { userId, code });
+  public verifyOtp(userId: string, code: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/verify`, { userId, code });
   }
 
   /**
@@ -59,8 +63,8 @@ export class OnboardingService {
   /**
    * Approves a pending staff/admin account.
    */
-  public approveUser(userId: string): Observable<any> {
-    return this.http.post(`${this.baseUrl}/approve`, { userId });
+  public approveUser(userId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/approve`, { userId });
   }
 
   /**

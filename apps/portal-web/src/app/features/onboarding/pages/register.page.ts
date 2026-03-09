@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { RegistrationFormComponent } from '@tai/ui-design-system';
 import { OnboardingStore } from '../onboarding.store';
+import { RegistrationRequest } from '../onboarding.service';
 
 @Component({
   selector: 'app-register-page',
@@ -36,7 +37,7 @@ export class RegisterPage {
     });
   }
 
-  onRegister(data: any) {
+  onRegister(data: RegistrationRequest) {
     this.store.register(data);
   }
 }

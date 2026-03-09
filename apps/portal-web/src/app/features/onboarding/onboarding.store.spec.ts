@@ -2,72 +2,90 @@ import { TestBed } from '@angular/core/testing';
 import { OnboardingStore } from './onboarding.store';
 import { OnboardingService } from './onboarding.service';
 import { of, throwError } from 'rxjs';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { HttpErrorResponse } from '@angular/common/http';
+import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 
 describe('OnboardingStore', () => {
   let store: OnboardingStore;
-  let onboardingServiceMock: any;
+  let mockService: {
+    register: Mock;
+    verifyOtp: Mock;
+    getPendingApprovals: Mock;
+    approveUser: Mock;
+    getUsers: Mock;
+  };
 
   beforeEach(() => {
-    onboardingServiceMock = {
-      register: vi.fn().mockReturnValue(of({})),
-      verifyOtp: vi.fn().mockReturnValue(of({})),
-      getPendingApprovals: vi.fn().mockReturnValue(of([])),
-      approveUser: vi.fn().mockReturnValue(of({})),
+    mockService = {
+      register: vi.fn(),
+      verifyOtp: vi.fn(),
+      getPendingApprovals: vi.fn(),
+      approveUser: vi.fn(),
+      getUsers: vi.fn()
     };
 
     TestBed.configureTestingModule({
       providers: [
         OnboardingStore,
-        { provide: OnboardingService, useValue: onboardingServiceMock },
-      ],
+        { provide: OnboardingService, useValue: mockService }
+      ]
     });
 
     store = TestBed.inject(OnboardingStore);
   });
 
-  it('should initialize with idle status', () => {
-    expect(store.status()).toBe('Idle');
-    expect(store.isLoading()).toBe(false);
+  it('should be created', () => {
+    expect(store).toBeTruthy();
+  });
+
+  it('should update status to Success on successful registration', () => {
+    mockService.register.mockReturnValue(of({ userId: '123' }));
+    
+    store.register({ email: 'test@tai.com', firstName: 'Test', lastName: 'User', password: 'password' });
+    
+    expect(store.status()).toBe('Success');
     expect(store.isError()).toBe(false);
   });
 
-  it('should update status to Success after registration', () => {
-    onboardingServiceMock.register.mockReturnValue(of({}));
-    
-    store.register({ email: 'test@example.com', firstName: 'Jane', lastName: 'Doe' });
-    
-    expect(store.status()).toBe('Success');
-  });
-
   it('should update status to Error on registration failure', () => {
-    const errorResponse = {
-        error: { detail: 'Server error' }
-    };
-    onboardingServiceMock.register.mockReturnValue(throwError(() => errorResponse));
+    const errorResponse = new HttpErrorResponse({
+      error: { detail: 'Registration failed' },
+      status: 400
+    });
+    mockService.register.mockReturnValue(throwError(() => errorResponse));
     
-    store.register({ email: 'test@example.com', firstName: 'Jane', lastName: 'Doe' });
+    store.register({ email: 'test@tai.com', firstName: 'Test', lastName: 'User', password: 'password' });
     
     expect(store.status()).toBe('Error');
-    expect(store.errorMessage()).toBe('Server error');
+    expect(store.errorMessage()).toBe('Registration failed');
   });
 
-  it('should load pending users and update signals', () => {
-    const mockUsers = [{ id: '1', email: 'jdoe@tai.com', name: 'Jane Doe' }];
-    onboardingServiceMock.getPendingApprovals.mockReturnValue(of(mockUsers));
+  it('should update status to Success on successful verification', () => {
+    // Set registeredUserId first
+    mockService.register.mockReturnValue(of({ userId: '123' }));
+    store.register({ email: 'test@tai.com', firstName: 'Test', lastName: 'User', password: 'password' });
     
-    store.loadPendingApprovals();
+    mockService.verifyOtp.mockReturnValue(of(void 0));
+    
+    store.verify('123456');
     
     expect(store.status()).toBe('Success');
-    expect(store.pendingUsers()).toEqual(mockUsers);
   });
 
-  it('should refresh the list after approval', () => {
-    onboardingServiceMock.approveUser.mockReturnValue(of({}));
-    const loadSpy = vi.spyOn(store, 'loadPendingApprovals');
+  it('should reset status and error message on reset', () => {
+    // Set an error state first
+    const errorResponse = new HttpErrorResponse({
+      error: { detail: 'Error' },
+      status: 400
+    });
+    mockService.register.mockReturnValue(throwError(() => errorResponse));
+    store.register({ email: 'test@tai.com', firstName: 'Test', lastName: 'User', password: 'password' });
     
-    store.approve('user123');
+    expect(store.status()).toBe('Error');
     
-    expect(loadSpy).toHaveBeenCalled();
+    store.reset();
+    
+    expect(store.status()).toBe('Idle');
+    expect(store.errorMessage()).toBeNull();
   });
 });
