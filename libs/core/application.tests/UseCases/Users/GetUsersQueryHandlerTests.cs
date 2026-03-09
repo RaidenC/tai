@@ -49,7 +49,7 @@ public class GetUsersQueryHandlerTests {
     result[0].Id.Should().Be("1");
     result[0].Email.Should().Be("user1@tai.com");
     result[0].Status.Should().Be("Active");
-    
+
     result[1].Id.Should().Be("2");
     result[1].Email.Should().Be("user2@tai.com");
     result[1].Status.Should().Be("PendingVerification");

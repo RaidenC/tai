@@ -68,7 +68,7 @@ public class UsersApiTests : IClassFixture<WebApplicationFactory<Program>> {
     using (var scope = factory.Services.CreateScope()) {
       var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
       var tenantService = scope.ServiceProvider.GetRequiredService<ITenantService>();
-      
+
       // We need to bypass the tenant filter to seed data across tenants
       tenantService.SetTenant(new TenantId(Guid.Empty), isGlobalAccess: true);
 
@@ -87,13 +87,13 @@ public class UsersApiTests : IClassFixture<WebApplicationFactory<Program>> {
     // Assert
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     var users = await response.Content.ReadFromJsonAsync<List<UserDto>>();
-    
+
     Assert.NotNull(users);
     // Should see TAI Admin (pre-seeded) + the new TAI user.
     // Should NOT see any ACME users.
     Assert.All(users, u => {
-        // This is a bit indirect, but we know the emails of our seeded users
-        Assert.DoesNotContain("@acme.com", u.Email);
+      // This is a bit indirect, but we know the emails of our seeded users
+      Assert.DoesNotContain("@acme.com", u.Email);
     });
   }
 }
