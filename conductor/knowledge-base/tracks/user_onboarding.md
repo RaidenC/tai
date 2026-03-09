@@ -11,22 +11,24 @@ In a multi-tenant Fintech environment, onboarding isn't just a simple database `
 
 ```mermaid
 sequenceDiagram
-    participant Browser as Angular (Signals UI)
+    participant Browser as Angular UI
     participant Gateway as YARP Gateway
-    participant API as Portal API (MediatR)
+    participant API as Portal API
     participant DB as PostgreSQL
 
     Browser->>Gateway: POST /api/onboarding/register (DPoP Signed)
     Note over Gateway: Injects X-Gateway-Secret & X-Tenant-Host
     Gateway->>API: Forwards Request
-    Note over API: GatewayTrustMiddleware verifies Secret<br/>TenantResolutionMiddleware sets Context
+    Note over API: GatewayTrustMiddleware verifies Secret
+    Note over API: TenantResolutionMiddleware sets Context
     API->>API: Map to RegisterCustomerCommand
     API->>DB: Execute Command (EF Core)
     Note over DB: Global Query Filters Applied
     DB-->>API: Success (User Status: PendingVerification)
     API-->>Gateway: 200 OK
     Gateway-->>Browser: 200 OK
-    Note over Browser: OnboardingStore updates Status<br/>Effect navigates to /verify
+    Note over Browser: OnboardingStore updates Status
+    Note over Browser: Effect navigates to /verify
 ```
 
 ---
