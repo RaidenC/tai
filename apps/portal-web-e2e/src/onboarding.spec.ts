@@ -10,7 +10,6 @@ test.describe('User Onboarding Flows', () => {
   const TAI_URL = 'http://localhost:4200';
   const ACME_URL = 'http://acme.localhost:4200';
   const API_URL = 'http://localhost:5217'; // Gateway
-  const GATEWAY_SECRET = process.env['GATEWAY_SECRET'] || 'portal-poc-secret-2026';
 
   test('Customer Self-Service: Should register, verify OTP, and reach success state', async ({ page, request }) => {
     const email = `customer_${Date.now()}@tai.com`;
@@ -40,11 +39,7 @@ test.describe('User Onboarding Flows', () => {
     // 5. Retrieve OTP from Diag Endpoint (via email)
     // Wait for registration to complete in backend
     await page.waitForTimeout(2000);
-    const otpResponse = await request.get(`${API_URL}/identity/diag/otp-by-email?email=${encodeURIComponent(email)}`, {
-      headers: {
-        'X-Gateway-Secret': GATEWAY_SECRET
-      }
-    });
+    const otpResponse = await request.get(`${API_URL}/identity/diag/otp-by-email?email=${encodeURIComponent(email)}`);
     
     if (!otpResponse.ok()) {
       console.error(`OTP Fetch failed with status ${otpResponse.status()}`);
@@ -106,11 +101,7 @@ test.describe('User Onboarding Flows', () => {
 
     // 6. Now the staff member can verify OTP
     await page.waitForTimeout(2000);
-    const otpResponse = await request.get(`${API_URL}/identity/diag/otp-by-email?email=${encodeURIComponent(email)}`, {
-      headers: {
-        'X-Gateway-Secret': GATEWAY_SECRET
-      }
-    });
+    const otpResponse = await request.get(`${API_URL}/identity/diag/otp-by-email?email=${encodeURIComponent(email)}`);
     expect(otpResponse.ok()).toBeTruthy();
     const { code } = await otpResponse.json();
 
