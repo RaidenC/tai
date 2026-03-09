@@ -55,7 +55,7 @@ test.describe('User Onboarding Flows', () => {
 
     // 7. Should reach Success / Passkey setup page
     await expect(page).toHaveURL(/\/create-passkey/, { timeout: 10000 });
-    await expect(page.locator('h2')).toContainText(/Secure Your Account/i);
+    await expect(page.locator('h2')).toContainText(/Create Your Passkey/i);
   });
 
   test('Staff Approval: Should require admin approval before OTP verification', async ({ page, request }) => {
