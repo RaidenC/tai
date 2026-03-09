@@ -52,8 +52,16 @@
     - [x] Implement the "Next Action" routing logic: successful OTP verification redirects to `/auth/passkey-setup`.
 - [x] Task: Conductor - User Manual Verification 'Phase 5: UI Components & Integration (Frontend)' (Protocol in workflow.md) 9165a91
 
-## Phase 6: End-to-End Verification
+## Phase 6: End-to-End Verification & Testing Backfill
+- [ ] Task: Backfill Backend Unit & Integration Tests
+    - [ ] Implement `GetUsersQueryHandlerTests.cs` for backend filtering and isolation.
+    - [ ] Implement `OnboardingApiTests.cs` coverage for the `/verify` endpoint.
+    - [ ] Implement `UsersApiTests.cs` for directory isolation verification.
+- [ ] Task: Backfill Frontend Unit Tests
+    - [ ] Implement `.spec.ts` for registration, verify, approvals, and users pages.
+    - [ ] Implement `navigation.guard.spec.ts`.
 - [ ] Task: Playwright "Steel Thread" Tests
-    - [ ] Write and run Playwright E2E tests for the Customer Self-Service workflow.
-    - [ ] Write and run Playwright E2E tests for the Staff Approval workflow.
+    - [ ] Scenario: Customer Self-Service (Register -> Verify -> Success).
+    - [ ] Scenario: Staff Approval (Register -> Admin Login -> Approve -> Verify -> Success).
+    - [ ] Scenario: User Directory Isolation (Admin only sees their tenant users).
 - [ ] Task: Conductor - User Manual Verification 'Phase 6: End-to-End Verification' (Protocol in workflow.md)

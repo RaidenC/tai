@@ -127,10 +127,3 @@ public class TestAuthStartupFilter : IStartupFilter {
 /**
  * BypassAuthorizationService: Always grants access regardless of tokens.
  */
-public class BypassAuthorizationService : IAuthorizationService {
-  public Task<AuthorizationResult> AuthorizeAsync(ClaimsPrincipal user, object? resource, IEnumerable<IAuthorizationRequirement> requirements)
-      => Task.FromResult(AuthorizationResult.Success());
-
-  public Task<AuthorizationResult> AuthorizeAsync(ClaimsPrincipal user, object? resource, string policyName)
-      => Task.FromResult(AuthorizationResult.Success());
-}
