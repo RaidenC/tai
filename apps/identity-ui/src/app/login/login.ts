@@ -64,7 +64,7 @@ export class Login {
    */
   protected get apiLoginUrl(): string {
     const host = window.location.hostname;
-    return `http://${host}:${SYSTEM_CONFIG.gatewayPort}${SYSTEM_CONFIG.identityPath}/Account/Login`;
+    return `http://${host}:${SYSTEM_CONFIG.gatewayPort}/Account/Login`;
   }
 
   /**

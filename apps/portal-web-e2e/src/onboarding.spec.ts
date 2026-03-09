@@ -36,17 +36,19 @@ test.describe('User Onboarding Flows', () => {
     // 4. Should be redirected to /verify
     await expect(page).toHaveURL(/\/verify/);
 
-    // 5. Retrieve OTP from Diag Endpoint (via email)
-    // Wait for registration to complete in backend
-    await page.waitForTimeout(2000);
-    const otpResponse = await request.get(`${API_URL}/identity/diag/otp-by-email?email=${encodeURIComponent(email)}`);
-    
-    if (!otpResponse.ok()) {
-      console.error(`OTP Fetch failed with status ${otpResponse.status()}`);
-      console.error(await otpResponse.text());
-    }
-    expect(otpResponse.ok()).toBeTruthy();
-    const { code } = await otpResponse.json();
+    // 5. Retrieve OTP from Diag Endpoint (via email) with retry
+    let code = '';
+    await expect(async () => {
+      const otpResponse = await request.get(`${API_URL}/identity/diag/otp-by-email?email=${encodeURIComponent(email)}`);
+      if (!otpResponse.ok()) {
+        throw new Error(`OTP not ready yet: ${otpResponse.status()}`);
+      }
+      const data = await otpResponse.json();
+      code = data.code;
+    }).toPass({
+      intervals: [500, 1000, 1000],
+      timeout: 5000
+    });
 
     // 6. Enter OTP
     // The component uses a single input for the full code
@@ -88,7 +90,7 @@ test.describe('User Onboarding Flows', () => {
     await adminPage.getByRole('button', { name: /Sign In to Portal/i }).click();
 
     // 4. Navigate to Approvals
-    await expect(adminPage.locator('tai-sidebar')).toBeVisible();
+    await expect(adminPage.locator('tai-sidebar')).toBeVisible({ timeout: 15000 });
     // Using resilient role-based locator
     await adminPage.getByRole('menuitem', { name: /Approvals/i }).click();
     await expect(adminPage).toHaveURL(/\/admin\/approvals/);
@@ -102,10 +104,18 @@ test.describe('User Onboarding Flows', () => {
     await expect(row).toBeHidden(); 
 
     // 6. Now the staff member can verify OTP
-    await page.waitForTimeout(2000);
-    const otpResponse = await request.get(`${API_URL}/identity/diag/otp-by-email?email=${encodeURIComponent(email)}`);
-    expect(otpResponse.ok()).toBeTruthy();
-    const { code } = await otpResponse.json();
+    let code = '';
+    await expect(async () => {
+      const otpResponse = await request.get(`${API_URL}/identity/diag/otp-by-email?email=${encodeURIComponent(email)}`);
+      if (!otpResponse.ok()) {
+        throw new Error(`OTP not ready yet: ${otpResponse.status()}`);
+      }
+      const data = await otpResponse.json();
+      code = data.code;
+    }).toPass({
+      intervals: [500, 1000, 1000],
+      timeout: 5000
+    });
 
     // Enter OTP using single input
     await page.getByLabel(/Verification Code/i).fill(code);
@@ -124,7 +134,7 @@ test.describe('User Onboarding Flows', () => {
     await page.getByRole('button', { name: /Sign In to Portal/i }).click();
 
     // 2. Navigate to Users
-    await expect(page.locator('tai-sidebar')).toBeVisible();
+    await expect(page.locator('tai-sidebar')).toBeVisible({ timeout: 15000 });
     await page.getByRole('menuitem', { name: /Users/i }).click();
     await expect(page).toHaveURL(/\/users/);
 
