@@ -90,7 +90,7 @@ test.describe('User Onboarding Flows', () => {
     // 4. Navigate to Approvals
     await expect(adminPage.locator('tai-sidebar')).toBeVisible();
     // Using resilient role-based locator
-    await adminPage.getByRole('button', { name: /Approvals/i }).click();
+    await adminPage.getByRole('menuitem', { name: /Approvals/i }).click();
     await expect(adminPage).toHaveURL(/\/admin\/approvals/);
 
     // 5. Approve the new staff member
@@ -122,7 +122,7 @@ test.describe('User Onboarding Flows', () => {
 
     // 2. Navigate to Users
     await expect(page.locator('tai-sidebar')).toBeVisible();
-    await page.getByRole('button', { name: /Users/i }).click();
+    await page.getByRole('menuitem', { name: /Users/i }).click();
     await expect(page).toHaveURL(/\/users/);
 
     // 3. Verify visibility
