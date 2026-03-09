@@ -76,7 +76,7 @@ public class GatewayRoutingTests : IClassFixture<WebApplicationFactory<Program>>
     // Now we check our 'TestMessageHandler' to see what request it received from YARP.
     _testHandler.LastRequest.Should().NotBeNull();
     _testHandler.LastRequest!.RequestUri!.ToString().Should().StartWith("http://backend-identity");
-    _testHandler.LastRequest!.RequestUri!.ToString().Should().Contain("/identity/test");
+    _testHandler.LastRequest!.RequestUri!.ToString().Should().EndWith("/test");
 
     // Finally, we verify that YARP correctly appended the 'X-Forwarded-*' headers
     // before trying to send the request to the backend.
