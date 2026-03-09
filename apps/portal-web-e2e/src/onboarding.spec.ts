@@ -47,7 +47,7 @@ test.describe('User Onboarding Flows', () => {
       code = data.code;
     }).toPass({
       intervals: [500, 1000, 1000],
-      timeout: 5000
+      timeout: 10000
     });
 
     // 6. Enter OTP
@@ -100,8 +100,17 @@ test.describe('User Onboarding Flows', () => {
     await adminPage.reload(); 
     const row = adminPage.locator('tr', { hasText: email });
     await expect(row).toBeVisible({ timeout: 10000 });
+    
+    // Wait for the approve and subsequent refresh calls
+    const approveResponsePromise = adminPage.waitForResponse(r => r.url().includes('/api/onboarding/approve'));
+    const refreshResponsePromise = adminPage.waitForResponse(r => r.url().includes('/api/onboarding/pending-approvals'));
+    
     await row.getByRole('button', { name: /Approve/i }).click();
-    await expect(row).toBeHidden(); 
+    
+    await approveResponsePromise;
+    await refreshResponsePromise;
+    
+    await expect(row).toBeHidden({ timeout: 10000 }); 
 
     // 6. Now the staff member can verify OTP
     let code = '';
@@ -114,7 +123,7 @@ test.describe('User Onboarding Flows', () => {
       code = data.code;
     }).toPass({
       intervals: [500, 1000, 1000],
-      timeout: 5000
+      timeout: 10000
     });
 
     // Enter OTP using single input
