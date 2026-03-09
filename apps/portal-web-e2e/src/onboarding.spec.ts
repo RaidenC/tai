@@ -49,11 +49,9 @@ test.describe('User Onboarding Flows', () => {
     const { code } = await otpResponse.json();
 
     // 6. Enter OTP
-    const otpInputs = page.locator('tai-otp-verification-form input[type="text"]');
-    for (let i = 0; i < 6; i++) {
-      await otpInputs.nth(i).fill(code[i]);
-    }
-    await page.getByRole('button', { name: /Verify Account/i }).click();
+    // The component uses a single input for the full code
+    await page.getByLabel(/Verification Code/i).fill(code);
+    await page.getByRole('button', { name: /Verify Code/i }).click();
 
     // 7. Should reach Success / Passkey setup page
     await expect(page).toHaveURL(/\/create-passkey/, { timeout: 10000 });
@@ -105,11 +103,9 @@ test.describe('User Onboarding Flows', () => {
     expect(otpResponse.ok()).toBeTruthy();
     const { code } = await otpResponse.json();
 
-    const otpInputs = page.locator('tai-otp-verification-form input[type="text"]');
-    for (let i = 0; i < 6; i++) {
-      await otpInputs.nth(i).fill(code[i]);
-    }
-    await page.getByRole('button', { name: /Verify Account/i }).click();
+    // Enter OTP using single input
+    await page.getByLabel(/Verification Code/i).fill(code);
+    await page.getByRole('button', { name: /Verify Code/i }).click();
 
     // 7. Success
     await expect(page).toHaveURL(/\/create-passkey/, { timeout: 10000 });
