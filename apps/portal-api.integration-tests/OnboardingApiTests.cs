@@ -112,7 +112,7 @@ public class OnboardingApiTests : IClassFixture<WebApplicationFactory<Program>> 
     // Arrange
     var mockOtpService = new Mock<IOtpService>();
     var factory = CreateFactoryWithMockAuthAndOtp(mockOtpService);
-    var client = factory.CreateClient(new WebApplicationFactoryClientOptions { 
+    var client = factory.CreateClient(new WebApplicationFactoryClientOptions {
       AllowAutoRedirect = false,
       BaseAddress = new Uri("http://acme.localhost/")
     });
@@ -215,7 +215,7 @@ public class OnboardingApiTests : IClassFixture<WebApplicationFactory<Program>> 
     // Arrange
     var mockOtpService = new Mock<IOtpService>();
     var factory = CreateFactoryWithMockAuthAndOtp(mockOtpService);
-    
+
     // Create an ACME client (authenticating as Acme host)
     var client = factory.CreateClient(new WebApplicationFactoryClientOptions {
       BaseAddress = new Uri("http://acme.localhost/")
@@ -226,10 +226,10 @@ public class OnboardingApiTests : IClassFixture<WebApplicationFactory<Program>> 
     using (var scope = factory.Services.CreateScope()) {
       var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
       var tenantService = scope.ServiceProvider.GetRequiredService<ITenantService>();
-      
+
       // Bypass filters to seed across tenants
       tenantService.SetTenant(new TenantId(Guid.Empty), isGlobalAccess: true);
-      
+
       var email = $"pending_tai_{Guid.NewGuid()}@tai.com";
       var user = new ApplicationUser(email, new TenantId(TaiTenantId)) {
         Email = email,
@@ -248,7 +248,7 @@ public class OnboardingApiTests : IClassFixture<WebApplicationFactory<Program>> 
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     var approvals = await response.Content.ReadFromJsonAsync<List<UserSummaryDto>>();
     Assert.NotNull(approvals);
-    
+
     // Ensure no TAI users leaked into ACME's list
     Assert.All(approvals, u => Assert.DoesNotContain("@tai.com", u.Email));
   }

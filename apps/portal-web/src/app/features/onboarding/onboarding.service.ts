@@ -20,6 +20,13 @@ export interface RegistrationResponse {
   userId: string;
 }
 
+export interface PaginatedUsers {
+  items: PendingUser[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
 /**
  * OnboardingService
  * 
@@ -64,13 +71,13 @@ export class OnboardingService {
    * Approves a pending staff/admin account.
    */
   public approveUser(userId: string): Observable<void> {
-    return this.http.post<void>(`${this.baseUrl}/approve`, { userId });
+    return this.http.post<void>(`${this.baseUrl}/approve`, { targetUserId: userId });
   }
 
   /**
    * Fetches all users for the current tenant.
    */
-  public getUsers(): Observable<PendingUser[]> {
-    return this.http.get<PendingUser[]>('/api/users');
+  public getUsers(page = 1, pageSize = 10): Observable<PaginatedUsers> {
+    return this.http.get<PaginatedUsers>(`/api/users?page=${page}&pageSize=${pageSize}`);
   }
 }

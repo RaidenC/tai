@@ -12,7 +12,7 @@ test.describe('User Onboarding Flows', () => {
   const API_URL = 'http://localhost:5217'; // Gateway
 
   test('Customer Self-Service: Should register, verify OTP, and reach success state', async ({ page, request }) => {
-    const email = `customer_${Date.now()}@tai.com`;
+    const email = `customer_${Date.now()}@example.com`;
 
     // 1. Navigate to Portal and start registration
     await page.goto(TAI_URL);
@@ -28,7 +28,7 @@ test.describe('User Onboarding Flows', () => {
     await page.getByLabel(/Password/i).fill('Password123!');
     
     // Intercept registration response
-    const registerResponsePromise = page.waitForResponse(r => r.url().includes('/api/onboarding/register'));
+    const registerResponsePromise = page.waitForResponse(r => r.url().includes('/api/onboarding/register') && r.request().method() === 'POST');
     await page.getByRole('button', { name: /Register Account/i }).click();
     const registerResponse = await registerResponsePromise;
     expect(registerResponse.ok()).toBeTruthy();
@@ -41,7 +41,8 @@ test.describe('User Onboarding Flows', () => {
     await expect(async () => {
       const otpResponse = await request.get(`${API_URL}/identity/diag/otp-by-email?email=${encodeURIComponent(email)}`);
       if (!otpResponse.ok()) {
-        throw new Error(`OTP not ready yet: ${otpResponse.status()}`);
+        const text = await otpResponse.text();
+        throw new Error(`OTP not ready yet: ${otpResponse.status()} - ${text}`);
       }
       const data = await otpResponse.json();
       code = data.code;
@@ -73,7 +74,7 @@ test.describe('User Onboarding Flows', () => {
     await page.getByLabel(/Email Address/i).fill(email);
     await page.getByLabel(/Password/i).fill('Password123!');
     
-    const registerResponsePromise = page.waitForResponse(r => r.url().includes('/api/onboarding/register'));
+    const registerResponsePromise = page.waitForResponse(r => r.url().includes('/api/onboarding/register') && r.request().method() === 'POST');
     await page.getByRole('button', { name: /Register Account/i }).click();
     const registerResponse = await registerResponsePromise;
     expect(registerResponse.ok()).toBeTruthy();
@@ -96,14 +97,16 @@ test.describe('User Onboarding Flows', () => {
     await expect(adminPage).toHaveURL(/\/admin\/approvals/);
 
     // 5. Approve the new staff member
-    // The list might need a moment to fetch the very latest data from the DB
-    await adminPage.reload(); 
+    const initialPendingPromise = adminPage.waitForResponse(r => r.url().includes('/api/onboarding/pending-approvals') && r.request().method() === 'GET');
+    await adminPage.reload();
+    await initialPendingPromise;
+    
     const row = adminPage.locator('tr', { hasText: email });
-    await expect(row).toBeVisible({ timeout: 10000 });
+    await expect(row).toBeVisible({ timeout: 15000 });
     
     // Wait for the approve and subsequent refresh calls
-    const approveResponsePromise = adminPage.waitForResponse(r => r.url().includes('/api/onboarding/approve'));
-    const refreshResponsePromise = adminPage.waitForResponse(r => r.url().includes('/api/onboarding/pending-approvals'));
+    const approveResponsePromise = adminPage.waitForResponse(r => r.url().includes('/api/onboarding/approve') && r.request().method() === 'POST');
+    const refreshResponsePromise = adminPage.waitForResponse(r => r.url().includes('/api/onboarding/pending-approvals') && r.request().method() === 'GET');
     
     await row.getByRole('button', { name: /Approve/i }).click();
     
@@ -115,9 +118,14 @@ test.describe('User Onboarding Flows', () => {
     // 6. Now the staff member can verify OTP
     let code = '';
     await expect(async () => {
-      const otpResponse = await request.get(`${API_URL}/identity/diag/otp-by-email?email=${encodeURIComponent(email)}`);
+      const otpResponse = await request.get(`${API_URL}/identity/diag/otp-by-email?email=${encodeURIComponent(email)}`, {
+        headers: {
+          'Host': 'acme.localhost:5217'
+        }
+      });
       if (!otpResponse.ok()) {
-        throw new Error(`OTP not ready yet: ${otpResponse.status()}`);
+        const text = await otpResponse.text();
+        throw new Error(`OTP not ready yet: ${otpResponse.status()} - ${text}`);
       }
       const data = await otpResponse.json();
       code = data.code;

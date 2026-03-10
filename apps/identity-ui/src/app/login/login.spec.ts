@@ -83,6 +83,6 @@ describe('Login', () => {
   it('should generate correct apiLoginUrl', () => {
     // @ts-expect-error - access protected
     const url = component.apiLoginUrl;
-    expect(url).toContain(':5217/identity/Account/Login');
+    expect(url).toContain(':5217/Account/Login');
   });
 });

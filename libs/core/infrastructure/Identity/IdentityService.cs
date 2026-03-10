@@ -46,6 +46,7 @@ public class IdentityService : IIdentityService {
     // operations here which will be translated to SQL by EF Core.
     return await _userManager.Users
       .Where(u => u.Status == status && u.TenantId == tenantId)
+      .OrderByDescending(u => u.UserName)
       .Skip(skip)
       .Take(take)
       .ToListAsync(cancellationToken);
@@ -59,5 +60,12 @@ public class IdentityService : IIdentityService {
       .Skip(skip)
       .Take(take)
       .ToListAsync(cancellationToken);
+  }
+
+  public async Task<int> CountUsersByTenantAsync(TenantId tenantId, CancellationToken cancellationToken = default) {
+    return await _userManager.Users
+      .IgnoreQueryFilters()
+      .Where(u => u.TenantId == tenantId)
+      .CountAsync(cancellationToken);
   }
 }

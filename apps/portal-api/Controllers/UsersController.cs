@@ -22,7 +22,7 @@ public class UsersController : ControllerBase {
   }
 
   [HttpGet]
-  public async Task<IActionResult> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 100) {
+  public async Task<IActionResult> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 10) {
     var query = new GetUsersQuery(_tenantService.TenantId.Value, page, pageSize);
     var result = await _mediator.Send(query);
     return Ok(result);

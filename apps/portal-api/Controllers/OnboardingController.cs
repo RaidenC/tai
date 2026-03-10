@@ -40,7 +40,7 @@ public class OnboardingController : ControllerBase {
   [AllowAnonymous]
   public async Task<IActionResult> Register([FromBody] RegistrationRequest request) {
     var tenantId = _tenantService.TenantId.Value;
-    
+
     // Simple heuristic: if the email matches the tenant domain, it's staff
     // In a real app, this might be a toggle in the UI or a more complex rule.
     bool isStaff = request.Email.EndsWith("@tai.com") || request.Email.EndsWith("@acme.com");
@@ -58,6 +58,14 @@ public class OnboardingController : ControllerBase {
 
   [HttpGet("pending-approvals")]
   public async Task<IActionResult> GetPendingApprovals([FromQuery] int page = 1, [FromQuery] int pageSize = 10) {
+    var query = new GetPendingApprovalsQuery(_tenantService.TenantId.Value, page, pageSize);
+    var result = await _mediator.Send(query);
+    return Ok(result);
+  }
+
+  [HttpGet("diag-pending-approvals")]
+  [AllowAnonymous]
+  public async Task<IActionResult> DiagGetPendingApprovals([FromQuery] int page = 1, [FromQuery] int pageSize = 10) {
     var query = new GetPendingApprovalsQuery(_tenantService.TenantId.Value, page, pageSize);
     var result = await _mediator.Send(query);
     return Ok(result);

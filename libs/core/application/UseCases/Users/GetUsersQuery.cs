@@ -12,29 +12,36 @@ namespace Tai.Portal.Core.Application.UseCases.Users;
 
 public record UserDto(string Id, string Email, string Name, string Status);
 
-public record GetUsersQuery(Guid TenantId, int Page = 1, int PageSize = 10) : IRequest<List<UserDto>>;
+public record PaginatedList<T>(List<T> Items, int TotalCount, int Page, int PageSize);
 
-public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, List<UserDto>> {
+public record GetUsersQuery(Guid TenantId, int Page = 1, int PageSize = 10) : IRequest<PaginatedList<UserDto>>;
+
+public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, PaginatedList<UserDto>> {
   private readonly IIdentityService _identityService;
 
   public GetUsersQueryHandler(IIdentityService identityService) {
     _identityService = identityService;
   }
 
-  public async Task<List<UserDto>> Handle(GetUsersQuery request, CancellationToken cancellationToken) {
+  public async Task<PaginatedList<UserDto>> Handle(GetUsersQuery request, CancellationToken cancellationToken) {
     var skip = (request.Page - 1) * request.PageSize;
+    var tenantId = new TenantId(request.TenantId);
 
     var users = await _identityService.GetUsersByTenantAsync(
-      new TenantId(request.TenantId),
+      tenantId,
       skip,
       request.PageSize,
       cancellationToken);
 
-    return users
+    var totalCount = await _identityService.CountUsersByTenantAsync(tenantId, cancellationToken);
+
+    var items = users
       .Select(u => {
         var email = !string.IsNullOrWhiteSpace(u.Email) ? u.Email : (!string.IsNullOrWhiteSpace(u.UserName) ? u.UserName : "No Email");
         return new UserDto(u.Id, email, email, u.Status.ToString());
       })
       .ToList();
+
+    return new PaginatedList<UserDto>(items, totalCount, request.Page, request.PageSize);
   }
 }

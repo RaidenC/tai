@@ -88,4 +88,23 @@ describe('OnboardingStore', () => {
     expect(store.status()).toBe('Idle');
     expect(store.errorMessage()).toBeNull();
   });
+
+  it('should load users with pagination', () => {
+    const mockResponse = {
+      items: [{ id: '1', email: 'test@tai.com', name: 'Test User' }],
+      totalCount: 1,
+      page: 1,
+      pageSize: 10
+    };
+    mockService.getUsers.mockReturnValue(of(mockResponse));
+    
+    store.loadUsers(1, 10);
+    
+    expect(store.allUsers()).toEqual([
+      { id: '1', email: 'test@tai.com', name: 'Test User', status: 'Active' }
+    ]);
+    expect(store.totalUsersCount()).toBe(1);
+    expect(store.currentPage()).toBe(1);
+    expect(store.status()).toBe('Success');
+  });
 });

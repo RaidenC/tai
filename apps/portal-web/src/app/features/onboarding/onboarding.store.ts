@@ -25,6 +25,9 @@ export class OnboardingStore {
   // --- Internal State (Private Signals) ---
   private readonly _pendingUsers = signal<PendingUser[]>([]);
   private readonly _allUsers = signal<PendingUser[]>([]);
+  private readonly _totalUsersCount = signal<number>(0);
+  private readonly _currentPage = signal<number>(1);
+  private readonly _pageSize = signal<number>(10);
   private readonly _status = signal<OnboardingStatus>('Idle');
   private readonly _errorMessage = signal<string | null>(null);
   private readonly _registeredUserId = signal<string | null>(null);
@@ -32,6 +35,9 @@ export class OnboardingStore {
   // --- Public Read-Only State (Exposed Signals) ---
   public readonly pendingUsers = this._pendingUsers.asReadonly();
   public readonly allUsers = this._allUsers.asReadonly();
+  public readonly totalUsersCount = this._totalUsersCount.asReadonly();
+  public readonly currentPage = this._currentPage.asReadonly();
+  public readonly pageSize = this._pageSize.asReadonly();
   public readonly status = this._status.asReadonly();
   public readonly errorMessage = this._errorMessage.asReadonly();
 
@@ -118,15 +124,39 @@ export class OnboardingStore {
   }
 
   /**
-   * Refreshes the list of all users.
+   * Refreshes the list of all users with pagination.
    */
-  public loadUsers(): void {
+  public loadUsers(page?: number, pageSize?: number): void {
+    if (page) this._currentPage.set(page);
+    if (pageSize) this._pageSize.set(pageSize);
+
     this._status.set('Loading');
     
-    this.onboardingService.getUsers()
+    this.onboardingService.getUsers(this._currentPage(), this._pageSize())
       .subscribe({
-        next: (users) => {
-          this._allUsers.set(users);
+        next: (response: any) => {
+          let rawItems: any[] = [];
+          let totalCount = 0;
+
+          if (Array.isArray(response)) {
+            // Old behavior: response is the array
+            rawItems = response;
+            totalCount = response.length;
+          } else if (response) {
+            // New behavior: response is PaginatedList
+            rawItems = response.items || response.Items || [];
+            totalCount = response.totalCount ?? response.TotalCount ?? 0;
+          }
+
+          const items: PendingUser[] = rawItems.map((u: any) => ({
+            id: u.id || u.Id || Math.random().toString(), // Ensure we have an ID for tracking
+            email: u.email || u.Email || 'No Email',
+            name: u.name || u.Name || 'No Name',
+            status: u.status || u.Status || 'Active'
+          }));
+          
+          this._allUsers.set(items);
+          this._totalUsersCount.set(totalCount);
           this._status.set('Success');
         },
         error: (err: HttpErrorResponse) => {
@@ -134,6 +164,19 @@ export class OnboardingStore {
           this._errorMessage.set(err.error?.detail || 'Failed to load users.');
         }
       });
+  }
+
+  public nextPage(): void {
+    const totalPages = Math.ceil(this._totalUsersCount() / this._pageSize());
+    if (this._currentPage() < totalPages) {
+      this.loadUsers(this._currentPage() + 1);
+    }
+  }
+
+  public prevPage(): void {
+    if (this._currentPage() > 1) {
+      this.loadUsers(this._currentPage() - 1);
+    }
   }
 
   /**

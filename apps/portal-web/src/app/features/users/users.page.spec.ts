@@ -11,19 +11,31 @@ describe('UsersPage', () => {
   let fixture: ComponentFixture<UsersPage>;
   let mockStore: {
     allUsers: WritableSignal<PendingUser[]>;
+    totalUsersCount: WritableSignal<number>;
+    currentPage: WritableSignal<number>;
+    pageSize: WritableSignal<number>;
     isLoading: WritableSignal<boolean>;
     isError: WritableSignal<boolean>;
     errorMessage: WritableSignal<string>;
+    status: WritableSignal<string>;
     loadUsers: Mock;
+    nextPage: Mock;
+    prevPage: Mock;
   };
 
   beforeEach(async () => {
     mockStore = {
       allUsers: signal([]),
+      totalUsersCount: signal(0),
+      currentPage: signal(1),
+      pageSize: signal(10),
       isLoading: signal(false),
       isError: signal(false),
       errorMessage: signal(''),
-      loadUsers: vi.fn()
+      status: signal('Idle'),
+      loadUsers: vi.fn(),
+      nextPage: vi.fn(),
+      prevPage: vi.fn()
     };
 
     await TestBed.configureTestingModule({
