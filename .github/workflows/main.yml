@@ -2,9 +2,9 @@ name: TAI Portal CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, 'epic/*' ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, 'epic/*' ]
 
 permissions:
   contents: read
@@ -87,6 +87,7 @@ jobs:
 
   e2e:
     needs: ci
+    if: github.base_ref == 'main' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     
     services:
