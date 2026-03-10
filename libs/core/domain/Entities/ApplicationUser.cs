@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.AspNetCore.Identity;
+using Tai.Portal.Core.Domain.ValueObjects;
+using Tai.Portal.Core.Domain.Interfaces;
 using Tai.Portal.Core.Domain.Enums;
 using Tai.Portal.Core.Domain.Events;
-using Tai.Portal.Core.Domain.Interfaces;
-using Tai.Portal.Core.Domain.ValueObjects;
 
 namespace Tai.Portal.Core.Domain.Entities;
 

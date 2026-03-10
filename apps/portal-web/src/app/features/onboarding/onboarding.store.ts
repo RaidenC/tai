@@ -134,30 +134,26 @@ export class OnboardingStore {
     
     this.onboardingService.getUsers(this._currentPage(), this._pageSize())
       .subscribe({
-        next: (response: Record<string, unknown> | unknown[]) => {
-          let rawItems: unknown[] = [];
+        next: (response: any) => {
+          let rawItems: any[] = [];
           let totalCount = 0;
 
           if (Array.isArray(response)) {
             // Old behavior: response is the array
             rawItems = response;
             totalCount = response.length;
-          } else if (response && typeof response === 'object') {
-            const r = response as Record<string, unknown>;
+          } else if (response) {
             // New behavior: response is PaginatedList
-            rawItems = (r['items'] || r['Items'] || []) as unknown[];
-            totalCount = (r['totalCount'] ?? r['TotalCount'] ?? 0) as number;
+            rawItems = response.items || response.Items || [];
+            totalCount = response.totalCount ?? response.TotalCount ?? 0;
           }
 
-          const items: PendingUser[] = rawItems.map((u: unknown) => {
-            const obj = u as Record<string, unknown>;
-            return {
-              id: (obj['id'] || obj['Id'] || Math.random().toString()) as string, // Ensure we have an ID for tracking
-              email: (obj['email'] || obj['Email'] || 'No Email') as string,
-              name: (obj['name'] || obj['Name'] || 'No Name') as string,
-              status: (obj['status'] || obj['Status'] || 'Active') as string
-            };
-          });
+          const items: PendingUser[] = rawItems.map((u: any) => ({
+            id: u.id || u.Id || Math.random().toString(), // Ensure we have an ID for tracking
+            email: u.email || u.Email || 'No Email',
+            name: u.name || u.Name || 'No Name',
+            status: u.status || u.Status || 'Active'
+          }));
           
           this._allUsers.set(items);
           this._totalUsersCount.set(totalCount);
