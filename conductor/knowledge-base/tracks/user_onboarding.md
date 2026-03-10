@@ -88,3 +88,21 @@ To definitively prove the system's integrity, Phase 6 implemented **"Steel Threa
 
 ## 📅 March 2026 Market Context
 The architecture established in this track represents the absolute cutting edge for .NET 10 / Angular 21 Enterprise applications. Moving away from implicit trust, we enforce **DPoP** on every request, utilize **YARP** for dynamic routing and secret injection, and employ **Playwright** to validate multi-tenant data boundaries from the browser down to the database. This pattern guarantees scalability without compromising on the Zero-Trust security models demanded by modern SOC 2 and PCI-DSS auditors.
+
+---
+
+## 🚀 Post-Implementation Learnings (Phase 5/6 Addendum)
+
+### 1. Eliminating E2E Flakiness & Race Conditions
+*   **Method-Specific Network Waiting:** We found that Playwright's `waitForResponse` matching only URLs is insufficient in a modern SPA. Browsers frequently fire `OPTIONS` preflight requests that accidentally resolve the promise early. We updated locators to strictly require `&& r.request().method() === 'POST'` to ensure we are waiting for the actual data mutation.
+*   **Execution Ordering:** When automating reloads (e.g., `adminPage.reload()`), setting up the `waitForResponse` promise *before* the reload eliminates race conditions where the DOM is parsed before the network finishes hydrating the UI.
+
+### 2. Multi-Tenant E2E Context
+*   **Diagnostic Backdoors:** When a diagnostic endpoint like `/diag/otp-by-email` is queried from Playwright (`http://localhost:5217`), it defaults to the Root/TAI tenant. To fetch data for a user in the ACME tenant, Playwright must explicitly pass `{ headers: { 'Host': 'acme.localhost:5217' } }`. This forces the API's `TenantResolutionMiddleware` to switch context and bypass EF Core's Global Query Filters correctly.
+
+### 3. Server-Side Pagination & Resilient State
+*   **EF Core PostgreSQL Constraints:** When applying `.Skip()` and `.Take()` in Entity Framework against a PostgreSQL backend, a `.OrderBy()` or `.OrderByDescending()` clause is strictly required; otherwise, the database query will throw an exception.
+*   **Store Resilience (Pascal vs. Camel Case):** NativeAOT APIs and certain C# serializers can inadvertently leak PascalCase property names (`Items`, `TotalCount`) instead of standard camelCase. We updated the Angular `OnboardingStore` to implement dual-checks (`response.items || response.Items`) and fallback values to ensure the UI data table gracefully handles any subtle JSON formatting drift from the backend.
+
+### 4. Advanced CLI & Developer Tooling
+*   **Self-Healing Workflows:** We established `.gemini/hooks` configured via `settings.json` in the Gemini CLI. Now, every `write_file` or `replace` operation triggers an automatic `nx affected -t lint test --watch=false` loop. This instantly catches typos and automatically runs `dotnet format whitespace`, enforcing the project's strict `.editorconfig` rules autonomously. Using `CI=1` and `--watch=false` prevents automated agents from hanging in infinite loops.
