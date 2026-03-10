@@ -23,24 +23,26 @@ Before any task implementation begins, a new Feature Track must be initialized:
 
 ### Collaboration & Pull Requests (PR Workflow)
 
-To ensure the integrity of the **Zero-Trust** architecture and maintain a high-quality audit trail, all implementation work must follow a strict branching and Pull Request strategy.
+To ensure the integrity of the **Zero-Trust** architecture and maintain a high-quality audit trail while enabling parallel agent work, all implementation work must follow the **Epic Integration Branch** strategy.
 
-1.  **Phase Isolation:** Never work directly on the `main` branch. Every new phase of a track must be implemented in a dedicated feature branch.
-2.  **Branch Naming:** Use the pattern `feature/<track-id>/phase-<number>`.
-    *   *Example:* `git checkout -b feature/cicd-setup/phase-2`
-3.  **Agent Automation:** When the agent is tasked with implementing a phase (e.g., via `conductor:implement`), the agent will **automatically** perform the following steps:
-    *   Create the feature branch.
-    *   Execute the TDD cycle and implement the tasks.
-    *   Push the branch to the remote repository.
-    *   Notify the user that the branch is ready for a Pull Request.
-4.  **The Pull Request Gate:**
-    *   Open a Pull Request on GitHub from the feature branch to `main`.
-    *   The **TAI Portal CI** pipeline will automatically run.
-    *   **The PR must stay open until the CI turns Green ✅.**
-    *   If the CI fails, the agent will fix the issues on the same branch and push again.
-5.  **Merge & Cleanup:**
-    *   Once the PR is approved and CI is green, merge the PR into `main`.
-    *   Delete the feature branch locally and remotely to keep the workspace clean.
+1.  **Phase Isolation & Epic Branches:**
+    *   **Epic Branch:** For any multi-layered track (e.g., DB + API + UI), always create an integration branch named `epic/<track-id>` from `main`.
+    *   **Feature Branches:** Agents work in dedicated branches named `feature/<track-id>/phase-<number>` created off the current `epic/` branch.
+
+2.  **Agent Automation:**
+    *   When the agent is tasked with implementing a phase (e.g., via `conductor:implement`), it will **automatically**:
+        *   Identify the base branch (the `epic/` branch if it exists, otherwise `main`).
+        *   Create the feature branch from that base.
+        *   Execute the TDD cycle.
+        *   Push the branch and open a PR **targeting the epic branch**.
+
+3.  **The Tiered CI Gate:**
+    *   **PRs to Epic Branch:** The CI pipeline runs **Unit and Integration tests only**. This allows intermediate changes (like a schema update) to merge even if the full E2E suite would fail.
+    *   **PRs to Main Branch:** Once the track is complete, a final PR is opened from `epic/<track-id>` to `main`. This PR triggers the **Full E2E Steel Thread suite**.
+
+4.  **Merge & Cleanup:**
+    *   Once the final PR to `main` is approved and all tests pass, merge into `main`.
+    *   Delete the feature and epic branches locally and remotely.
 
 ### Standard Task Workflow
 
