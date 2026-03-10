@@ -86,9 +86,12 @@ public class UsersApiTests : IClassFixture<WebApplicationFactory<Program>> {
 
     // Assert
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    var users = await response.Content.ReadFromJsonAsync<List<UserDto>>();
+    var result = await response.Content.ReadFromJsonAsync<PaginatedList<UserDto>>();
 
-    Assert.NotNull(users);
+    Assert.NotNull(result);
+    var users = result.Items;
+    Assert.NotEmpty(users);
+
     // Should see TAI Admin (pre-seeded) + the new TAI user.
     // Should NOT see any ACME users.
     Assert.All(users, u => {
