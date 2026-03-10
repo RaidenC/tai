@@ -45,3 +45,4 @@ coverage/
 **/coverage.json
 __screenshots__/
 test-results/.last-run.json
+.worktrees/
