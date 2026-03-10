@@ -31,10 +31,10 @@ public class RegisterCustomerCommandHandlerTests {
   public async Task Handle_ValidCommand_CreatesUserAndStartsOnboarding_AndGeneratesOtp() {
     // Arrange
     var tenantId = Guid.NewGuid();
-    var command = new RegisterCustomerCommand(tenantId, "test@customer.com", "StrongPassword123!");
-
-    _mockIdentityService.Setup(x => x.CreateUserAsync(It.IsAny<ApplicationUser>(), command.Password, It.IsAny<CancellationToken>()))
-      .ReturnsAsync(true)
+    var command = new RegisterCustomerCommand(tenantId, "test@customer.com", "StrongPassword123!", "Test", "Customer");
+    _mockIdentityService
+      .Setup(s => s.CreateUserAsync(It.IsAny<ApplicationUser>(), "StrongPassword123!", It.IsAny<CancellationToken>()))
+      .ReturnsAsync((true, Array.Empty<string>()))
       .Callback<ApplicationUser, string, CancellationToken>((user, pass, token) => {
         user.Email.Should().Be("test@customer.com");
         user.TenantId.Value.Should().Be(tenantId);
@@ -56,27 +56,29 @@ public class RegisterCustomerCommandHandlerTests {
   [Fact]
   public async Task Handle_CreateFails_ThrowsException() {
     // Arrange
-    var command = new RegisterCustomerCommand(Guid.NewGuid(), "test@customer.com", "Weak");
+    var command = new RegisterCustomerCommand(Guid.NewGuid(), "test@customer.com", "Weak", "Test", "Customer");
     _mockIdentityService.Setup(x => x.CreateUserAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-      .ReturnsAsync(false);
+      .ReturnsAsync((false, new[] { "Password is too weak." }));
 
     // Act & Assert
     var act = () => _handler.Handle(command, CancellationToken.None);
-    await act.Should().ThrowAsync<IdentityValidationException>().WithMessage("*identity constraints*");
+    await act.Should().ThrowAsync<IdentityValidationException>().WithMessage("Password is too weak.");
 
     // Verify OTP was NOT generated
     _mockOtpService.Verify(x => x.GenerateAndStoreOtpAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
   }
 
   [Theory]
-  [InlineData("", "test@customer.com", "Password123!", "TenantId")]
-  [InlineData("d1e57c6b-2856-4c4f-9e79-88001e9d0db6", "", "Password123!", "Email")]
-  [InlineData("d1e57c6b-2856-4c4f-9e79-88001e9d0db6", "invalid-email", "Password123!", "Email")]
-  [InlineData("d1e57c6b-2856-4c4f-9e79-88001e9d0db6", "test@customer.com", "", "Password")]
-  public void Validator_InvalidInput_ReturnsErrors(string tenantIdStr, string email, string password, string expectedErrorField) {
+  [InlineData("", "test@customer.com", "Password123!", "FirstName", "LastName", "TenantId")]
+  [InlineData("d1e57c6b-2856-4c4f-9e79-88001e9d0db6", "", "Password123!", "FirstName", "LastName", "Email")]
+  [InlineData("d1e57c6b-2856-4c4f-9e79-88001e9d0db6", "invalid-email", "Password123!", "FirstName", "LastName", "Email")]
+  [InlineData("d1e57c6b-2856-4c4f-9e79-88001e9d0db6", "test@customer.com", "", "FirstName", "LastName", "Password")]
+  [InlineData("d1e57c6b-2856-4c4f-9e79-88001e9d0db6", "test@customer.com", "Password123!", "", "LastName", "FirstName")]
+  [InlineData("d1e57c6b-2856-4c4f-9e79-88001e9d0db6", "test@customer.com", "Password123!", "FirstName", "", "LastName")]
+  public void Validator_InvalidInput_ReturnsErrors(string tenantIdStr, string email, string password, string firstName, string lastName, string expectedErrorField) {
     // Arrange
     Guid.TryParse(tenantIdStr, out var tenantId);
-    var command = new RegisterCustomerCommand(tenantId, email, password);
+    var command = new RegisterCustomerCommand(tenantId, email, password, firstName, lastName);
 
     // Act
     var result = _validator.Validate(command);

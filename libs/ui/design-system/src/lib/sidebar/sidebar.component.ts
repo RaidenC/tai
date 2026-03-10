@@ -1,6 +1,7 @@
 import { Component, input, ChangeDetectionStrategy, booleanAttribute } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkMenuModule } from '@angular/cdk/menu';
+import { RouterModule } from '@angular/router';
 
 export interface MenuItem {
   label: string;
@@ -25,7 +26,7 @@ export interface MenuItem {
 @Component({
   selector: 'tai-sidebar',
   standalone: true,
-  imports: [CommonModule, CdkMenuModule],
+  imports: [CommonModule, CdkMenuModule, RouterModule],
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

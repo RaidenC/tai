@@ -35,21 +35,33 @@
     - [x] Ensure endpoints enforce DPoP.
 - [x] Task: Conductor - User Manual Verification 'Phase 4: API Endpoints (Backend)' (Protocol in workflow.md) b339468
 
-## Phase 5: UI Components & Integration (Frontend)
-- [ ] Task: Build Registration UI
-    - [ ] Create Storybook interaction tests for self-service registration form.
-    - [ ] Implement Angular components in `apps/portal-web` using Headless CDK and Tailwind CSS.
-- [ ] Task: Build Pending Approvals Tile
-    - [ ] Create Storybook interaction tests for the Pending Approvals dashboard tile.
-    - [ ] Implement the dashboard tile and approval action UI for Tenant Admins.
-- [ ] Task: Integrate UI with API
-    - [ ] Write Vitest unit tests for Angular services/signal stores calling the onboarding endpoints.
-    - [ ] Connect the UI forms and tiles to the minimal API endpoints.
-    - [ ] Implement routing to Passkey Registration Flow upon successful activation (OTP entry).
-- [ ] Task: Conductor - User Manual Verification 'Phase 5: UI Components & Integration (Frontend)' (Protocol in workflow.md)
+## Phase 5: UI Components & Integration (Frontend) [checkpoint: 9165a91]
+- [x] Task: Build Core Onboarding UI Components (Design System) 9a10d94
+    - [x] Create `RegistrationForm` using Angular Headless CDK and Tailwind CSS 4.0 in `libs/ui/design-system`.
+    - [x] Create `OtpVerificationForm` using Headless CDK and Tailwind 4.0.
+    - [x] Create `PendingApprovalsTile` component for Tenant Admin dashboards.
+    - [x] Implement Storybook `.stories.ts` with `play` functions for every component (Interaction Testing).
+    - [x] Ensure all components adhere to strict CSP (No inline scripts/styles).
+- [x] Task: Implement Onboarding Signal Stores & Services 7ea76a9
+    - [x] Create `OnboardingService` in `apps/portal-web` using existing `DPoPService` for API calls.
+    - [x] Implement `OnboardingStore` (Angular Signals) to manage state machine transitions (`Created` -> `PendingVerification`).
+    - [x] Write Vitest unit tests for `OnboardingService` and `OnboardingStore`.
+- [x] Task: Integrate UI into Portal Routes edaf799
+    - [x] Configure `app.routes.ts` in `portal-web` for `/register`, `/verify`, and `/admin/approvals`.
+    - [x] Wire up `RegistrationForm` and `OtpVerificationForm` to the `OnboardingStore`.
+    - [x] Implement the "Next Action" routing logic: successful OTP verification redirects to `/auth/passkey-setup`.
+- [x] Task: Conductor - User Manual Verification 'Phase 5: UI Components & Integration (Frontend)' (Protocol in workflow.md) 9165a91
 
-## Phase 6: End-to-End Verification
-- [ ] Task: Playwright "Steel Thread" Tests
-    - [ ] Write and run Playwright E2E tests for the Customer Self-Service workflow.
-    - [ ] Write and run Playwright E2E tests for the Staff Approval workflow.
-- [ ] Task: Conductor - User Manual Verification 'Phase 6: End-to-End Verification' (Protocol in workflow.md)
+## Phase 6: End-to-End Verification & Testing Backfill
+- [x] Task: Backfill Backend Unit & Integration Tests
+    - [x] Implement `GetUsersQueryHandlerTests.cs` for backend filtering and isolation.
+    - [x] Implement `OnboardingApiTests.cs` coverage for the `/verify` endpoint.
+    - [x] Implement `UsersApiTests.cs` for directory isolation verification.
+- [x] Task: Backfill Frontend Unit Tests
+    - [x] Implement `.spec.ts` for registration, verify, approvals, and users pages.
+    - [x] Implement `navigation.guard.spec.ts`.
+- [x] Task: Playwright "Steel Thread" Tests
+    - [x] Scenario: Customer Self-Service (Register -> Verify -> Success).
+    - [x] Scenario: Staff Approval (Register -> Admin Login -> Approve -> Verify -> Success).
+    - [x] Scenario: User Directory Isolation (Admin only sees their tenant users).
+- [x] Task: Conductor - User Manual Verification 'Phase 6: End-to-End Verification' (Protocol in workflow.md)

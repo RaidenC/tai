@@ -1,0 +1,55 @@
+<form [formGroup]="registrationForm" (ngSubmit)="onSubmit()" class="registration-form-container flex flex-col p-6 w-full max-w-md mx-auto bg-white rounded-lg shadow-lg" role="form">
+  <h2 class="text-2xl font-bold text-gray-900 mb-6">Create Your Account</h2>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <tai-secure-input
+      label="First Name"
+      type="text"
+      placeholder="e.g. Jane"
+      formControlName="firstName"
+      [errorMessage]="registrationForm.get('firstName')?.invalid && registrationForm.get('firstName')?.touched ? 'First name is required.' : ''"
+    >
+    </tai-secure-input>
+
+    <tai-secure-input
+      label="Last Name"
+      type="text"
+      placeholder="e.g. Doe"
+      formControlName="lastName"
+      [errorMessage]="registrationForm.get('lastName')?.invalid && registrationForm.get('lastName')?.touched ? 'Last name is required.' : ''"
+    >
+    </tai-secure-input>
+  </div>
+
+  <tai-secure-input
+    label="Email Address"
+    type="email"
+    placeholder="e.g. jane.doe@example.com"
+    formControlName="email"
+    class="mb-4"
+    [errorMessage]="registrationForm.get('email')?.invalid && registrationForm.get('email')?.touched ? 'A valid email address is required.' : ''"
+  >
+  </tai-secure-input>
+
+  <tai-secure-input
+    label="Password"
+    type="password"
+    placeholder="Minimum 8 characters"
+    formControlName="password"
+    class="mb-6"
+    [errorMessage]="registrationForm.get('password')?.invalid && registrationForm.get('password')?.touched ? 'Password must be at least 8 characters.' : ''"
+  >
+  </tai-secure-input>
+
+  <button
+    type="submit"
+    class="submit-button w-full px-6 py-3 bg-indigo-600 text-white border-none rounded-md font-semibold cursor-pointer transition-all duration-200 ease-in-out shadow-sm hover:not-disabled:bg-indigo-700 hover:not-disabled:-translate-y-px hover:not-disabled:shadow-md active:not-disabled:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-70"
+    [disabled]="registrationForm.invalid"
+  >
+    Register Account
+  </button>
+
+  <p class="mt-4 text-sm text-center text-gray-600">
+    By registering, you agree to our <a href="#" class="text-indigo-600 hover:underline">Terms of Service</a>.
+  </p>
+</form>

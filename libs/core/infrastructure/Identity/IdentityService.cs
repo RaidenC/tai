@@ -18,9 +18,9 @@ public class IdentityService : IIdentityService {
     _userManager = userManager;
   }
 
-  public async Task<bool> CreateUserAsync(ApplicationUser user, string password, CancellationToken cancellationToken = default) {
+  public async Task<(bool Success, string[] Errors)> CreateUserAsync(ApplicationUser user, string password, CancellationToken cancellationToken = default) {
     var result = await _userManager.CreateAsync(user, password);
-    return result.Succeeded;
+    return (result.Succeeded, result.Errors.Select(e => e.Description).ToArray());
   }
 
   public async Task<ApplicationUser?> GetUserByIdAsync(string userId, CancellationToken cancellationToken = default) {
@@ -46,8 +46,26 @@ public class IdentityService : IIdentityService {
     // operations here which will be translated to SQL by EF Core.
     return await _userManager.Users
       .Where(u => u.Status == status && u.TenantId == tenantId)
+      .OrderByDescending(u => u.UserName)
       .Skip(skip)
       .Take(take)
       .ToListAsync(cancellationToken);
+  }
+
+  public async Task<IEnumerable<ApplicationUser>> GetUsersByTenantAsync(TenantId tenantId, int skip, int take, CancellationToken cancellationToken = default) {
+    return await _userManager.Users
+      .IgnoreQueryFilters()
+      .Where(u => u.TenantId == tenantId)
+      .OrderBy(u => u.UserName)
+      .Skip(skip)
+      .Take(take)
+      .ToListAsync(cancellationToken);
+  }
+
+  public async Task<int> CountUsersByTenantAsync(TenantId tenantId, CancellationToken cancellationToken = default) {
+    return await _userManager.Users
+      .IgnoreQueryFilters()
+      .Where(u => u.TenantId == tenantId)
+      .CountAsync(cancellationToken);
   }
 }

@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
+using OpenIddict.Validation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OpenIddict.Abstractions;
@@ -59,6 +61,11 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<PortalDbContext>()
     .AddDefaultTokenProviders();
 
+builder.Services.ConfigureApplicationCookie(options => {
+  options.LoginPath = "/Account/Login";
+  options.LogoutPath = "/Account/Logout";
+});
+
 // Register the OpenIddict services.
 builder.Services.AddOpenIddict()
     // Register the OpenIddict core components.
@@ -69,15 +76,15 @@ builder.Services.AddOpenIddict()
     })
     // Register the OpenIddict server components.
     .AddServer(options => {
-      // JUNIOR RATIONALE: We don't call SetIssuer() here because we want 
-      // OpenIddict to be dynamic. When you visit 'acme.localhost', the 
-      // discovery document and tokens should show 'acme.localhost'. 
-      // This is essential for our multi-tenant setup.
-
+      // JUNIOR RATIONALE: We use explicit 'identity/' prefixes for all endpoints. 
+      // This allows us to remove UsePathBase, which was causing issuer 
+      // mismatches when validating tokens on non-prefixed routes like /api/users.
       options.SetAuthorizationEndpointUris("connect/authorize")
           .SetLogoutEndpointUris("connect/logout")
           .SetTokenEndpointUris("connect/token")
-          .SetUserinfoEndpointUris("connect/userinfo");
+          .SetUserinfoEndpointUris("connect/userinfo")
+          .SetConfigurationEndpointUris(".well-known/openid-configuration")
+          .SetCryptographyEndpointUris(".well-known/jwks");
 
       // Enable the authorization code flow.
       options.AllowAuthorizationCodeFlow()
@@ -86,14 +93,6 @@ builder.Services.AddOpenIddict()
       // Require PKCE (Proof Key for Code Exchange) for all authorization requests.
       // This is a security feature that prevents authorization code interception attacks.
       options.RequireProofKeyForCodeExchange();
-
-      // Note on DPoP (Demonstrating Proof-of-Possession):
-      // In modern versions of OpenIddict (3.0+), DPoP support is largely automatic.
-      // There isn't an explicit .EnableDPoP() method. Instead, the server will
-      // detect a 'DPoP' header from the client, validate it, and if valid,
-      // issue a DPoP-bound access token. The validation handler will then
-      // enforce that subsequent API calls using that token are accompanied by a valid DPoP proof.
-      // So, no explicit server-side code is needed here to enable it, just client-side implementation.
 
       // Register the scopes (permissions) that clients can request.
       options.RegisterScopes(
@@ -118,9 +117,14 @@ builder.Services.AddOpenIddict()
     .AddValidation(options => {
       // Import the configuration from the local OpenIddict server instance.
       options.UseLocalServer();
+
       // Register the ASP.NET Core host.
       options.UseAspNetCore();
     });
+
+builder.Services.AddAuthentication(options => {
+  options.DefaultScheme = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
+});
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
@@ -135,6 +139,11 @@ builder.Services.AddCors(options => {
     .AllowAnyMethod()
     .AllowCredentials();
   });
+});
+
+builder.Services.ConfigureApplicationCookie(options => {
+  options.LoginPath = "/Account/Login";
+  options.LogoutPath = "/Account/Logout";
 });
 
 var app = builder.Build();
@@ -158,20 +167,21 @@ app.Use(async (context, next) => {
       }
     }
     await context.Response.WriteAsJsonAsync(problemDetails);
+  } catch (Tai.Portal.Core.Application.Exceptions.IdentityValidationException ex) {
+    context.Response.StatusCode = 400;
+    var problemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails {
+      Title = "Identity Validation Failed",
+      Status = 400,
+      Detail = ex.Message
+    };
+    await context.Response.WriteAsJsonAsync(problemDetails);
   }
 });
-
-// JUNIOR RATIONALE: This tells the API that it's being served from 
-// the '/identity' prefix. This is critical for generating correct 
-// redirect URLs.
-app.UsePathBase("/identity");
 
 // JUNIOR RATIONALE: This MUST be the first thing in the pipeline. 
 // It tells the API to look at the headers from the Gateway (like Host and IP) 
 // and pretend it IS the Gateway.
 app.UseForwardedHeaders();
-
-// Seed the database with initial data in development.
 
 // Seed the database with initial data in development.
 if (app.Environment.IsDevelopment()) {

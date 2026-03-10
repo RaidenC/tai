@@ -49,7 +49,7 @@ public class OidcSecurityHandshakeTests : IClassFixture<WebApplicationFactory<Pr
     });
 
     // 2. Act: Try to trade the code for a token.
-    var response = await client.PostAsync("/identity/connect/token", content);
+    var response = await client.PostAsync("/connect/token", content);
 
     // 3. Assert: Verify the server said "No".
     Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -79,7 +79,7 @@ public class OidcSecurityHandshakeTests : IClassFixture<WebApplicationFactory<Pr
       ["code_verifier"] = "wrong-verifier-that-does-not-match"
     });
 
-    var response = await client.PostAsync("/identity/connect/token", content);
+    var response = await client.PostAsync("/connect/token", content);
 
     // OpenIddict returns 400 Bad Request for invalid grants/verifiers.
     Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -119,7 +119,7 @@ public class OidcSecurityHandshakeTests : IClassFixture<WebApplicationFactory<Pr
     });
 
     // Act
-    var response = await client.PostAsync("/identity/connect/token", content);
+    var response = await client.PostAsync("/connect/token", content);
 
     // Assert
     Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

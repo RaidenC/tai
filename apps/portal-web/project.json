@@ -66,6 +66,9 @@
             "continuous": true,
             "executor": "@angular/build:dev-server",
             "dependsOn": ["build-tailwind"],
+            "options": {
+                "proxyConfig": "apps/portal-web/proxy.conf.json"
+            },
             "configurations": {
                 "production": {
                     "buildTarget": "portal-web:build:production"

@@ -1,0 +1,83 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+export interface RegistrationRequest {
+  email: string;
+  firstName: string;
+  lastName: string;
+  password?: string; // Optional for admin creation, required for self-service
+}
+
+export interface PendingUser {
+  id: string;
+  email: string;
+  name: string;
+  status?: string;
+}
+
+export interface RegistrationResponse {
+  userId: string;
+}
+
+export interface PaginatedUsers {
+  items: PendingUser[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
+/**
+ * OnboardingService
+ * 
+ * Persona: Backend Integration Architect.
+ * Context: Secure communication with the Onboarding Minimal API.
+ * 
+ * Features:
+ * 1. Typed interfaces for registration, verification, and approvals.
+ * 2. Centralized API routing for the onboarding track.
+ * 3. DPoP-signed requests (handled automatically by dpopInterceptor).
+ */
+@Injectable({
+  providedIn: 'root',
+})
+export class OnboardingService {
+  private readonly http = inject(HttpClient);
+  
+  private readonly baseUrl = '/api/onboarding';
+
+  /**
+   * Registers a new customer (Self-service).
+   */
+  public register(request: RegistrationRequest): Observable<RegistrationResponse> {
+    return this.http.post<RegistrationResponse>(`${this.baseUrl}/register`, request);
+  }
+
+  /**
+   * Verifies the 6-digit OTP for a user.
+   */
+  public verifyOtp(userId: string, code: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/verify`, { userId, code });
+  }
+
+  /**
+   * Fetches the list of users awaiting approval (Tenant Admin).
+   */
+  public getPendingApprovals(): Observable<PendingUser[]> {
+    return this.http.get<PendingUser[]>(`${this.baseUrl}/pending-approvals`);
+  }
+
+  /**
+   * Approves a pending staff/admin account.
+   */
+  public approveUser(userId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/approve`, { targetUserId: userId });
+  }
+
+  /**
+   * Fetches all users for the current tenant.
+   */
+  public getUsers(page = 1, pageSize = 10): Observable<PaginatedUsers> {
+    return this.http.get<PaginatedUsers>(`/api/users?page=${page}&pageSize=${pageSize}`);
+  }
+}

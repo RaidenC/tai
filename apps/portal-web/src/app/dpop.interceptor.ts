@@ -42,10 +42,20 @@ export const dpopInterceptor: HttpInterceptorFn = (req, next) => {
   const executeWithDPoP = (nonce?: string) => {
     return from(dpopService.getDPoPHeader(req.method, req.url, accessToken, nonce)).pipe(
       switchMap(dpopHeader => {
+        let headers = req.headers.set('DPoP', dpopHeader);
+        
+        // JUNIOR RATIONALE: Even though we're adding the DPoP proof header,
+        // we'll keep using the 'Bearer' scheme for the Authorization header
+        // for now. This is because our Backend is currently issuing Bearer
+        // tokens. If we used the 'DPoP' scheme, the Backend (which doesn't 
+        // fully support DPoP yet) wouldn't even see the token, leading to 
+        // a 401 'missing_token' error.
+        if (accessToken) {
+            headers = headers.set('Authorization', `Bearer ${accessToken}`);
+        }
+
         const clonedReq = req.clone({
-          setHeaders: {
-            DPoP: dpopHeader
-          }
+          headers: headers
         });
         return next(clonedReq);
       })

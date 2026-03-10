@@ -235,6 +235,9 @@ npx nx storybook portal-web
 
 ### Backend Development
 ```bash
+#start postgres container
+docker compose up -d postgres
+
 # Start API development server
 npx nx serve portal-api
 

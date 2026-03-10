@@ -32,12 +32,20 @@ public class AccountController : Controller {
     var host = Request.Host.Host;
     var identityUiUrl = $"http://{host}:{identityUiPort}/login";
 
-    // Ensure the returnUrl points back to the Gateway
-    if (!string.IsNullOrEmpty(returnUrl) && returnUrl.Contains($":{apiPort}")) {
-      returnUrl = returnUrl.Replace($":{apiPort}", $":{gatewayPort}");
+    // Ensure the returnUrl is relative to the Gateway and includes the PathBase.
+    if (!string.IsNullOrEmpty(returnUrl)) {
+      if (returnUrl.StartsWith("/") && !returnUrl.StartsWith(Request.PathBase, StringComparison.OrdinalIgnoreCase)) {
+        returnUrl = Request.PathBase + returnUrl;
+      }
+
+      // Ensure the returnUrl points back to the Gateway
+      if (returnUrl.Contains($":{apiPort}")) {
+        returnUrl = returnUrl.Replace($":{apiPort}", $":{gatewayPort}");
+      }
     }
 
     var redirectUrl = $"{identityUiUrl}?returnUrl={Uri.EscapeDataString(returnUrl ?? "/")}";
+    Console.WriteLine($"[AUTH] Redirecting to Identity UI: {redirectUrl}");
 
     return Redirect(redirectUrl);
   }
@@ -58,20 +66,29 @@ public class AccountController : Controller {
     if (result.Succeeded) {
       Console.WriteLine($"[AUTH] Login succeeded for user: {username}.");
 
-      // Ensure the returnUrl points back to the Gateway
-      if (!string.IsNullOrEmpty(returnUrl) && returnUrl.Contains($":{apiPort}")) {
-        returnUrl = returnUrl.Replace($":{apiPort}", $":{gatewayPort}");
-      }
+      // JUNIOR RATIONALE: We must ensure the returnUrl is relative to the Gateway, 
+      // and that it includes the PathBase (/identity) so the browser doesn't 
+      // drift to the root domain (5217/connect/authorize) which doesn't exist.
 
-      // JUNIOR RATIONALE: After a successful login, we MUST redirect back 
-      // to the 'returnUrl'. This is the OIDC 'authorize' endpoint that 
-      // will then issue the code and redirect back to the main app.
       if (!string.IsNullOrEmpty(returnUrl)) {
+        // If it's a relative path starting with /, ensure it has the PathBase
+        if (returnUrl.StartsWith("/") && !returnUrl.StartsWith(Request.PathBase, StringComparison.OrdinalIgnoreCase)) {
+          returnUrl = Request.PathBase + returnUrl;
+        }
+
+        // Fix port if needed (for POC convenience)
+        if (returnUrl.Contains($":{apiPort}")) {
+          returnUrl = returnUrl.Replace($":{apiPort}", $":{gatewayPort}");
+        }
+
+        Console.WriteLine($"[AUTH] Redirecting to returnUrl: {returnUrl}");
         return Redirect(returnUrl);
       }
 
       var webPort = systemConfig.GetValue<int>("WebPort");
-      return Redirect($"http://{host}:{webPort}");
+      var finalUrl = $"http://{host}:{webPort}";
+      Console.WriteLine($"[AUTH] No returnUrl, redirecting to web home: {finalUrl}");
+      return Redirect(finalUrl);
     }
 
     Console.WriteLine($"[AUTH] Login failed for user: {username}");

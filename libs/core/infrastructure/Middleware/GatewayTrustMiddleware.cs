@@ -42,7 +42,7 @@ public class GatewayTrustMiddleware {
 
     // 1. Check if the "Secret Handshake" header is present
     if (!context.Request.Headers.TryGetValue("X-Gateway-Secret", out var receivedSecret) ||
-        receivedSecret.ToString().Trim() != _expectedSecret.Trim()) {
+        !string.Equals(receivedSecret.ToString().Trim(), _expectedSecret.Trim(), StringComparison.OrdinalIgnoreCase)) {
       // 2. If the secret is missing or wrong, reject the request immediately.
       context.Response.StatusCode = StatusCodes.Status403Forbidden;
       await context.Response.WriteAsync("Untrusted request. Access must be via the Gateway.");

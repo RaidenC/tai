@@ -1,0 +1,26 @@
+<form [formGroup]="otpForm" (ngSubmit)="onSubmit()" class="otp-form-container flex flex-col p-6 w-full max-w-sm mx-auto bg-white rounded-lg shadow-lg" role="form">
+  <h2 class="text-2xl font-bold text-gray-900 mb-2 text-center">Verify Your Email</h2>
+  <p class="text-sm text-gray-600 mb-6 text-center">Please enter the 6-digit verification code sent to your email.</p>
+
+  <tai-secure-input
+    label="Verification Code"
+    type="text"
+    placeholder="000000"
+    formControlName="code"
+    class="mb-6"
+    [errorMessage]="otpForm.get('code')?.invalid && otpForm.get('code')?.touched ? 'Enter the 6-digit code provided.' : ''"
+  >
+  </tai-secure-input>
+
+  <button
+    type="submit"
+    class="submit-button w-full px-6 py-3 bg-indigo-600 text-white border-none rounded-md font-semibold cursor-pointer transition-all duration-200 ease-in-out shadow-sm hover:not-disabled:bg-indigo-700 hover:not-disabled:-translate-y-px hover:not-disabled:shadow-md active:not-disabled:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-70"
+    [disabled]="otpForm.invalid"
+  >
+    Verify Code
+  </button>
+  
+  <button type="button" class="mt-4 text-sm text-indigo-600 hover:underline bg-transparent border-none cursor-pointer text-center w-full">
+    Resend Code
+  </button>
+</form>

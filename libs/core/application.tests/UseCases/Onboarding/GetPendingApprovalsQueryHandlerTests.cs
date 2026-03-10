@@ -50,7 +50,7 @@ public class GetPendingApprovalsQueryHandlerTests {
     var returnedUser = result.First();
     returnedUser.Id.Should().Be("id2");
     returnedUser.Email.Should().Be("user2@test.com");
-    returnedUser.Status.Should().Be(UserStatus.PendingApproval);
+    returnedUser.Status.Should().Be(UserStatus.PendingApproval.ToString());
   }
 
   [Fact]

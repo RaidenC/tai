@@ -10,13 +10,15 @@ using Tai.Portal.Core.Domain.ValueObjects;
 
 namespace Tai.Portal.Core.Application.UseCases.Onboarding;
 
-public record RegisterCustomerCommand(Guid TenantId, string Email, string Password) : IRequest<string>;
+public record RegisterCustomerCommand(Guid TenantId, string Email, string Password, string FirstName, string LastName) : IRequest<string>;
 
 public class RegisterCustomerCommandValidator : AbstractValidator<RegisterCustomerCommand> {
   public RegisterCustomerCommandValidator() {
     RuleFor(x => x.TenantId).NotEmpty();
     RuleFor(x => x.Email).NotEmpty().EmailAddress();
     RuleFor(x => x.Password).NotEmpty();
+    RuleFor(x => x.FirstName).NotEmpty();
+    RuleFor(x => x.LastName).NotEmpty();
   }
 }
 
@@ -31,17 +33,19 @@ public class RegisterCustomerCommandHandler : IRequestHandler<RegisterCustomerCo
 
   public async Task<string> Handle(RegisterCustomerCommand request, CancellationToken cancellationToken) {
     var tenantId = new TenantId(request.TenantId);
+    // In our POC model, we concatenate names if needed or just use Email as identifier
     var user = new ApplicationUser(request.Email, tenantId) {
-      Email = request.Email
+      Email = request.Email,
+      UserName = request.Email
     };
 
     // Use the Domain method to initiate the state machine for a customer
     user.StartCustomerOnboarding();
 
-    var success = await _identityService.CreateUserAsync(user, request.Password, cancellationToken);
+    var (success, errors) = await _identityService.CreateUserAsync(user, request.Password, cancellationToken);
 
     if (!success) {
-      throw new IdentityValidationException("Failed to create customer user due to identity constraints.");
+      throw new IdentityValidationException(string.Join(", ", errors));
     }
 
     // Trigger the simulated activation (generate OTP and log it)
