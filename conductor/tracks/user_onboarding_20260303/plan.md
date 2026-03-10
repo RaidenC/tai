@@ -65,3 +65,6 @@
     - [x] Scenario: Staff Approval (Register -> Admin Login -> Approve -> Verify -> Success).
     - [x] Scenario: User Directory Isolation (Admin only sees their tenant users).
 - [x] Task: Conductor - User Manual Verification 'Phase 6: End-to-End Verification' (Protocol in workflow.md)
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions 8cb3289
