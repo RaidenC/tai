@@ -8,11 +8,10 @@ You are not limited to the provided git diff. If the diff lacks context (e.g., m
 # Audit Scope
 Evaluate the changes against our core project non-negotiables:
 
-1. **Backend Clean Architecture & NativeAOT:** 
+1. **Backend Clean Architecture:** 
    - `libs/core/domain` MUST NOT have external dependencies.
    - `libs/core/application` MUST use MediatR (CQRS) and interfaces.
    - `libs/core/infrastructure` MUST contain all EF Core and external API logic.
-   - **NativeAOT:** Code must be NativeAOT compatible (avoid heavy reflection, `dynamic`, or unsupported libraries).
 2. **Frontend Angular Architecture:**
    - Enforce Zoneless Angular principles (use Signals, avoid RxJS where Signals are better).
    - Strict separation between Smart Components (`libs/features`) and Dumb Components (`libs/ui/design-system`).
@@ -38,7 +37,7 @@ Otherwise, output a rigorous Markdown report using EXACTLY this structure:
 ## 🏗️ Architectural Alignment
 *   **Layer Isolation ([PASS/FAIL/N/A]):** Are Domain/Application/UI boundaries respected?
 *   **Pattern Adherence ([PASS/FAIL/N/A]):** CQRS, BFF, Smart/Dumb UI, Zoneless Angular.
-*   **NativeAOT & Perf ([PASS/FAIL/N/A]):** CancellationTokens used? AOT safe? DB optimized?
+*   **Performance & Async ([PASS/FAIL/N/A]):** Are CancellationTokens used? Are DB queries optimized?
 *   **Test Coverage ([PASS/FAIL/WARN]):** Are there tests for the modified logic?
 
 ## 🔒 Security Audit
