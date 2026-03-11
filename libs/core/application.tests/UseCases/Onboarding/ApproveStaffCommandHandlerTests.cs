@@ -48,7 +48,7 @@ public class ApproveStaffCommandHandlerTests {
 
     // Assert
     userToApprove.Status.Should().Be(UserStatus.PendingVerification);
-    userToApprove.ApprovedByUserId.Should().Be(adminId); // Audit Trail Verification
+    ((string)userToApprove.ApprovedBy!).Should().Be(adminId); // Audit Trail Verification
     userToApprove.DomainEvents.Should().ContainSingle(e => e is Tai.Portal.Core.Domain.Events.UserApprovedEvent); // Domain Event Verification
     _mockIdentityService.Verify(x => x.UpdateUserAsync(userToApprove, It.IsAny<CancellationToken>()), Times.Once);
 

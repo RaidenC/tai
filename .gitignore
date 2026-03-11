@@ -1,6 +1,9 @@
 # .NET
 [Bb]in/
 [Oo]bj/
+**/*.dll
+**/*.pdb
+**/*.exe
 [Tt]emp/
 [Tt]mp/
 *.user

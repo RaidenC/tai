@@ -7,11 +7,16 @@ namespace Tai.Portal.Core.Domain.Entities;
 /// <summary>
 /// Represents a Tenant in the system (e.g., a specific Bank or Credit Union).
 /// </summary>
-public class Tenant : IMultiTenantEntity {
+public class Tenant : IMultiTenantEntity, IAuditableEntity {
   /// <summary>
   /// The primary database key.
   /// </summary>
   public TenantId Id { get; private set; }
+
+  public DateTimeOffset CreatedAt { get; set; }
+  public string? CreatedBy { get; set; }
+  public DateTimeOffset? LastModifiedAt { get; set; }
+  public string? LastModifiedBy { get; set; }
 
   /// <summary>
   /// Implementation of IMultiTenantEntity. 

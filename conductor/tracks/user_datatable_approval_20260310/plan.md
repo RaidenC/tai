@@ -1,16 +1,21 @@
 # Implementation Plan: User DataTable and Approval Workflow
 
 ## Phase 1: Backend Domain & Persistence
-- [ ] Task: Update `ApplicationUser` Domain Entity
-    - [ ] Write failing unit test for `Approve` method (validates pending state, raises event).
-    - [ ] Implement `Approve(TenantAdminId approvedBy)` method in `ApplicationUser`.
-    - [ ] Define `UserApprovedEvent`.
-- [ ] Task: Implement Optimistic Concurrency Token
-    - [ ] Update `ApplicationUser` configuration in EF Core to include `RowVersion` / `ETag`.
-    - [ ] Generate and apply EF Core Migration.
-- [ ] Task: Audit Logging Infrastructure
-    - [ ] Write failing integration test for handling `UserApprovedEvent`.
-    - [ ] Implement Infrastructure event handler to listen for `UserApprovedEvent` and write to Audit Log table.
+- [x] Task: Update `ApplicationUser` Domain Entity
+    - [x] Write failing unit test for `Approve` method (validates pending state, raises event).
+    - [x] Implement `Approve(TenantAdminId approvedBy)` method in `ApplicationUser`.
+    - [x] Define `UserApprovedEvent`.
+- [x] Task: Implement Optimistic Concurrency Token
+    - [x] Update `ApplicationUser` configuration in EF Core to include `RowVersion` / `ETag`.
+    - [x] Generate and apply EF Core Migration. (Proposed)
+- [x] Task: Audit Logging Infrastructure
+    - [x] Write failing integration test for handling `UserApprovedEvent`.
+    - [x] Implement Infrastructure event handler to listen for `UserApprovedEvent` and write to Audit Log table.
+- [x] Task: Implement Change Tracking (Audit Fields)
+    - [x] Define `IAuditableEntity` interface.
+    - [x] Add `CreatedAt`, `CreatedBy`, `LastModifiedAt`, `LastModifiedBy` to `ApplicationUser` and `Tenant`.
+    - [x] Implement automatic population of audit fields in `PortalDbContext.SaveChangesAsync`.
+    - [x] Register `ICurrentUserService` and `IHttpContextAccessor` in `Program.cs`.
 - [ ] Task: Conductor - User Manual Verification 'Backend Domain & Persistence' (Protocol in workflow.md)
 
 ## Phase 2: Backend Application & API

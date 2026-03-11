@@ -40,10 +40,10 @@ public class ApplicationUserPersistenceTests : IAsyncLifetime {
   public async Task CreateUser_ShouldPersistStatusAndAuditTrail() {
     // Arrange
     var tenantId = (TenantId)Guid.NewGuid();
-    var adminId = "admin_user_id";
+    var adminId = (TenantAdminId)"admin_user_id";
     var user = new ApplicationUser("audit@bank.com", tenantId) { Email = "audit@bank.com" };
     user.StartStaffOnboarding();
-    user.ApproveAccount(adminId); // Transitions to PendingVerification and sets ApprovedByUserId
+    user.Approve(adminId); // Transitions to PendingVerification and sets ApprovedBy
 
     // Act
     var result = await _userManager.CreateAsync(user, "StrongPassword123!");
@@ -56,7 +56,7 @@ public class ApplicationUserPersistenceTests : IAsyncLifetime {
     savedUser.Should().NotBeNull();
     savedUser!.Status.Should().Be(UserStatus.PendingVerification);
     savedUser.TenantId.Value.Should().Be(tenantId.Value);
-    savedUser.ApprovedByUserId.Should().Be(adminId); // Verify Audit Trail
+    ((string)savedUser.ApprovedBy!).Should().Be((string)adminId); // Verify Audit Trail
   }
 
   [Fact]
