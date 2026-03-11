@@ -124,4 +124,61 @@ public class ApplicationUserPersistenceTests : IAsyncLifetime {
     users.Should().HaveCount(1);
     users.First().Email.Should().Be("usera@bank.com");
   }
+
+  [Fact]
+  public async Task AutomatedAuditFields_ShouldBePopulated_OnSave() {
+    // Arrange
+    var tenantId = (TenantId)Guid.NewGuid();
+    var user = new ApplicationUser("audit_test@bank.com", tenantId) { Email = "audit_test@bank.com" };
+
+    // Act
+    await _userManager.CreateAsync(user, "Pass123!");
+
+    // Assert
+    user.CreatedAt.Should().BeWithin(TimeSpan.FromSeconds(5)).Before(DateTimeOffset.UtcNow);
+    user.CreatedBy.Should().NotBeNullOrEmpty();
+    user.LastModifiedAt.Should().BeNull();
+    user.LastModifiedBy.Should().BeNull();
+
+    // Act - Update
+    user.PhoneNumber = "123456789";
+    await _userManager.UpdateAsync(user);
+
+    // Assert
+    user.LastModifiedAt.Should().BeWithin(TimeSpan.FromSeconds(5)).Before(DateTimeOffset.UtcNow);
+    user.LastModifiedBy.Should().NotBeNullOrEmpty();
+  }
+
+  [Fact]
+  public async Task OptimisticConcurrency_ShouldThrowException_OnConcurrentUpdate() {
+    // Arrange
+    var tenantId = (TenantId)Guid.NewGuid();
+    var user = new ApplicationUser("concurrency@bank.com", tenantId) { Email = "concurrency@bank.com" };
+    await _userManager.CreateAsync(user, "Pass123!");
+
+    // Create two separate scopes to simulate two concurrent users
+    using var scope1 = _fixture.Factory.Services.CreateScope();
+    using var scope2 = _fixture.Factory.Services.CreateScope();
+
+    var userManager1 = scope1.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var userManager2 = scope2.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+    // Fetch the same user in both scopes
+    var user1 = await userManager1.FindByIdAsync(user.Id);
+    var user2 = await userManager2.FindByIdAsync(user.Id);
+
+    // Act - Update in scope 1
+    user1!.PhoneNumber = "111-111-1111";
+    var result1 = await userManager1.UpdateAsync(user1);
+    result1.Succeeded.Should().BeTrue();
+
+    // Act - Update in scope 2 (should fail due to concurrency)
+    user2!.PhoneNumber = "222-222-2222";
+    var act = () => userManager2.UpdateAsync(user2);
+
+    // Assert
+    // JUNIOR RATIONALE: EF Core throws DbUpdateConcurrencyException when the RowVersion (xmin)
+    // has changed since it was loaded.
+    await act.Should().ThrowAsync<Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException>();
+  }
 }
