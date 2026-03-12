@@ -162,6 +162,9 @@ app.MapGet("/", () => "Portal API is running");
 
 app.MapControllers();
 
+// Initialize Seed Data
+SeedData.Initialize(app.Services);
+
 app.Run();
 
 public partial class Program { }

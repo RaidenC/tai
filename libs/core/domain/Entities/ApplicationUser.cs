@@ -44,6 +44,11 @@ public class ApplicationUser : IdentityUser, IMultiTenantEntity, IHasDomainEvent
   public string? FirstName { get; set; }
   public string? LastName { get; set; }
 
+  public override string? Email {
+    get => base.Email;
+    set => base.Email = value?.Trim().ToLowerInvariant();
+  }
+
   public UserStatus Status { get; private set; } = UserStatus.Created;
 
   public TenantAdminId? ApprovedBy { get; private set; }
