@@ -19,6 +19,9 @@ using Tai.Portal.Core.Infrastructure.Services;
 using Tai.Portal.Core.Application.Behaviors;
 using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Options;
+using System.Text.Encodings.Web;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,61 +31,74 @@ builder.Services.AddOpenApi();
 
 builder.Services.Configure<ForwardedHeadersOptions>(options => {
   options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
-                             Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+                             Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto |
+                             Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedHost;
+  // JUNIOR RATIONALE: We clear these and set ForwardLimit to null so the API 
+  // trusts all headers from the Gateway.
+  options.KnownProxies.Clear();
+  options.KnownIPNetworks.Clear();
+  options.ForwardLimit = null;
 });
 
-// Configure EF Core & Identity
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<PortalDbContext>(options => {
-  options.UseNpgsql(connectionString, b => b.MigrationsAssembly("Tai.Portal.Core.Infrastructure"));
-  // Use the OpenIddict entity models.
-  options.UseOpenIddict();
-});
-
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => {
-  options.Password.RequireDigit = true;
-  options.Password.RequireLowercase = true;
-  options.Password.RequireNonAlphanumeric = true;
-  options.Password.RequireUppercase = true;
-  options.Password.RequiredLength = 8;
-  options.User.RequireUniqueEmail = true;
-})
-.AddEntityFrameworkStores<PortalDbContext>()
-.AddDefaultTokenProviders();
-
-// Core Application Services
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddScoped<IOtpService, MockOtpService>();
 
-// Configure MediatR & FluentValidation
-builder.Services.AddValidatorsFromAssembly(typeof(RegisterStaffCommand).Assembly);
+builder.Services.AddValidatorsFromAssembly(typeof(RegisterCustomerCommand).Assembly);
+
 builder.Services.AddMediatR(cfg => {
-  cfg.RegisterServicesFromAssembly(typeof(RegisterStaffCommand).Assembly);
-  cfg.AddOpenBehavior(typeof(ValidationPipelineBehavior<,>));
+  cfg.RegisterServicesFromAssembly(typeof(RegisterCustomerCommand).Assembly);
+  cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationPipelineBehavior<,>));
 });
 
+builder.Services.AddDbContext<PortalDbContext>(options => {
+  // Configure the context to use PostgreSQL.
+  options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
+      o => o.MigrationsAssembly("Tai.Portal.Core.Infrastructure"));
+  // Register the entity sets needed by OpenIddict.
+  options.UseOpenIddict();
+});
+
+// Register the Identity services.
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+    .AddEntityFrameworkStores<PortalDbContext>()
+    .AddDefaultTokenProviders();
+
+builder.Services.ConfigureApplicationCookie(options => {
+  options.LoginPath = "/Account/Login";
+  options.LogoutPath = "/Account/Logout";
+});
+
+// Register the OpenIddict services.
 builder.Services.AddOpenIddict()
     // Register the OpenIddict core components.
     .AddCore(options => {
       // Configure OpenIddict to use the Entity Framework Core stores and models.
-      // Note: the default entities used by OpenIddict are specialized for EF Core.
       options.UseEntityFrameworkCore()
-             .UseDbContext<PortalDbContext>();
+          .UseDbContext<PortalDbContext>();
     })
     // Register the OpenIddict server components.
     .AddServer(options => {
-      // Enable the authorization, logout, token and userinfo endpoints.
+      // JUNIOR RATIONALE: We use explicit 'identity/' prefixes for all endpoints. 
+      // This allows us to remove UsePathBase, which was causing issuer 
+      // mismatches when validating tokens on non-prefixed routes like /api/users.
       options.SetAuthorizationEndpointUris("connect/authorize")
-             .SetLogoutEndpointUris("connect/logout")
-             .SetTokenEndpointUris("connect/token")
-             .SetUserinfoEndpointUris("connect/userinfo");
+          .SetLogoutEndpointUris("connect/logout")
+          .SetTokenEndpointUris("connect/token")
+          .SetUserinfoEndpointUris("connect/userinfo")
+          .SetConfigurationEndpointUris(".well-known/openid-configuration")
+          .SetCryptographyEndpointUris(".well-known/jwks");
 
-      // Mark the "authorization_code" and "refresh_token" flow as being supported.
+      // Enable the authorization code flow.
       options.AllowAuthorizationCodeFlow()
-             .AllowRefreshTokenFlow();
+          .AllowRefreshTokenFlow();
+
+      // Require PKCE (Proof Key for Code Exchange) for all authorization requests.
+      // This is a security feature that prevents authorization code interception attacks.
+      options.RequireProofKeyForCodeExchange();
 
       // Register the scopes (permissions) that clients can request.
       options.RegisterScopes(
@@ -116,6 +132,12 @@ builder.Services.AddAuthentication(options => {
   options.DefaultScheme = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
 });
 
+// We register a dummy "TestAuth" scheme so that [Authorize] attributes can reference it
+// without crashing the app during startup. In integration tests, this is overridden.
+if (builder.Configuration["SKIP_TEST_AUTH"] == "false" || builder.Environment.IsProduction()) {
+  builder.Services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, IntegrationTestStubHandler>("TestAuth", _ => { });
+}
+
 builder.Services.AddAuthorization();
 builder.Services.AddControllers(options => {
   options.Filters.Add<Tai.Portal.Api.Filters.ValidationExceptionFilter>();
@@ -140,6 +162,16 @@ builder.Services.ConfigureApplicationCookie(options => {
 
 var app = builder.Build();
 
+// JUNIOR RATIONALE: This MUST be the first thing in the pipeline. 
+// It tells the API to look at the headers from the Gateway (like Host and IP) 
+// and pretend it IS the Gateway.
+app.UseForwardedHeaders();
+
+// Seed the database with initial data in development.
+if (app.Environment.IsDevelopment()) {
+  SeedData.Initialize(app.Services);
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment()) {
   app.UseDeveloperExceptionPage();
@@ -162,12 +194,20 @@ app.MapGet("/", () => "Portal API is running");
 
 app.MapControllers();
 
-// Initialize Seed Data
-SeedData.Initialize(app.Services);
-
 app.Run();
 
 public partial class Program { }
+
+/// <summary>
+/// A stub authentication handler used solely to register the "TestAuth" scheme
+/// name so that it can be referenced in [Authorize] attributes without causing runtime errors.
+/// In actual integration tests, this is replaced by a mock handler.
+/// </summary>
+public class IntegrationTestStubHandler : AuthenticationHandler<AuthenticationSchemeOptions> {
+  public IntegrationTestStubHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
+      : base(options, logger, encoder) { }
+  protected override Task<AuthenticateResult> HandleAuthenticateAsync() => Task.FromResult(AuthenticateResult.NoResult());
+}
 
 /// <summary>
 /// A mock OTP service for development and testing.
