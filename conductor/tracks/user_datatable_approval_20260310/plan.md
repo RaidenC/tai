@@ -29,18 +29,18 @@
 - [x] Task: Conductor - User Manual Verification 'Backend Application & API' (Protocol in workflow.md) f5b5843
 
 ## Phase 3: Frontend Design System (CDK Table & Modal)
-- [ ] Task: Generic Confirmation Modal
-    - [ ] Check `libs/ui/design-system` for existing confirmation modal.
-    - [ ] If missing, build `<tai-confirmation-dialog>` using `@angular/cdk/dialog` and Tailwind CSS 4.0.
-    - [ ] Add Storybook stories and interaction tests (Axe-core validation).
-- [ ] Task: Headless DataTable Component
-    - [ ] Create `DataTableComponent` using `@angular/cdk/table` in `libs/ui/design-system`.
-    - [ ] Implement generic columns, data binding, sorting, and pagination inputs/outputs.
-    - [ ] Implement Declarative Row Actions (`TableActionDef<T>`) emitting `actionTriggered`.
-    - [ ] Add Empty State and Loading State UI.
-    - [ ] Add Storybook stories with Axe-core validation.
-    - [ ] Ensure `data-testid` attributes exist on all interactive elements.
-- [ ] Task: Conductor - User Manual Verification 'Frontend Design System' (Protocol in workflow.md)
+- [x] Task: Generic Confirmation Modal [2a35980]
+    - [x] Check `libs/ui/design-system` for existing confirmation modal.
+    - [x] If missing, build `<tai-confirmation-dialog>` using `@angular/cdk/dialog` and Tailwind CSS 4.0.
+    - [x] Add Storybook stories and interaction tests (Axe-core validation).
+- [x] Task: Headless DataTable Component [c4bc409]
+    - [x] Create `DataTableComponent` using `@angular/cdk/table` in `libs/ui/design-system`.
+    - [x] Implement generic columns, data binding, sorting, and pagination inputs/outputs.
+    - [x] Implement Declarative Row Actions (`TableActionDef<T>`) emitting `actionTriggered`.
+    - [x] Add Empty State and Loading State UI.
+    - [x] Add Storybook stories with Axe-core validation.
+    - [x] Ensure `data-testid` attributes exist on all interactive elements.
+- [~] Task: Conductor - User Manual Verification 'Frontend Design System' (Protocol in workflow.md)
 
 ## Phase 4: Frontend Users Feature (Integration)
 - [ ] Task: Regenerate API Client

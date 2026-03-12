@@ -42,6 +42,26 @@
         },
         "lint": {
             "executor": "@nx/eslint:lint"
+        },
+        "storybook": {
+            "executor": "@storybook/angular:start-storybook",
+            "options": {
+                "port": 6006,
+                "configDir": "libs/ui/design-system/.storybook",
+                "compodoc": false,
+                "tsConfig": "libs/ui/design-system/.storybook/tsconfig.json",
+                "browserTarget": "portal-web:build"
+            }
+        },
+        "build-storybook": {
+            "executor": "@storybook/angular:build-storybook",
+            "options": {
+                "configDir": "libs/ui/design-system/.storybook",
+                "outputDir": "dist/storybook/design-system",
+                "compodoc": false,
+                "tsConfig": "libs/ui/design-system/.storybook/tsconfig.json",
+                "browserTarget": "portal-web:build"
+            }
         }
     }
 }
