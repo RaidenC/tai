@@ -2,7 +2,7 @@ import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
 import { CommonModule } from '@angular/common';
 import { DataTableComponent, TableColumnDef, TableActionDef } from './data-table';
 import { CdkTableModule } from '@angular/cdk/table';
-import { expect, fn, userEvent, within } from '@storybook/test';
+import { expect, fn, userEvent, within, waitFor } from '@storybook/test';
 
 /**
  * Test data interface for DataTable stories.
