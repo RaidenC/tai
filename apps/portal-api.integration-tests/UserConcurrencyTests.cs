@@ -18,9 +18,9 @@ namespace Tai.Portal.Api.IntegrationTests;
 
 /// <summary>
 /// User Concurrency Integration Tests
-/// 
-/// These tests verify the "Steel Thread" of our optimistic 
-/// concurrency implementation. We ensure that the ETag is correctly issued 
+///
+/// These tests verify the "Steel Thread" of our optimistic
+/// concurrency implementation. We ensure that the ETag is correctly issued
 /// and that any attempt to update stale data using 'If-Match' is rejected.
 /// </summary>
 public class UserConcurrencyTests : IClassFixture<WebApplicationFactory<Program>> {
