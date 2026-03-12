@@ -137,6 +137,8 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
       b.Property(u => u.RowVersion)
         .IsRowVersion();
 
+      b.HasIndex(u => u.TenantId); // Optimizes the Global Query Filter
+
       b.HasQueryFilter(u => _tenantService.IsGlobalAccess || u.TenantId == _tenantService.TenantId);
     });
 
@@ -151,6 +153,11 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
       b.Property(a => a.UserId).IsRequired();
       b.Property(a => a.ResourceId).IsRequired();
       b.Property(a => a.Timestamp).IsRequired();
+
+      // Satisfies the global query filter AND typical chronological sorting
+      b.HasIndex(a => new { a.TenantId, a.Timestamp })
+       .IsDescending(false, true)
+       .HasDatabaseName("IX_AuditLogs_TenantId_TimestampDesc");
 
       // JUNIOR RATIONALE:
       // Audit logs are our safety net for "Who did what and when."
