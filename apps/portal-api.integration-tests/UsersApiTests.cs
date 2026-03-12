@@ -32,25 +32,25 @@ public class UsersApiTests : IClassFixture<WebApplicationFactory<Program>> {
   public UsersApiTests(WebApplicationFactory<Program> factory) {
     _factory = factory;
   }
-private WebApplicationFactory<Program> CreateFactoryWithMockAuth(string userId) {
-  return _factory.WithWebHostBuilder(builder => {
-    builder.ConfigureTestServices(services => {
-      // Add a mock authentication handler with a UNIQUE name for this test class
-      const string scheme = "UsersApiTestsAuth";
-      services.AddAuthentication(options => {
-        options.DefaultAuthenticateScheme = scheme;
-        options.DefaultChallengeScheme = scheme;
-        options.DefaultScheme = scheme;
-      })
-      .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(scheme, options => { });
+  private WebApplicationFactory<Program> CreateFactoryWithMockAuth(string userId) {
+    return _factory.WithWebHostBuilder(builder => {
+      builder.ConfigureTestServices(services => {
+        // Add a mock authentication handler with a UNIQUE name for this test class
+        const string scheme = "UsersApiTestsAuth";
+        services.AddAuthentication(options => {
+          options.DefaultAuthenticateScheme = scheme;
+          options.DefaultChallengeScheme = scheme;
+          options.DefaultScheme = scheme;
+        })
+        .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(scheme, options => { });
 
-      // Override the DefaultPolicy to use our test scheme
-      services.AddAuthorization(options => {
-        options.DefaultPolicy = new AuthorizationPolicyBuilder()
-            .AddAuthenticationSchemes(scheme)
-            .RequireAuthenticatedUser()
-            .Build();
-      });
+        // Override the DefaultPolicy to use our test scheme
+        services.AddAuthorization(options => {
+          options.DefaultPolicy = new AuthorizationPolicyBuilder()
+              .AddAuthenticationSchemes(scheme)
+              .RequireAuthenticatedUser()
+              .Build();
+        });
 
         services.AddSingleton(new TestUserContext { UserId = userId });
         services.AddSingleton<IAuthorizationHandler, AllowAnonymousAuthorizationHandler>();
