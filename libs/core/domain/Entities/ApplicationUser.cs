@@ -22,12 +22,13 @@ public class ApplicationUser : IdentityUser, IMultiTenantEntity, IHasDomainEvent
   /// 2. C# 14 'field' keyword: Allows validation logic without a manual backing field.
   /// 3. Strict Invariant: Ensures a user is never created without a valid TenantId.
   /// </summary>
+  private TenantId _tenantId;
   public TenantId TenantId {
-    get;
-    // C# 14 Syntax: 'field' refers to the compiler-synthesized backing store.
-    init => field = (value.Value == Guid.Empty)
-      ? throw new ArgumentException("A valid TenantId is required.", nameof(value))
-      : value;
+    get => _tenantId;
+    init {
+      if (value.Value == Guid.Empty) throw new ArgumentException("A valid TenantId is required.", nameof(value));
+      _tenantId = value;
+    }
   }
 
   /// <summary>
@@ -42,15 +43,6 @@ public class ApplicationUser : IdentityUser, IMultiTenantEntity, IHasDomainEvent
 
   public string? FirstName { get; set; }
   public string? LastName { get; set; }
-
-  /// <summary>
-  /// An example of using the field keyword for data sanitization on a standard property.
-  /// </summary>
-  public override string? Email {
-    get;
-    // C# 14: Direct access to backing field allows concise normalization logic.
-    set => field = value?.Trim().ToLowerInvariant();
-  }
 
   public UserStatus Status { get; private set; } = UserStatus.Created;
 
@@ -76,6 +68,7 @@ public class ApplicationUser : IdentityUser, IMultiTenantEntity, IHasDomainEvent
   public ApplicationUser(string userName, TenantId tenantId) : base(userName) {
     // The init accessor logic will run when we assign the property here.
     TenantId = tenantId;
+    Email = userName;
     Id = Guid.NewGuid().ToString(); // Ensure ID is generated for unit tests that need it before saving.
   }
 

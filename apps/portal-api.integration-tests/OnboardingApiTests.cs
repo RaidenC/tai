@@ -6,6 +6,7 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,17 +52,19 @@ public class OnboardingApiTests : IClassFixture<WebApplicationFactory<Program>> 
 
         var userId = overrideUserId ?? TaiAdminId;
 
-        // Add a mock authentication handler with a UNIQUE name for tests
+        // Add a mock authentication handler with a UNIQUE name for this test class
+        const string scheme = "OnboardingTestsAuth";
         services.AddAuthentication(options => {
-          options.DefaultAuthenticateScheme = "IntegrationTestAuth";
-          options.DefaultChallengeScheme = "IntegrationTestAuth";
+          options.DefaultAuthenticateScheme = scheme;
+          options.DefaultChallengeScheme = scheme;
+          options.DefaultScheme = scheme;
         })
-        .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("IntegrationTestAuth", options => { });
+        .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(scheme, options => { });
 
         // Override the DefaultPolicy to use our test scheme
         services.AddAuthorization(options => {
           options.DefaultPolicy = new AuthorizationPolicyBuilder()
-              .AddAuthenticationSchemes("IntegrationTestAuth")
+              .AddAuthenticationSchemes(scheme)
               .RequireAuthenticatedUser()
               .Build();
         });

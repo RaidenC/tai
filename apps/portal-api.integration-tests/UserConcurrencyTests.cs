@@ -11,6 +11,7 @@ using Xunit;
 using Tai.Portal.Core.Application.Interfaces;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Configuration;
 
 namespace Tai.Portal.Api.IntegrationTests;
 
@@ -23,18 +24,30 @@ public class UserConcurrencyTests : IClassFixture<WebApplicationFactory<Program>
     _factory = factory;
   }
 
+  private HttpClient CreateClientWithHost(WebApplicationFactory<Program> factory) {
+    var client = factory.CreateClient(new WebApplicationFactoryClientOptions {
+      BaseAddress = new Uri("http://localhost/")
+    });
+    client.DefaultRequestHeaders.Add("X-Gateway-Secret", "portal-poc-secret-2026");
+    return client;
+  }
+
   private WebApplicationFactory<Program> CreateFactoryWithMockAuth(string userId) {
     return _factory.WithWebHostBuilder(builder => {
       builder.ConfigureTestServices(services => {
+        // Use a unique scheme for this test class
+        const string scheme = "UserConcurrencyTestsAuth";
+        
         services.AddAuthentication(options => {
-          options.DefaultAuthenticateScheme = "IntegrationTestAuth";
-          options.DefaultChallengeScheme = "IntegrationTestAuth";
+          options.DefaultAuthenticateScheme = scheme;
+          options.DefaultChallengeScheme = scheme;
+          options.DefaultScheme = scheme;
         })
-        .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("IntegrationTestAuth", options => { });
+        .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(scheme, options => { });
 
         services.AddAuthorization(options => {
           options.DefaultPolicy = new AuthorizationPolicyBuilder()
-              .AddAuthenticationSchemes("IntegrationTestAuth")
+              .AddAuthenticationSchemes(scheme)
               .RequireAuthenticatedUser()
               .Build();
         });
@@ -50,17 +63,19 @@ public class UserConcurrencyTests : IClassFixture<WebApplicationFactory<Program>
   public async Task GetUserById_ReturnsETagHeader() {
     // Arrange
     var factory = CreateFactoryWithMockAuth(TaiAdminId);
-    var client = factory.CreateClient();
-    client.DefaultRequestHeaders.Add("X-Gateway-Secret", "portal-poc-secret-2026");
+    var client = CreateClientWithHost(factory);
 
     string userId;
     using (var scope = factory.Services.CreateScope()) {
       var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
       var tenantService = scope.ServiceProvider.GetRequiredService<ITenantService>();
+      
+      // Crucial: Set tenant context for the manager during setup
       tenantService.SetTenant(new TenantId(TaiTenantId));
 
       var user = new ApplicationUser($"test_{Guid.NewGuid()}@tai.com", new TenantId(TaiTenantId));
-      await userManager.CreateAsync(user, "Password123!");
+      var result = await userManager.CreateAsync(user, "Password123!");
+      Assert.True(result.Succeeded, $"User creation failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
       userId = user.Id;
     }
 
@@ -78,18 +93,19 @@ public class UserConcurrencyTests : IClassFixture<WebApplicationFactory<Program>
   public async Task ApproveUser_WithMismatchingETag_ReturnsConflict() {
     // Arrange
     var factory = CreateFactoryWithMockAuth(TaiAdminId);
-    var client = factory.CreateClient();
-    client.DefaultRequestHeaders.Add("X-Gateway-Secret", "portal-poc-secret-2026");
+    var client = CreateClientWithHost(factory);
 
     string userId;
     using (var scope = factory.Services.CreateScope()) {
       var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
       var tenantService = scope.ServiceProvider.GetRequiredService<ITenantService>();
+      
       tenantService.SetTenant(new TenantId(TaiTenantId));
 
       var user = new ApplicationUser($"test_{Guid.NewGuid()}@tai.com", new TenantId(TaiTenantId));
       user.StartStaffOnboarding();
-      await userManager.CreateAsync(user, "Password123!");
+      var result = await userManager.CreateAsync(user, "Password123!");
+      Assert.True(result.Succeeded, $"User creation failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
       userId = user.Id;
     }
 
@@ -110,8 +126,7 @@ public class UserConcurrencyTests : IClassFixture<WebApplicationFactory<Program>
   public async Task ApproveUser_WithMalformedETag_ReturnsBadRequest() {
     // Arrange
     var factory = CreateFactoryWithMockAuth(TaiAdminId);
-    var client = factory.CreateClient();
-    client.DefaultRequestHeaders.Add("X-Gateway-Secret", "portal-poc-secret-2026");
+    var client = CreateClientWithHost(factory);
 
     // Act
     var request = new { TargetUserId = Guid.NewGuid().ToString() };

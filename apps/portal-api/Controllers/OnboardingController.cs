@@ -5,12 +5,13 @@ using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Validation.AspNetCore;
 using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Application.UseCases.Onboarding;
+using Tai.Portal.Core.Domain.ValueObjects;
 
 namespace Tai.Portal.Api.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize(AuthenticationSchemes = $"{OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme},Identity.Application,IntegrationTestAuth")]
+[Authorize]
 public class OnboardingController : ControllerBase {
   private readonly IMediator _mediator;
   private readonly ITenantService _tenantService;
@@ -30,7 +31,7 @@ public class OnboardingController : ControllerBase {
       await _mediator.Send(command);
       return Ok();
     } catch (System.Exception ex) {
-      return BadRequest(new { error = ex.Message });
+      return BadRequest(new { error = ex.Message, detail = ex.ToString() });
     }
   }
 
@@ -48,11 +49,11 @@ public class OnboardingController : ControllerBase {
     if (isStaff) {
       var command = new RegisterStaffCommand(tenantId, request.Email, request.Password, request.FirstName, request.LastName);
       var userId = await _mediator.Send(command);
-      return Ok(new { userId });
+      return Ok(new { UserId = userId });
     } else {
       var command = new RegisterCustomerCommand(tenantId, request.Email, request.Password, request.FirstName, request.LastName);
       var userId = await _mediator.Send(command);
-      return Ok(new { userId });
+      return Ok(new { UserId = userId });
     }
   }
 

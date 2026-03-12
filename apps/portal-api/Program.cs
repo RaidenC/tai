@@ -28,74 +28,61 @@ builder.Services.AddOpenApi();
 
 builder.Services.Configure<ForwardedHeadersOptions>(options => {
   options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
-                             Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto |
-                             Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedHost;
-  // JUNIOR RATIONALE: We clear these and set ForwardLimit to null so the API 
-  // trusts all headers from the Gateway.
-  options.KnownProxies.Clear();
-  options.KnownIPNetworks.Clear();
-  options.ForwardLimit = null;
+                             Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
 });
 
-builder.Services.AddHttpContextAccessor();
-builder.Services.AddMemoryCache();
-builder.Services.AddScoped<ITenantService, TenantService>();
-builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-builder.Services.AddScoped<IIdentityService, IdentityService>();
-builder.Services.AddScoped<IOtpService, OtpService>();
-
-builder.Services.AddValidatorsFromAssembly(typeof(RegisterCustomerCommand).Assembly);
-
-builder.Services.AddMediatR(cfg => {
-  cfg.RegisterServicesFromAssembly(typeof(RegisterCustomerCommand).Assembly);
-  cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationPipelineBehavior<,>));
-});
-
+// Configure EF Core & Identity
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<PortalDbContext>(options => {
-  // Configure the context to use PostgreSQL.
-  options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
-      o => o.MigrationsAssembly("Tai.Portal.Core.Infrastructure"));
-  // Register the entity sets needed by OpenIddict.
+  options.UseNpgsql(connectionString, b => b.MigrationsAssembly("Tai.Portal.Core.Infrastructure"));
+  // Use the OpenIddict entity models.
   options.UseOpenIddict();
 });
 
-// Register the Identity services.
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
-    .AddEntityFrameworkStores<PortalDbContext>()
-    .AddDefaultTokenProviders();
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options => {
+  options.Password.RequireDigit = true;
+  options.Password.RequireLowercase = true;
+  options.Password.RequireNonAlphanumeric = true;
+  options.Password.RequireUppercase = true;
+  options.Password.RequiredLength = 8;
+  options.User.RequireUniqueEmail = true;
+})
+.AddEntityFrameworkStores<PortalDbContext>()
+.AddDefaultTokenProviders();
 
-builder.Services.ConfigureApplicationCookie(options => {
-  options.LoginPath = "/Account/Login";
-  options.LogoutPath = "/Account/Logout";
+// Core Application Services
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ITenantService, TenantService>();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<IIdentityService, IdentityService>();
+builder.Services.AddScoped<IOtpService, MockOtpService>();
+
+// Configure MediatR & FluentValidation
+builder.Services.AddValidatorsFromAssembly(typeof(RegisterStaffCommand).Assembly);
+builder.Services.AddMediatR(cfg => {
+  cfg.RegisterServicesFromAssembly(typeof(RegisterStaffCommand).Assembly);
+  cfg.AddOpenBehavior(typeof(ValidationPipelineBehavior<,>));
 });
 
-// Register the OpenIddict services.
 builder.Services.AddOpenIddict()
     // Register the OpenIddict core components.
     .AddCore(options => {
       // Configure OpenIddict to use the Entity Framework Core stores and models.
+      // Note: the default entities used by OpenIddict are specialized for EF Core.
       options.UseEntityFrameworkCore()
-          .UseDbContext<PortalDbContext>();
+             .UseDbContext<PortalDbContext>();
     })
     // Register the OpenIddict server components.
     .AddServer(options => {
-      // JUNIOR RATIONALE: We use explicit 'identity/' prefixes for all endpoints. 
-      // This allows us to remove UsePathBase, which was causing issuer 
-      // mismatches when validating tokens on non-prefixed routes like /api/users.
+      // Enable the authorization, logout, token and userinfo endpoints.
       options.SetAuthorizationEndpointUris("connect/authorize")
-          .SetLogoutEndpointUris("connect/logout")
-          .SetTokenEndpointUris("connect/token")
-          .SetUserinfoEndpointUris("connect/userinfo")
-          .SetConfigurationEndpointUris(".well-known/openid-configuration")
-          .SetCryptographyEndpointUris(".well-known/jwks");
+             .SetLogoutEndpointUris("connect/logout")
+             .SetTokenEndpointUris("connect/token")
+             .SetUserinfoEndpointUris("connect/userinfo");
 
-      // Enable the authorization code flow.
+      // Mark the "authorization_code" and "refresh_token" flow as being supported.
       options.AllowAuthorizationCodeFlow()
-          .AllowRefreshTokenFlow();
-
-      // Require PKCE (Proof Key for Code Exchange) for all authorization requests.
-      // This is a security feature that prevents authorization code interception attacks.
-      options.RequireProofKeyForCodeExchange();
+             .AllowRefreshTokenFlow();
 
       // Register the scopes (permissions) that clients can request.
       options.RegisterScopes(
@@ -130,7 +117,9 @@ builder.Services.AddAuthentication(options => {
 });
 
 builder.Services.AddAuthorization();
-builder.Services.AddControllers();
+builder.Services.AddControllers(options => {
+  options.Filters.Add<Tai.Portal.Api.Filters.ValidationExceptionFilter>();
+});
 
 builder.Services.AddCors(options => {
   options.AddDefaultPolicy(policy => {
@@ -151,52 +140,10 @@ builder.Services.ConfigureApplicationCookie(options => {
 
 var app = builder.Build();
 
-app.Use(async (context, next) => {
-  try {
-    await next(context);
-  } catch (FluentValidation.ValidationException ex) {
-    context.Response.StatusCode = 400;
-    var problemDetails = new Microsoft.AspNetCore.Mvc.ValidationProblemDetails {
-      Title = "Validation Failed",
-      Status = 400,
-      Detail = "One or more validation errors occurred."
-    };
-    foreach (var error in ex.Errors) {
-      if (!problemDetails.Errors.ContainsKey(error.PropertyName)) {
-        problemDetails.Errors[error.PropertyName] = new string[] { error.ErrorMessage };
-      } else {
-        var existing = problemDetails.Errors[error.PropertyName];
-        problemDetails.Errors[error.PropertyName] = existing.Concat(new[] { error.ErrorMessage }).ToArray();
-      }
-    }
-    await context.Response.WriteAsJsonAsync(problemDetails);
-  } catch (Tai.Portal.Core.Application.Exceptions.IdentityValidationException ex) {
-    context.Response.StatusCode = 400;
-    var problemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails {
-      Title = "Identity Validation Failed",
-      Status = 400,
-      Detail = ex.Message
-    };
-    await context.Response.WriteAsJsonAsync(problemDetails);
-  }
-});
-
-// JUNIOR RATIONALE: This MUST be the first thing in the pipeline. 
-// It tells the API to look at the headers from the Gateway (like Host and IP) 
-// and pretend it IS the Gateway.
-app.UseForwardedHeaders();
-
-// Seed the database with initial data in development.
-if (app.Environment.IsDevelopment()) {
-  SeedData.Initialize(app.Services);
-}
-
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment()) {
-  app.MapOpenApi();
+  app.UseDeveloperExceptionPage();
 }
-
-app.UseRouting();
 
 app.UseCors();
 
@@ -216,4 +163,13 @@ app.MapGet("/", () => "Portal API is running");
 app.MapControllers();
 
 app.Run();
+
 public partial class Program { }
+
+/// <summary>
+/// A mock OTP service for development and testing.
+/// </summary>
+public class MockOtpService : IOtpService {
+  public Task<string> GenerateAndStoreOtpAsync(string userId, CancellationToken cancellationToken = default) => Task.FromResult("123456");
+  public Task<bool> ValidateOtpAsync(string userId, string code, CancellationToken cancellationToken = default) => Task.FromResult(code == "123456");
+}

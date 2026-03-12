@@ -5,6 +5,7 @@ using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
@@ -17,7 +18,6 @@ using Tai.Portal.Core.Application.UseCases.Users;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.ValueObjects;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace Tai.Portal.Api.IntegrationTests;
@@ -32,22 +32,25 @@ public class UsersApiTests : IClassFixture<WebApplicationFactory<Program>> {
   public UsersApiTests(WebApplicationFactory<Program> factory) {
     _factory = factory;
   }
+private WebApplicationFactory<Program> CreateFactoryWithMockAuth(string userId) {
+  return _factory.WithWebHostBuilder(builder => {
+    builder.ConfigureTestServices(services => {
+      // Add a mock authentication handler with a UNIQUE name for this test class
+      const string scheme = "UsersApiTestsAuth";
+      services.AddAuthentication(options => {
+        options.DefaultAuthenticateScheme = scheme;
+        options.DefaultChallengeScheme = scheme;
+        options.DefaultScheme = scheme;
+      })
+      .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(scheme, options => { });
 
-  private WebApplicationFactory<Program> CreateFactoryWithMockAuth(string userId) {
-    return _factory.WithWebHostBuilder(builder => {
-      builder.ConfigureTestServices(services => {
-        services.AddAuthentication(options => {
-          options.DefaultAuthenticateScheme = "IntegrationTestAuth";
-          options.DefaultChallengeScheme = "IntegrationTestAuth";
-        })
-        .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("IntegrationTestAuth", options => { });
-
-        services.AddAuthorization(options => {
-          options.DefaultPolicy = new AuthorizationPolicyBuilder()
-              .AddAuthenticationSchemes("IntegrationTestAuth")
-              .RequireAuthenticatedUser()
-              .Build();
-        });
+      // Override the DefaultPolicy to use our test scheme
+      services.AddAuthorization(options => {
+        options.DefaultPolicy = new AuthorizationPolicyBuilder()
+            .AddAuthenticationSchemes(scheme)
+            .RequireAuthenticatedUser()
+            .Build();
+      });
 
         services.AddSingleton(new TestUserContext { UserId = userId });
         services.AddSingleton<IAuthorizationHandler, AllowAnonymousAuthorizationHandler>();
