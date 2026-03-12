@@ -79,7 +79,7 @@ describe('UsersPage', () => {
       id: 'user-1', 
       name: 'John Doe', 
       email: 'john@example.com', 
-      status: 'Pending', 
+      status: 'PendingApproval', 
       rowVersion: 123 
     };
     
@@ -99,7 +99,7 @@ describe('UsersPage', () => {
       rowVersion: 123 
     };
     
-    component['onAction']({ actionId: 'edit', row: testUser });
+    component['onAction']({ actionId: 'view', row: testUser });
 
     expect(mockDialog.open).not.toHaveBeenCalled();
     expect(mockStore.approveUser).not.toHaveBeenCalled();
@@ -117,11 +117,11 @@ describe('UsersPage', () => {
 
   it('should define columns and actions correctly', () => {
     expect(component['columns'].length).toBe(3);
-    expect(component['actions'].length).toBe(2);
+    expect(component['actions'].length).toBe(3);
     
     const approveAction = component['actions'].find(a => a.id === 'approve');
     const activeUser = { status: 'Active' } as User;
-    const pendingUser = { status: 'Pending' } as User;
+    const pendingUser = { status: 'PendingApproval' } as User;
     
     expect(approveAction?.visible?.(activeUser)).toBe(false);
     expect(approveAction?.visible?.(pendingUser)).toBe(true);

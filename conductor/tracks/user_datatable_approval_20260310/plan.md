@@ -53,7 +53,7 @@
     - [x] Listened to `actionTriggered` for "Approve".
     - [x] Opened `<tai-confirmation-dialog>` and handled confirmation.
     - [x] Dispatched API call passing `If-Match` ETag.
-- [x] Task: Conductor - User Manual Verification 'Frontend Users Feature' (Protocol in workflow.md) 65d6e1b
+- [x] Task: Conductor - User Manual Verification 'Frontend Users Feature' (Protocol in workflow.md) 74a6a02
 
 ## Phase 5: Frontend User Detail Feature
 - [ ] Task: User Detail Read-Only View

@@ -99,15 +99,20 @@ export class UsersPage implements OnInit {
    */
   protected readonly actions: TableActionDef<User>[] = [
     {
-      id: 'approve',
-      label: 'Approve',
-      class: 'text-indigo-600 hover:text-indigo-900 font-semibold',
-      visible: (user) => user.status === 'Pending'
+      id: 'view',
+      label: 'View Details',
+      class: 'text-gray-700 hover:text-gray-900'
     },
     {
       id: 'edit',
-      label: 'Edit',
-      class: 'text-gray-600 hover:text-gray-900'
+      label: 'Edit User',
+      class: 'text-gray-700 hover:text-gray-900'
+    },
+    {
+      id: 'approve',
+      label: 'Approve Registration',
+      class: 'text-indigo-600 hover:text-indigo-900 font-bold',
+      visible: (user) => user.status === 'PendingApproval'
     }
   ];
 
