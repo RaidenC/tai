@@ -28,7 +28,7 @@
     - [x] Update approval and edit endpoints to validate `If-Match` and return `409/412` on conflict.
 - [x] Task: Conductor - User Manual Verification 'Backend Application & API' (Protocol in workflow.md) f5b5843
 
-## Phase 3: Frontend Design System (CDK Table & Modal)
+## Phase 3: Frontend Design System (CDK Table & Modal) [checkpoint: 2141654]
 - [x] Task: Generic Confirmation Modal [2a35980]
     - [x] Check `libs/ui/design-system` for existing confirmation modal.
     - [x] If missing, build `<tai-confirmation-dialog>` using `@angular/cdk/dialog` and Tailwind CSS 4.0.
@@ -40,7 +40,7 @@
     - [x] Add Empty State and Loading State UI.
     - [x] Add Storybook stories with Axe-core validation.
     - [x] Ensure `data-testid` attributes exist on all interactive elements.
-- [~] Task: Conductor - User Manual Verification 'Frontend Design System' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Frontend Design System' (Protocol in workflow.md) 2141654
 
 ## Phase 4: Frontend Users Feature (Integration)
 - [ ] Task: Regenerate API Client
