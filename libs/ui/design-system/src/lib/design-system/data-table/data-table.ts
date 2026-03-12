@@ -1,6 +1,7 @@
 import { Component, input, output, ChangeDetectionStrategy, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkTableModule } from '@angular/cdk/table';
+import { CdkMenuModule } from '@angular/cdk/menu';
 
 /**
  * Action definition for the DataTable.
@@ -47,7 +48,7 @@ export interface TableColumnDef<T> {
 @Component({
   selector: 'tai-data-table',
   standalone: true,
-  imports: [CommonModule, CdkTableModule],
+  imports: [CommonModule, CdkTableModule, CdkMenuModule],
   templateUrl: './data-table.html',
   styleUrl: './data-table.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
