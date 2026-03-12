@@ -19,13 +19,13 @@
 - [ ] Task: Conductor - User Manual Verification 'Backend Domain & Persistence' (Protocol in workflow.md)
 
 ## Phase 2: Backend Application & API
-- [ ] Task: Update Pagination API Contract
-    - [ ] Ensure the Users Query UseCase supports Offset-based pagination (PageNumber, PageSize).
-- [ ] Task: Implement Concurrency in Users Controller
-    - [ ] Write failing integration test for `GET /users/:id` returning `ETag` header.
-    - [ ] Update `GET /users/:id` endpoint to return `ETag`.
-    - [ ] Write failing integration test for `PUT/PATCH` actions handling `If-Match` header.
-    - [ ] Update approval and edit endpoints to validate `If-Match` and return `409/412` on conflict.
+- [x] Task: Update Pagination API Contract [c091a91]
+    - [x] Ensure the Users Query UseCase supports Offset-based pagination (PageNumber, PageSize).
+- [x] Task: Implement Concurrency in Users Controller [c091a91]
+    - [x] Write failing integration test for `GET /users/:id` returning `ETag` header.
+    - [x] Update `GET /users/:id` endpoint to return `ETag`.
+    - [x] Write failing integration test for `PUT/PATCH` actions handling `If-Match` header.
+    - [x] Update approval and edit endpoints to validate `If-Match` and return `409/412` on conflict.
 - [ ] Task: Conductor - User Manual Verification 'Backend Application & API' (Protocol in workflow.md)
 
 ## Phase 3: Frontend Design System (CDK Table & Modal)
