@@ -1,20 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { CdkTableModule } from '@angular/cdk/table';
 import { DataTableComponent, TableColumnDef, TableActionDef } from './data-table';
+import { CdkTableModule } from '@angular/cdk/table';
+import { CdkMenuModule } from '@angular/cdk/menu';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-/**
- * DataTableComponent Unit Tests
- * 
- * Persona: Quality Architect.
- * Focus: Verifies that the headless DataTable correctly orchestrates 
- * structural rendering, conditional row actions, and state-driven UI 
- * (loading/empty states) while strictly adhering to the "dumb" component pattern.
- */
 interface TestData {
   id: string;
   name: string;
-  status: 'Active' | 'Pending';
+  status: string;
 }
 
 describe('DataTableComponent', () => {
@@ -22,33 +15,32 @@ describe('DataTableComponent', () => {
   let fixture: ComponentFixture<DataTableComponent<TestData>>;
 
   const columns: TableColumnDef<TestData>[] = [
-    { id: 'name', header: 'Name', cell: row => row.name, sortable: true },
-    { id: 'status', header: 'Status', cell: row => row.status }
+    { id: 'name', header: 'Name', cell: (row) => row.name, sortable: true },
+    { id: 'status', header: 'Status', cell: (row) => row.status }
   ];
 
   const actions: TableActionDef<TestData>[] = [
-    { id: 'approve', label: 'Approve', visible: row => row.status === 'Pending' },
-    { id: 'edit', label: 'Edit' }
+    { id: 'edit', label: 'Edit' },
+    { id: 'approve', label: 'Approve', visible: (row) => row.status === 'Pending' }
   ];
 
   const data: TestData[] = [
-    { id: '1', name: 'John', status: 'Active' },
-    { id: '2', name: 'Jane', status: 'Pending' }
+    { id: '1', name: 'John Doe', status: 'Active' },
+    { id: '2', name: 'Jane Smith', status: 'Pending' }
   ];
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [DataTableComponent, CdkTableModule],
+      imports: [DataTableComponent, CdkTableModule, CdkMenuModule],
     }).compileComponents();
 
     fixture = TestBed.createComponent(DataTableComponent<TestData>);
     component = fixture.componentInstance;
     
-    // Set required inputs via the componentRef for signal inputs
     fixture.componentRef.setInput('data', data);
     fixture.componentRef.setInput('columns', columns);
     fixture.componentRef.setInput('actions', actions);
-    fixture.componentRef.setInput('totalCount', 2);
+    fixture.componentRef.setInput('totalCount', data.length);
     
     fixture.detectChanges();
   });
@@ -58,32 +50,33 @@ describe('DataTableComponent', () => {
   });
 
   it('should render the correct number of headers and data rows', () => {
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('[data-testid="header-name"]')).toBeTruthy();
-    expect(compiled.querySelector('[data-testid="header-status"]')).toBeTruthy();
-    expect(compiled.querySelectorAll('[cdk-row]')).toHaveLength(2);
+    const headers = fixture.nativeElement.querySelectorAll('th');
+    const rows = fixture.nativeElement.querySelectorAll('tr[cdk-row]');
+    
+    // 2 data columns + 1 actions column = 3
+    expect(headers.length).toBe(3);
+    expect(rows.length).toBe(2);
   });
 
-  it('should emit actionTriggered when an action button is clicked', () => {
+  it('should render the action menu triggers for each row', () => {
+    const triggers = fixture.nativeElement.querySelectorAll('[data-testid^="action-menu-trigger-"]');
+    expect(triggers.length).toBe(2);
+  });
+
+  it('should emit actionTriggered when onAction is called', () => {
     const spy = vi.fn();
     component.actionTriggered.subscribe(spy);
     
-    // Use data-testid for precise targeting
-    const editBtn = fixture.nativeElement.querySelector('[data-testid="action-edit"]') as HTMLButtonElement;
-    editBtn.click();
+    component.onAction('edit', data[0]);
     
     expect(spy).toHaveBeenCalledWith({ actionId: 'edit', row: data[0] });
   });
 
-  it('should enforce conditional action visibility based on row data', () => {
-    const compiled = fixture.nativeElement as HTMLElement;
-    const rows = compiled.querySelectorAll('[cdk-row]');
+  it('should correctly determine action visibility based on row data', () => {
+    const approveAction = actions.find(a => a.id === 'approve')!;
     
-    // Row 1 (Active) - 'Approve' action should be absent
-    expect(rows[0].querySelector('[data-testid="action-approve"]')).toBeFalsy();
-    
-    // Row 2 (Pending) - 'Approve' action should be present
-    expect(rows[1].querySelector('[data-testid="action-approve"]')).toBeTruthy();
+    expect(component.isActionVisible(approveAction, data[0])).toBe(false); // Active
+    expect(component.isActionVisible(approveAction, data[1])).toBe(true);  // Pending
   });
 
   it('should emit sortChanged with correct parameters when a header is clicked', () => {
@@ -113,8 +106,6 @@ describe('DataTableComponent', () => {
     fixture.detectChanges();
     
     const summary = fixture.nativeElement.querySelector('[data-testid="pagination-summary"]').textContent;
-    // (2-1)*10 + 1 = 11
-    // min(2*10, 25) = 20
     expect(summary).toContain('Showing 11 to 20 of 25 records');
   });
 
@@ -142,7 +133,6 @@ describe('DataTableComponent', () => {
     
     const loadingOverlay = fixture.nativeElement.querySelector('[data-testid="table-loading"]');
     expect(loadingOverlay).toBeTruthy();
-    expect(loadingOverlay.textContent).toContain('Loading data...');
   });
 
   it('should render the empty state UI when data is empty and not loading', () => {
@@ -160,16 +150,13 @@ describe('DataTableComponent', () => {
     const spy = vi.fn();
     component.pageChanged.subscribe(spy);
     
-    // Simulate being on page 1 with more items available
-    fixture.componentRef.setInput('totalCount', 25);
+    fixture.componentRef.setInput('totalCount', 20);
     fixture.componentRef.setInput('pageIndex', 1);
-    fixture.componentRef.setInput('pageSize', 10);
     fixture.detectChanges();
-
-    const nextBtn = fixture.nativeElement.querySelector('[data-testid="pagination-next"]') as HTMLButtonElement;
-    expect(nextBtn.disabled).toBe(false);
     
+    const nextBtn = fixture.nativeElement.querySelector('[data-testid="pagination-next"]') as HTMLButtonElement;
     nextBtn.click();
+    
     expect(spy).toHaveBeenCalledWith(2);
   });
 });

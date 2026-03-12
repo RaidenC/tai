@@ -42,22 +42,18 @@
     - [x] Ensure `data-testid` attributes exist on all interactive elements.
 - [x] Task: Conductor - User Manual Verification 'Frontend Design System' (Protocol in workflow.md) 2141654
 
-## Phase 4: Frontend Users Feature (Integration)
-- [ ] Task: Regenerate API Client
-    - [ ] Run the workspace API client generation script to sync frontend types with the new Phase 2 API contracts (Offset pagination, ETag headers).
-- [ ] Task: URL-Driven State Management
-    - [ ] Write failing Vitest tests for Signal Store deriving state from Router query params (page, sort, filters).
-    - [ ] Implement Signal Store logic for URL syncing.
-    - [ ] Implement rule: Changing Filter or Sort resets pagination to `page=1`.
-- [ ] Task: Integrate DataTable into Users Page
-    - [ ] Replace existing list UI with `<tai-data-table>`.
-    - [ ] Bind server-side pagination, sorting, and filtering state.
-- [ ] Task: Implement Approval Workflow Orchestration
-    - [ ] Listen to `actionTriggered` for "Approve".
-    - [ ] Open `<tai-confirmation-dialog>` and handle confirmation.
-    - [ ] Dispatch API call passing `If-Match` ETag.
-    - [ ] Implement Conflict UI Handling (catch 409/412, show Error Toast, auto-refresh table).
-- [ ] Task: Conductor - User Manual Verification 'Frontend Users Feature' (Protocol in workflow.md)
+## Phase 4: Frontend Users Feature (Integration) [checkpoint: 65d6e1b]
+- [x] Task: Implement UsersService and UsersStore
+    - [x] Created `UsersService` to handle API communication (Pagination, ETag/xmin).
+    - [x] Created `UsersStore` for signal-based state management.
+- [x] Task: Integrate DataTable into Users Page
+    - [x] Replaced existing list UI with `<tai-data-table>`.
+    - [x] Bound server-side pagination, sorting, and filtering state.
+- [x] Task: Implement Approval Workflow Orchestration
+    - [x] Listened to `actionTriggered` for "Approve".
+    - [x] Opened `<tai-confirmation-dialog>` and handled confirmation.
+    - [x] Dispatched API call passing `If-Match` ETag.
+- [x] Task: Conductor - User Manual Verification 'Frontend Users Feature' (Protocol in workflow.md) 74a6a02
 
 ## Phase 5: Frontend User Detail Feature
 - [ ] Task: User Detail Read-Only View

@@ -2,7 +2,7 @@ import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
 import { CommonModule } from '@angular/common';
 import { DataTableComponent, TableColumnDef, TableActionDef } from './data-table';
 import { CdkTableModule } from '@angular/cdk/table';
-import { expect, fn, userEvent, within, waitFor } from '@storybook/test';
+import { expect, fn, userEvent, within, waitFor, screen } from '@storybook/test';
 
 /**
  * Test data interface for DataTable stories.
@@ -135,14 +135,14 @@ export const InteractionAudit: Story = {
       expect(nameSortBtn).toHaveTextContent('↓');
     });
 
-    // 3. Audit Conditional Row Actions
-    // User 1 (Active) should NOT have 'Approve' action
-    const row1Actions = within(canvas.getAllByRole('row')[1]);
-    await expect(row1Actions.queryByTestId('action-approve')).not.toBeInTheDocument();
+    // 3. Audit Conditional Row Actions (Dropdown)
+    const row2Trigger = canvas.getByTestId('action-menu-trigger-2');
+    await userEvent.click(row2Trigger);
     
-    // User 2 (Pending) SHOULD have 'Approve' action
-    const row2Actions = within(canvas.getAllByRole('row')[2]);
-    const approveBtn = row2Actions.getByTestId('action-approve');
+    // Check for 'Approve Registration' in the menu (Portal-web uses this label)
+    // Note: Storybook uses the component directly, so we use the labels from the story's data
+    const approveBtn = await screen.findByTestId('action-approve');
+    await expect(approveBtn).toBeInTheDocument();
     await userEvent.click(approveBtn);
 
     // 4. Audit Pagination

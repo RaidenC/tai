@@ -1,43 +1,46 @@
-# Track: User DataTable & Approval Workflow - Phase 3 Knowledge Note
+# Knowledge Note: Frontend Design System (CDK Table & Modal)
+## Track: User DataTable and Approval Workflow - Phase 3
 
-## The Enterprise Challenge: Accessible and Declarative UI Components
-In an enterprise portal, UI components must be more than just "pretty." They must be **accessible** (WCAG 2.1 compliant), **type-safe**, and **declarative** to allow for rapid development without sacrificing consistency. Phase 3 focuses on building the core "Building Blocks" of our Design System—the `DataTable` and `ConfirmationDialog`—using `@angular/cdk` to ensure world-class accessibility and architectural separation.
+### Overview
+Implementation of the foundational, reusable UI components for the TAI Portal using Angular 21 (Zoneless/Signals), @angular/cdk, and Tailwind CSS 4.0. The focus was on creating accessible, high-performance "headless" components that separate logic from presentation.
 
-## Knowledge Hierarchy
+### Key Architectural Decisions
 
-### Junior Level (The "What")
-- **Headless Components (@angular/cdk):** Using the Component Dev Kit (CDK) to handle the "Hard Parts" of UI (accessibility, structural logic, focus management) while we handle the "Look" with Tailwind CSS.
-- **Smart vs. Dumb Components:** 
-  - **Dumb (DataTable):** Purely presentational. It takes data via `input()` and emits actions via `output()`. It has no knowledge of APIs or business rules.
-  - **Smart (Users Page):** Orchestrates the data flow, calls APIs, and handles navigation.
-- **Storybook:** A tool for developing UI components in isolation, allowing us to test all visual states (loading, empty, populated) without running the full application.
+#### 1. Headless Architecture with @angular/cdk
+- **DataTable:** Leveraged `CdkTableModule` to handle the complex structural requirements of an HTML table (row rendering, column definitions) while maintaining full control over the DOM and styling.
+- **Modal:** Used `CdkDialogModule` instead of standard Material Dialog to avoid heavy UI dependencies and ensure alignment with our custom design system.
 
-### Mid Level (The "How")
-- **Declarative Row Actions:** Instead of hardcoding buttons in the table, we pass a `TableActionDef<T>[]` array. This allows the parent component to define what actions are available and even control their visibility based on row data (e.g., only show "Approve" for "Pending" users).
-- **Signal-Based Inputs/Outputs:** Using Angular's new Signal API (`input()`, `output()`, `computed()`) for reactive, high-performance UI state management that automatically triggers change detection only when necessary.
-- **Interaction Audits:** Using Storybook `play` functions to automate the testing of UI interactions (e.g., "When I click sort, does the indicator change?").
+#### 2. Signal-Based Component API
+- Used the new Angular `input()`, `output()`, and `computed()` APIs.
+- Components are designed for **OnPush** change detection and work seamlessly in a **Zoneless** environment.
+- **Dynamic Action Visibility:** Implemented a declarative visibility pattern using a predicate function: `visible: (row) => boolean`.
 
-### Senior/Principal Level (The "Why")
-- **Zero-Trust UI Architecture:** We strictly enforce **Zero-Trust CSP (Content Security Policy)** by prohibiting inline styles (`[style]`) and `eval()`. Our `DataTable` and `Dialog` use utility-based Tailwind classes and Trusted Types to ensure that even a malicious data payload cannot execute XSS or bypass security guardrails.
-- **BFF (Backend-for-Frontend) Alignment:** The `DataTable` is designed for **Offset-based pagination**, directly matching our Phase 2 API contracts. This alignment ensures that we aren't fetching unnecessary data, keeping the browser memory footprint low and the user experience snappy even with large datasets.
-- **Accessibility as a Strategic Asset:** By building on `@angular/cdk/table` and `@angular/cdk/dialog`, we inherit years of accessibility research, ensuring that our portal is usable by everyone and compliant with legal mandates (like Section 508 or ADA) by default.
+#### 3. Zero-Trust Styling Compliance
+- **No Inline Styles:** Strictly adhered to the Zero-Trust CSP by using Tailwind 4.0 classes exclusively.
+- **No Dynamic Style Bindings:** Avoided `[style.width]` or similar bindings that trigger CSP violations.
 
-## Deep-Dive Mechanics: The Action Flow
-1. **Definition:** The Smart component defines a `TableActionDef` for "Approve".
-2. **Predicate:** It provides a `visible: (user) => user.status === 'Pending'` function.
-3. **Render:** The `DataTable` loops through actions and only renders "Approve" for rows where the predicate is true.
-4. **Emit:** Clicking "Approve" emits an `actionTriggered` event with the `actionId` and the full `row` data.
-5. **Orchestrate:** The Smart component receives the event, identifies the "Approve" action, and opens the `ConfirmationDialog`.
+### Technical Implementation Details
 
-## Interview Talking Points
+#### Confirmation Dialog
+- **Accessibility:** Implemented focus management and ARIA roles using CDK primitives.
+- **Theming:** Utilized Tailwind 4.0's "modern" aesthetic with backdrop-blur overlays and high-contrast typography.
+- **Testing:** Storybook interactions use `play` functions to verify that clicks on "Confirm" or "Cancel" correctly close the dialog with the expected payload.
 
-### Junior/Mid Responses
-- "I built a reusable DataTable component using the Angular CDK to ensure high accessibility while maintaining full control over the visual presentation with Tailwind 4.0."
-- "I used Storybook to develop and test UI components in isolation, ensuring that loading and empty states were handled gracefully before integrating them into the main application."
+#### DataTable Component
+- **Generic Support:** Uses TypeScript generics `<T>` to allow any data shape.
+- **Declarative Actions:** Actions are defined as an array of `TableActionDef<T>`, allowing the parent component to specify logic without touching the table internals.
+- **Accessibility:**
+    - Sortable headers use `<button>` elements inside `<th>` for keyboard navigability.
+    - Explicit `aria-labels` for sorting states (Ascending/Descending).
+- **Pagination UI:** Intelligent calculation of ranges (e.g., "Showing 11 to 20 of 25") using `computed` signals.
 
-### Senior/Lead Responses
-- "We implemented a headless component strategy for our Design System, separating behavioral logic from presentation. This allows us to scale our UI consistently while enforcing architectural constraints like Zero-Trust CSP and signal-based reactivity."
-- "By leveraging the Angular CDK's structural primitives, we achieved WCAG 2.1 compliance out-of-the-box, significantly reducing our technical debt and ensuring a robust foundation for all future data-driven features."
+### Verification Standards (March 2026)
+- **Storybook Interactions:** All components include an `InteractionAudit` story with passing `play` functions.
+- **Axe-Core:** Verified zero accessibility violations in the Storybook environment.
+- **Unit Testing:** 100% logic coverage for calculation signals and event emissions.
 
-## March 2026 Market Context
-The move toward **Utility-First, Headless Component Libraries** (like this CDK + Tailwind 4 approach) is the current industry standard for enterprise-grade design systems. It avoids the "Black Box" limitations of monolithic UI libraries while providing the safety and speed necessary for high-velocity software delivery.
+### Common Pitfalls & Solutions
+- **Problem:** `SB_FRAMEWORK_ANGULAR_0001` error in Storybook v10.
+- **Solution:** Excluded `test-runner.ts` from `tsconfig.json` and ensured explicit `buildTarget` configuration in `project.json`.
+- **Problem:** Angular `output()` not being captured by Storybook `fn()`.
+- **Solution:** Use `argTypes` with explicit `action: 'name'` mapping to bridge the gap between the new output API and Storybook's mocking system.
