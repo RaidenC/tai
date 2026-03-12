@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { OnboardingService } from './onboarding.service';
+import { OnboardingService, PendingUser, PaginatedUsers } from './onboarding.service';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('OnboardingService', () => {
@@ -39,17 +39,44 @@ describe('OnboardingService', () => {
     const req = httpMock.expectOne('/api/onboarding/verify');
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ userId: 'user123', code: '123456' });
-    req.flush({});
+    req.flush(null);
   });
 
   it('should fetch pending approvals', () => {
-    const mockPendingUsers = [{ id: '1', email: 'test@example.com', name: 'Test User' }];
-    service.getPendingApprovals().subscribe((users) => {
-      expect(users).toEqual(mockPendingUsers);
+    const mockUsers: PendingUser[] = [{ id: '1', email: 'test@tai.com', name: 'Test' }];
+
+    service.getPendingApprovals().subscribe(users => {
+      expect(users).toEqual(mockUsers);
     });
 
     const req = httpMock.expectOne('/api/onboarding/pending-approvals');
     expect(req.request.method).toBe('GET');
-    req.flush(mockPendingUsers);
+    req.flush(mockUsers);
+  });
+
+  it('should approve a user', () => {
+    service.approveUser('user-1').subscribe();
+
+    const req = httpMock.expectOne('/api/onboarding/approve');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ targetUserId: 'user-1' });
+    req.flush(null);
+  });
+
+  it('should fetch users with pagination', () => {
+    const mockResponse: PaginatedUsers = {
+      items: [{ id: '1', email: 'test@tai.com', name: 'Test' }],
+      totalCount: 1,
+      page: 1,
+      pageSize: 10
+    };
+
+    service.getUsers(2, 20).subscribe(response => {
+      expect(response).toEqual(mockResponse);
+    });
+
+    const req = httpMock.expectOne('/api/users?page=2&pageSize=20');
+    expect(req.request.method).toBe('GET');
+    req.flush(mockResponse);
   });
 });
