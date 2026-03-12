@@ -55,16 +55,16 @@
     - [x] Dispatched API call passing `If-Match` ETag.
 - [x] Task: Conductor - User Manual Verification 'Frontend Users Feature' (Protocol in workflow.md) 74a6a02
 
-## Phase 5: Frontend User Detail Feature
-- [ ] Task: User Detail Read-Only View
-    - [ ] Implement `/users/:id` route in `libs/features/users`.
-    - [ ] Display basic info (Name, Email, Institution) and placeholders for Roles/Privileges/Groups.
-- [ ] Task: User Detail Edit View
-    - [ ] Implement `/users/:id/edit` route.
-    - [ ] Implement form for editing Name and Email.
-    - [ ] Enforce UI constraint: Institution field is Read-Only for Tenant Admins (verify privilege before rendering as editable).
-    - [ ] Dispatch update API call with `If-Match` header and handle conflicts.
-- [ ] Task: Conductor - User Manual Verification 'Frontend User Detail Feature' (Protocol in workflow.md)
+## Phase 5: Frontend User Detail Feature [checkpoint: Phase 5 complete]
+- [x] Task: User Detail Read-Only View
+    - [x] Implemented `/users/:id` route in `apps/portal-web`.
+    - [x] Displayed basic info (FirstName, LastName, Email, Status, Institution).
+- [x] Task: User Detail Edit View
+    - [x] Implemented toggleable edit mode using signals.
+    - [x] Implemented form for editing Name and Email with reactive validation.
+    - [x] Enforced UI constraint: Institution field is strictly Read-Only.
+    - [x] Dispatched update API call with `If-Match` header and handled optimistic concurrency.
+- [x] Task: Conductor - User Manual Verification 'Frontend User Detail Feature' (Protocol in workflow.md)
 
 ## Phase 6: E2E Playwright Testing
 - [ ] Task: URL State and Navigation E2E

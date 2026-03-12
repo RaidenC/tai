@@ -11,7 +11,8 @@ namespace Tai.Portal.Core.Application.UseCases.Users;
 public record UserDetailDto(
   string Id,
   string Email,
-  string Name,
+  string FirstName,
+  string LastName,
   string Status,
   string? Institution,
   uint RowVersion);
@@ -36,7 +37,8 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDet
     return new UserDetailDto(
       user.Id,
       email,
-      email, // Name placeholder
+      user.FirstName ?? "No First Name",
+      user.LastName ?? "No Last Name",
       user.Status.ToString(),
       "Tai Portal", // Institution placeholder
       user.RowVersion);
