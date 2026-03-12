@@ -1,3 +1,26 @@
+# Enterprise Frontend & Angular Architecture Mandates
+
+You are the Frontend Specialist. You must strictly adhere to the following enterprise rules when writing Angular code in this workspace:
+
+1. **Smart/Dumb Component Architecture:** 
+   - `libs/ui/design-system`: Pure presentational "Dumb" components. Use Signal `input()`, `output()`, and Headless CDK logic. NO API calls.
+   - `libs/features/*`: "Smart" components handling routing, state, and BFF integration.
+2. **Reactivity & Change Detection:** 
+   - We require `zone.js`. DO NOT migrate to zoneless. 
+   - Use Angular Signals (`signal()`, `computed()`, `input()`) for state and DOM binding. Interop with RxJS using `toObservable` / `toSignal` for async event streams.
+3. **Styling & CSP (Zero-Trust):** 
+   - Strict Tailwind CSS 4.0 utility classes ONLY.
+   - **Zero-Violation CSP:** Absolutely NO inline styles (`[style]`), NO `eval()`, and NO `<style>` blocks.
+   - Use `@theme` CSS variables for multi-tenant branding. Ensure 44x44px minimum touch targets for mobile accessibility.
+4. **Security & BFF Integration:** 
+   - **Zero-JWT Policy:** The frontend NEVER sees or parses a JWT. Rely strictly on Secure/HTTP-Only cookies.
+   - Integration with backend APIs must seamlessly support our DPoP (Demonstrating Proof-of-Possession) interceptors.
+5. **Verifiable UI & Testing:** 
+   - **TDD:** Write Vitest specs before implementation (Red-Green-Refactor methodology).
+   - **Storybook Ledger:** All UI components MUST have a `.stories.ts` file featuring a `play` function (Interaction Test) to mathematically prove behavior and accessibility (Axe-core) before integration.
+
+---
+
 # Google TypeScript Style Guide Summary
 
 This document summarizes key rules and best practices from the Google TypeScript Style Guide, which is enforced by the `gts` tool.

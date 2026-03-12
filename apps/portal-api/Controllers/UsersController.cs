@@ -22,9 +22,43 @@ public class UsersController : ControllerBase {
   }
 
   [HttpGet]
-  public async Task<IActionResult> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 10) {
-    var query = new GetUsersQuery(_tenantService.TenantId.Value, page, pageSize);
+  public async Task<IActionResult> GetUsers([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10) {
+    var query = new GetUsersQuery(_tenantService.TenantId.Value, pageNumber, pageSize);
     var result = await _mediator.Send(query);
     return Ok(result);
+  }
+
+  [HttpGet("{id}")]
+  public async Task<IActionResult> GetUserById(string id) {
+    var query = new GetUserByIdQuery(id);
+    var result = await _mediator.Send(query);
+
+    if (result == null) {
+      return NotFound();
+    }
+
+    Response.Headers.ETag = $"\"{result.RowVersion}\"";
+    return Ok(result);
+  }
+
+  [HttpPost("{id}/approve")]
+  public async Task<IActionResult> ApproveUser(string id) {
+    if (!Request.Headers.TryGetValue("If-Match", out var ifMatch) || !uint.TryParse(ifMatch.ToString().Trim('"'), out var rowVersion)) {
+      return BadRequest("If-Match header is required and must contain a valid ETag.");
+    }
+
+    // AdminId should come from User context, but for now we'll mock it or use a default
+    var adminId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value ?? "00000000-0000-0000-0000-000000000010";
+
+    var command = new ApproveUserCommand(id, adminId, rowVersion);
+    try {
+      var result = await _mediator.Send(command);
+      if (!result) {
+        return NotFound();
+      }
+      return NoContent();
+    } catch (Exception ex) when (ex.Message.Contains("Concurrency conflict")) {
+      return Conflict(new { message = ex.Message });
+    }
   }
 }
