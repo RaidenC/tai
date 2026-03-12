@@ -1,0 +1,22 @@
+<div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200 border border-gray-100" data-testid="confirmation-modal">
+  <h3 class="text-xl font-bold text-gray-900 mb-2" data-testid="modal-title">{{ data.title }}</h3>
+  <p class="text-gray-600 mb-8 leading-relaxed" data-testid="modal-message">{{ data.message }}</p>
+  
+  <div class="flex justify-end gap-3">
+    <button 
+      type="button"
+      class="px-5 py-2.5 border border-gray-300 rounded-md text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all duration-200"
+      (click)="onCancel()"
+      data-testid="modal-cancel-button">
+      {{ data.cancelText || 'Cancel' }}
+    </button>
+    <button 
+      type="button"
+      class="px-5 py-2.5 bg-blue-600 text-white rounded-md text-sm font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 shadow-sm transition-all duration-200"
+      [ngClass]="data.confirmButtonClass || ''"
+      (click)="onConfirm()"
+      data-testid="modal-confirm-button">
+      {{ data.confirmText || 'Confirm' }}
+    </button>
+  </div>
+</div>
