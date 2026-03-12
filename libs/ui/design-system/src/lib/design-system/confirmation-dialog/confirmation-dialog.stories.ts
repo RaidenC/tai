@@ -70,7 +70,7 @@ export const Destructive: Story = {
  * triggers and that the buttons are discoverable by testing tools.
  */
 export const InteractionAudit: Story = {
-  play: async ({ canvasElement, args }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const confirmBtn = canvas.getByTestId('modal-confirm-button');
     const cancelBtn = canvas.getByTestId('modal-cancel-button');
