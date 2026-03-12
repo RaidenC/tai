@@ -1,49 +1,51 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { UsersPage } from './users.page';
-import { OnboardingStore } from '../onboarding/onboarding.store';
-import { signal, WritableSignal } from '@angular/core';
-import { By } from '@angular/platform-browser';
-import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
-import { PendingUser } from '../onboarding/onboarding.service';
+import { UsersStore } from './users.store';
+import { signal } from '@angular/core';
+import { Dialog, DialogModule } from '@angular/cdk/dialog';
+import { of } from 'rxjs';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { User } from './users.service';
+import { CommonModule } from '@angular/common';
+import { DataTableComponent } from '@tai/ui-design-system';
 
 describe('UsersPage', () => {
   let component: UsersPage;
   let fixture: ComponentFixture<UsersPage>;
-  let mockStore: {
-    allUsers: WritableSignal<PendingUser[]>;
-    totalUsersCount: WritableSignal<number>;
-    currentPage: WritableSignal<number>;
-    pageSize: WritableSignal<number>;
-    isLoading: WritableSignal<boolean>;
-    isError: WritableSignal<boolean>;
-    errorMessage: WritableSignal<string>;
-    status: WritableSignal<string>;
-    loadUsers: Mock;
-    nextPage: Mock;
-    prevPage: Mock;
-  };
+  let mockStore: any;
+  let mockDialog: any;
 
   beforeEach(async () => {
     mockStore = {
-      allUsers: signal([]),
-      totalUsersCount: signal(0),
-      currentPage: signal(1),
+      users: signal<User[]>([]),
+      totalCount: signal(0),
+      pageIndex: signal(1),
       pageSize: signal(10),
       isLoading: signal(false),
       isError: signal(false),
-      errorMessage: signal(''),
-      status: signal('Idle'),
+      errorMessage: signal(null),
       loadUsers: vi.fn(),
-      nextPage: vi.fn(),
-      prevPage: vi.fn()
+      setPage: vi.fn(),
+      approveUser: vi.fn(),
+    };
+
+    mockDialog = {
+      open: vi.fn().mockReturnValue({
+        closed: of(true)
+      }),
     };
 
     await TestBed.configureTestingModule({
       imports: [UsersPage],
-      providers: [
-        { provide: OnboardingStore, useValue: mockStore }
-      ]
-    }).compileComponents();
+    })
+    .overrideComponent(UsersPage, {
+      remove: { imports: [DialogModule] },
+      add: { providers: [
+        { provide: UsersStore, useValue: mockStore },
+        { provide: Dialog, useValue: mockDialog }
+      ]}
+    })
+    .compileComponents();
 
     fixture = TestBed.createComponent(UsersPage);
     component = fixture.componentInstance;
@@ -58,42 +60,56 @@ describe('UsersPage', () => {
     expect(mockStore.loadUsers).toHaveBeenCalled();
   });
 
-  it('should show loading spinner when store is loading', () => {
-    mockStore.isLoading.set(true);
-    fixture.detectChanges();
-
-    const spinner = fixture.debugElement.query(By.css('.animate-spin'));
-    expect(spinner).toBeTruthy();
+  it('should call setPage when page is changed', () => {
+    (component as any).onPageChange(2);
+    expect(mockStore.setPage).toHaveBeenCalledWith(2);
   });
 
-  it('should render user list when users are present', () => {
-    const users: PendingUser[] = [
-      { id: '1', name: 'User 1', email: 'user1@tai.com', status: 'Active' },
-      { id: '2', name: 'User 2', email: 'user2@tai.com', status: 'Pending' }
-    ];
-    mockStore.allUsers.set(users);
-    fixture.detectChanges();
+  it('should open confirmation dialog and approve user when confirmed', () => {
+    const testUser: User = { 
+      id: 'user-1', 
+      name: 'John Doe', 
+      email: 'john@example.com', 
+      status: 'Pending', 
+      rowVersion: 123 
+    };
+    
+    mockDialog.open.mockReturnValue({
+      closed: of(true)
+    });
 
-    const rows = fixture.debugElement.queryAll(By.css('tbody tr'));
-    expect(rows.length).toBe(2);
-    expect(rows[0].nativeElement.textContent).toContain('User 1');
-    expect(rows[1].nativeElement.textContent).toContain('User 2');
+    (component as any).onAction({ actionId: 'approve', row: testUser });
+
+    expect(mockDialog.open).toHaveBeenCalled();
+    expect(mockStore.approveUser).toHaveBeenCalledWith('user-1', 123);
   });
 
-  it('should show empty message when no users are present', () => {
-    mockStore.allUsers.set([]);
-    fixture.detectChanges();
+  it('should NOT approve user when confirmation is cancelled', () => {
+    const testUser: User = { 
+      id: 'user-1', 
+      name: 'John Doe', 
+      email: 'john@example.com', 
+      status: 'Pending', 
+      rowVersion: 123 
+    };
+    
+    mockDialog.open.mockReturnValue({
+      closed: of(false)
+    });
 
-    const emptyCell = fixture.debugElement.query(By.css('td[colspan="2"]'));
-    expect(emptyCell.nativeElement.textContent).toContain('No users found');
+    (component as any).onAction({ actionId: 'approve', row: testUser });
+
+    expect(mockDialog.open).toHaveBeenCalled();
+    expect(mockStore.approveUser).not.toHaveBeenCalled();
   });
 
-  it('should show error message when store has error', () => {
+  it('should render the error message when store has an error', () => {
     mockStore.isError.set(true);
-    mockStore.errorMessage.set('Fetch failed');
+    (mockStore.errorMessage as any).set('API Error');
     fixture.detectChanges();
 
-    const errorDiv = fixture.debugElement.query(By.css('.text-red-700'));
-    expect(errorDiv.nativeElement.textContent).toContain('Fetch failed');
+    const errorEl = fixture.nativeElement.querySelector('[role="alert"]');
+    expect(errorEl).toBeTruthy();
+    expect(errorEl.textContent).toContain('API Error');
   });
 });

@@ -10,7 +10,7 @@ using Tai.Portal.Core.Domain.ValueObjects;
 
 namespace Tai.Portal.Core.Application.UseCases.Users;
 
-public record UserDto(string Id, string Email, string Name, string Status);
+public record UserDto(string Id, string Email, string Name, string Status, uint RowVersion);
 
 public record PaginatedList<T>(List<T> Items, int TotalCount, int PageNumber, int PageSize);
 
@@ -38,7 +38,7 @@ public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, PaginatedList
     var items = users
       .Select(u => {
         var email = !string.IsNullOrWhiteSpace(u.Email) ? u.Email : (!string.IsNullOrWhiteSpace(u.UserName) ? u.UserName : "No Email");
-        return new UserDto(u.Id, email, email, u.Status.ToString());
+        return new UserDto(u.Id, email, email, u.Status.ToString(), u.RowVersion);
       })
       .ToList();
 
