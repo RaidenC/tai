@@ -161,7 +161,12 @@ public class ApplicationUserPersistenceTests : IAsyncLifetime {
     using var scope2 = _fixture.Factory.Services.CreateScope();
 
     var userManager1 = scope1.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var tenantService1 = scope1.ServiceProvider.GetRequiredService<ITenantService>();
+    tenantService1.SetTenant(tenantId, isGlobalAccess: true); // Bypass filter or set tenant to find the user
+
     var userManager2 = scope2.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var tenantService2 = scope2.ServiceProvider.GetRequiredService<ITenantService>();
+    tenantService2.SetTenant(tenantId, isGlobalAccess: true);
 
     // Fetch the same user in both scopes
     var user1 = await userManager1.FindByIdAsync(user.Id);
@@ -174,11 +179,13 @@ public class ApplicationUserPersistenceTests : IAsyncLifetime {
 
     // Act - Update in scope 2 (should fail due to concurrency)
     user2!.PhoneNumber = "222-222-2222";
-    var act = () => userManager2.UpdateAsync(user2);
+    var result2 = await userManager2.UpdateAsync(user2);
 
     // Assert
-    // JUNIOR RATIONALE: EF Core throws DbUpdateConcurrencyException when the RowVersion (xmin)
-    // has changed since it was loaded.
-    await act.Should().ThrowAsync<Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException>();
+    // JUNIOR RATIONALE: ASP.NET Core Identity catches the DbUpdateConcurrencyException
+    // thrown by EF Core (triggered by the xmin RowVersion mismatch) and translates it
+    // into an IdentityResult failure with a ConcurrencyFailure error code.
+    result2.Succeeded.Should().BeFalse();
+    result2.Errors.Should().Contain(e => e.Code == "ConcurrencyFailure");
   }
 }
