@@ -43,13 +43,18 @@ describe('OnboardingService', () => {
   });
 
   it('should fetch pending approvals', () => {
-    const mockPendingUsers = [{ id: '1', email: 'test@example.com', name: 'Test User' }];
-    service.getPendingApprovals().subscribe((users) => {
-      expect(users).toEqual(mockPendingUsers);
+    const mockResponse = {
+      items: [{ id: '1', email: 'test@example.com', name: 'Test User' }],
+      totalCount: 1,
+      pageNumber: 1,
+      pageSize: 10
+    };
+    service.getPendingApprovals().subscribe((response) => {
+      expect(response).toEqual(mockResponse);
     });
 
-    const req = httpMock.expectOne('/api/onboarding/pending-approvals');
+    const req = httpMock.expectOne('/api/onboarding/pending-approvals?pageNumber=1&pageSize=10');
     expect(req.request.method).toBe('GET');
-    req.flush(mockPendingUsers);
+    req.flush(mockResponse);
   });
 });

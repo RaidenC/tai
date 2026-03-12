@@ -112,8 +112,10 @@ export class OnboardingStore {
     
     this.onboardingService.getPendingApprovals()
       .subscribe({
-        next: (users) => {
-          this._pendingUsers.set(users);
+        next: (response) => {
+          // Guard against PaginatedList wrapper
+          const items = Array.isArray(response) ? response : (response.items || []);
+          this._pendingUsers.set(items);
           this._status.set('Success');
         },
         error: (err: HttpErrorResponse) => {

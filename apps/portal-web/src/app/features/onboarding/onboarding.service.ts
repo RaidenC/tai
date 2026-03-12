@@ -63,8 +63,8 @@ export class OnboardingService {
   /**
    * Fetches the list of users awaiting approval (Tenant Admin).
    */
-  public getPendingApprovals(): Observable<PendingUser[]> {
-    return this.http.get<PendingUser[]>(`${this.baseUrl}/pending-approvals`);
+  public getPendingApprovals(pageNumber = 1, pageSize = 10): Observable<PaginatedUsers> {
+    return this.http.get<PaginatedUsers>(`${this.baseUrl}/pending-approvals?pageNumber=${pageNumber}&pageSize=${pageSize}`);
   }
 
   /**
@@ -77,7 +77,7 @@ export class OnboardingService {
   /**
    * Fetches all users for the current tenant.
    */
-  public getUsers(page = 1, pageSize = 10): Observable<PaginatedUsers> {
-    return this.http.get<PaginatedUsers>(`/api/users?page=${page}&pageSize=${pageSize}`);
+  public getUsers(pageNumber = 1, pageSize = 10): Observable<PaginatedUsers> {
+    return this.http.get<PaginatedUsers>(`/api/users?pageNumber=${pageNumber}&pageSize=${pageSize}`);
   }
 }

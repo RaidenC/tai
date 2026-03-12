@@ -93,7 +93,7 @@ describe('OnboardingStore', () => {
     const mockResponse = {
       items: [{ id: '1', email: 'test@tai.com', name: 'Test User' }],
       totalCount: 1,
-      page: 1,
+      pageNumber: 1,
       pageSize: 10
     };
     mockService.getUsers.mockReturnValue(of(mockResponse));
@@ -105,6 +105,23 @@ describe('OnboardingStore', () => {
     ]);
     expect(store.totalUsersCount()).toBe(1);
     expect(store.currentPage()).toBe(1);
+    expect(store.status()).toBe('Success');
+  });
+
+  it('should load pending approvals', () => {
+    const mockResponse = {
+      items: [{ id: '1', email: 'pending@tai.com', name: 'Pending User' }],
+      totalCount: 1,
+      pageNumber: 1,
+      pageSize: 10
+    };
+    mockService.getPendingApprovals.mockReturnValue(of(mockResponse));
+    
+    store.loadPendingApprovals();
+    
+    expect(store.pendingUsers()).toEqual([
+      { id: '1', email: 'pending@tai.com', name: 'Pending User' }
+    ]);
     expect(store.status()).toBe('Success');
   });
 });
