@@ -40,7 +40,9 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand> {
       throw new UserNotFoundException(request.Id);
     }
 
-    // Optimistic Concurrency Check
+    // JUNIOR RATIONALE: We perform a manual concurrency check BEFORE 
+    // applying changes. This allows us to "Fail Fast" and avoid unnecessary 
+    // database operations if the user is already out of sync.
     if (request.ExpectedRowVersion.HasValue && user.RowVersion != request.ExpectedRowVersion.Value) {
       throw new ConcurrencyException("The user record was modified by another process.");
     }

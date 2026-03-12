@@ -77,6 +77,9 @@ public class OnboardingController : ControllerBase {
       return Unauthorized();
     }
 
+    // JUNIOR RATIONALE: We extract the 'If-Match' header to get the expected 
+    // RowVersion. If the header is provided but invalid, we return 400 
+    // to warn the caller that their concurrency check won't work.
     uint? expectedRowVersion = null;
     var ifMatch = Request.Headers.IfMatch.ToString();
     if (!string.IsNullOrEmpty(ifMatch)) {

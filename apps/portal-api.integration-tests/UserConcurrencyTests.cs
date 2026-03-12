@@ -15,6 +15,13 @@ using Microsoft.Extensions.Configuration;
 
 namespace Tai.Portal.Api.IntegrationTests;
 
+/// <summary>
+/// User Concurrency Integration Tests
+/// 
+/// JUNIOR RATIONALE: These tests verify the "Steel Thread" of our optimistic 
+/// concurrency implementation. We ensure that the ETag is correctly issued 
+/// and that any attempt to update stale data using 'If-Match' is rejected.
+/// </summary>
 public class UserConcurrencyTests : IClassFixture<WebApplicationFactory<Program>> {
   private readonly WebApplicationFactory<Program> _factory;
   private readonly Guid TaiTenantId = Guid.Parse("00000000-0000-0000-0000-000000000001");

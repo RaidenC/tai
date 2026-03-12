@@ -41,9 +41,15 @@ public class ApplicationUser : IdentityUser, IMultiTenantEntity, IHasDomainEvent
   public DateTimeOffset? LastModifiedAt { get; set; }
   public string? LastModifiedBy { get; set; }
 
+  // JUNIOR RATIONALE: We added FirstName and LastName to the Domain because 
+  // enterprise users require searchable, human-readable names in the DataTable
+  // beyond just an email address.
   public string? FirstName { get; set; }
   public string? LastName { get; set; }
 
+  // JUNIOR RATIONALE: We override the Email property to ensure consistent 
+  // normalization (trimming/lowercase) at the Domain level, satisfying 
+  // the strict MultiTenantEntity unit tests.
   public override string? Email {
     get => base.Email;
     set => base.Email = value?.Trim().ToLowerInvariant();
@@ -57,6 +63,9 @@ public class ApplicationUser : IdentityUser, IMultiTenantEntity, IHasDomainEvent
   /// Optimistic Concurrency Token (ETag).
   /// Maps to the PostgreSQL system column 'xmin'.
   /// </summary>
+  // JUNIOR RATIONALE: We use the 'xmin' system column via this RowVersion property 
+  // to implement Optimistic Concurrency. This prevents two admins from 
+  // approving or editing the same user at the exact same time (Last-In-Wins).
   public uint RowVersion { get; set; }
 
   private readonly List<IDomainEvent> _domainEvents = new();
