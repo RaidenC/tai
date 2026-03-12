@@ -46,7 +46,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
-builder.Services.AddScoped<IOtpService, MockOtpService>();
+builder.Services.AddScoped<IOtpService, OtpService>();
 
 builder.Services.AddValidatorsFromAssembly(typeof(RegisterCustomerCommand).Assembly);
 
@@ -208,12 +208,4 @@ public class IntegrationTestStubHandler : AuthenticationHandler<AuthenticationSc
   public IntegrationTestStubHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
       : base(options, logger, encoder) { }
   protected override Task<AuthenticateResult> HandleAuthenticateAsync() => Task.FromResult(AuthenticateResult.NoResult());
-}
-
-/// <summary>
-/// A mock OTP service for development and testing.
-/// </summary>
-public class MockOtpService : IOtpService {
-  public Task<string> GenerateAndStoreOtpAsync(string userId, CancellationToken cancellationToken = default) => Task.FromResult("123456");
-  public Task<bool> ValidateOtpAsync(string userId, string code, CancellationToken cancellationToken = default) => Task.FromResult(code == "123456");
 }
