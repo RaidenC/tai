@@ -39,7 +39,7 @@ public class UsersController : ControllerBase {
       return NotFound();
     }
 
-    // JUNIOR RATIONALE: We set the ETag header based on the RowVersion. 
+    // We set the ETag header based on the RowVersion. 
     // The frontend will save this and send it back in the 'If-Match' 
     // header during updates to ensure it's editing the latest data.
     Response.Headers.ETag = $"\"{result.RowVersion}\"";

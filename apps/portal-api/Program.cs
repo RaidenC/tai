@@ -161,7 +161,7 @@ builder.Services.ConfigureApplicationCookie(options => {
 
 var app = builder.Build();
 
-// JUNIOR RATIONALE: We use a global exception handling middleware to map Domain 
+// We use a global exception handling middleware to map Domain 
 // and Application exceptions to specific HTTP status codes (e.g., 404, 412). 
 // This keeps our Controllers thin and avoids repetitive try-catch blocks.
 app.Use(async (context, next) => {
