@@ -1,5 +1,5 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
-import { UsersService, User, PaginatedUsers } from './users.service';
+import { UsersService, User, PaginatedUsers, UserDetail } from './users.service';
 import { finalize } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 
@@ -19,6 +19,7 @@ export class UsersStore {
 
   // --- Internal State (Private Signals) ---
   private readonly _users = signal<User[]>([]);
+  private readonly _selectedUser = signal<UserDetail | null>(null);
   private readonly _totalCount = signal<number>(0);
   private readonly _pageIndex = signal<number>(1);
   private readonly _pageSize = signal<number>(10);
@@ -27,6 +28,7 @@ export class UsersStore {
 
   // --- Public Read-Only State (Exposed Signals) ---
   public readonly users = this._users.asReadonly();
+  public readonly selectedUser = this._selectedUser.asReadonly();
   public readonly totalCount = this._totalCount.asReadonly();
   public readonly pageIndex = this._pageIndex.asReadonly();
   public readonly pageSize = this._pageSize.asReadonly();
@@ -65,6 +67,46 @@ export class UsersStore {
   }
 
   /**
+   * Loads a single user by ID.
+   */
+  public loadUser(id: string): void {
+    this._status.set('Loading');
+    this._errorMessage.set(null);
+
+    this.usersService.getUserById(id)
+      .subscribe({
+        next: (user) => {
+          this._selectedUser.set(user);
+          this._status.set('Success');
+        },
+        error: (err: HttpErrorResponse) => {
+          this._status.set('Error');
+          this._errorMessage.set(err.error?.detail || 'Failed to load user.');
+        }
+      });
+  }
+
+  /**
+   * Updates a user profile.
+   */
+  public updateUser(id: string, userData: Partial<User>, rowVersion: number): void {
+    this._status.set('Loading');
+    this._errorMessage.set(null);
+
+    this.usersService.updateUser(id, userData, rowVersion)
+      .subscribe({
+        next: () => {
+          this._status.set('Success');
+          this.loadUser(id); // Reload to get fresh data/xmin
+        },
+        error: (err: HttpErrorResponse) => {
+          this._status.set('Error');
+          this._errorMessage.set(err.error?.detail || 'Failed to update user.');
+        }
+      });
+  }
+
+  /**
    * Approves a user and refreshes the current page.
    */
   public approveUser(userId: string, rowVersion: number): void {
@@ -90,5 +132,6 @@ export class UsersStore {
   public reset(): void {
     this._status.set('Idle');
     this._errorMessage.set(null);
+    this._selectedUser.set(null);
   }
 }

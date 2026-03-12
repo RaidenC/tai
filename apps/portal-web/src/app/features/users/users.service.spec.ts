@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { UsersService, User, PaginatedUsers } from './users.service';
+import { UsersService, User, PaginatedUsers, UserDetail } from './users.service';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('UsersService', () => {
@@ -26,7 +26,7 @@ describe('UsersService', () => {
 
   it('should fetch paginated users', () => {
     const mockResponse: PaginatedUsers = {
-      items: [{ id: '1', name: 'John', email: 'john@tai.com', status: 'Active', rowVersion: 1 }],
+      items: [{ id: '1', firstName: 'John', lastName: 'Doe', email: 'john@tai.com', status: 'Active', rowVersion: 1 }],
       totalCount: 1,
       pageNumber: 1,
       pageSize: 10
@@ -42,7 +42,7 @@ describe('UsersService', () => {
   });
 
   it('should fetch user by ID', () => {
-    const mockUser: User = { id: '1', name: 'John', email: 'john@tai.com', status: 'Active', rowVersion: 1 };
+    const mockUser: UserDetail = { id: '1', firstName: 'John', lastName: 'Doe', email: 'john@tai.com', status: 'Active', rowVersion: 1, institution: 'Tai' };
 
     service.getUserById('1').subscribe(user => {
       expect(user).toEqual(mockUser);
@@ -51,6 +51,17 @@ describe('UsersService', () => {
     const req = httpMock.expectOne('/api/users/1');
     expect(req.request.method).toBe('GET');
     req.flush(mockUser);
+  });
+
+  it('should update user with If-Match header', () => {
+    const updateData: Partial<User> = { firstName: 'Johnny' };
+    service.updateUser('user-123', updateData, 456).subscribe();
+
+    const req = httpMock.expectOne('/api/users/user-123');
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.headers.get('If-Match')).toBe('"456"');
+    expect(req.request.body).toEqual(updateData);
+    req.flush(null);
   });
 
   it('should approve user with If-Match header', () => {

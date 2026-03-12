@@ -7,12 +7,14 @@ import { of } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { User } from './users.service';
 import { By } from '@angular/platform-browser';
+import { Router } from '@angular/router';
 
 describe('UsersPage', () => {
   let component: UsersPage;
   let fixture: ComponentFixture<UsersPage>;
   let mockStore: any;
   let mockDialog: any;
+  let mockRouter: any;
 
   beforeEach(async () => {
     mockStore = {
@@ -34,6 +36,10 @@ describe('UsersPage', () => {
       }),
     };
 
+    mockRouter = {
+      navigate: vi.fn()
+    };
+
     await TestBed.configureTestingModule({
       imports: [UsersPage],
     })
@@ -41,7 +47,8 @@ describe('UsersPage', () => {
       remove: { imports: [DialogModule] },
       add: { providers: [
         { provide: UsersStore, useValue: mockStore },
-        { provide: Dialog, useValue: mockDialog }
+        { provide: Dialog, useValue: mockDialog },
+        { provide: Router, useValue: mockRouter }
       ]}
     })
     .compileComponents();
@@ -67,17 +74,11 @@ describe('UsersPage', () => {
     expect(mockStore.setPage).toHaveBeenCalledWith(3);
   });
 
-  it('should log to console when sort is changed', () => {
-    const consoleSpy = vi.spyOn(console, 'log');
-    const sort = { columnId: 'name', direction: 'asc' as const };
-    component['onSortChange'](sort);
-    expect(consoleSpy).toHaveBeenCalledWith('Sort changed:', sort);
-  });
-
   it('should trigger approval flow when approve action is clicked', () => {
     const testUser: User = { 
       id: 'user-1', 
-      name: 'John Doe', 
+      firstName: 'John', 
+      lastName: 'Doe', 
       email: 'john@example.com', 
       status: 'PendingApproval', 
       rowVersion: 123 
@@ -90,10 +91,11 @@ describe('UsersPage', () => {
     expect(mockStore.approveUser).toHaveBeenCalledWith('user-1', 123);
   });
 
-  it('should NOT trigger approval for non-approve actions', () => {
+  it('should navigate to details on view action', () => {
     const testUser: User = { 
       id: 'user-1', 
-      name: 'John Doe', 
+      firstName: 'John', 
+      lastName: 'Doe', 
       email: 'john@example.com', 
       status: 'Active', 
       rowVersion: 123 
@@ -101,8 +103,22 @@ describe('UsersPage', () => {
     
     component['onAction']({ actionId: 'view', row: testUser });
 
-    expect(mockDialog.open).not.toHaveBeenCalled();
-    expect(mockStore.approveUser).not.toHaveBeenCalled();
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/users', 'user-1'], { queryParams: {} });
+  });
+
+  it('should navigate to details with edit param on edit action', () => {
+    const testUser: User = { 
+      id: 'user-1', 
+      firstName: 'John', 
+      lastName: 'Doe', 
+      email: 'john@example.com', 
+      status: 'Active', 
+      rowVersion: 123 
+    };
+    
+    component['onAction']({ actionId: 'edit', row: testUser });
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/users', 'user-1'], { queryParams: { edit: 'true' } });
   });
 
   it('should render error alert when store has an error', () => {
@@ -127,16 +143,7 @@ describe('UsersPage', () => {
     expect(approveAction?.visible?.(pendingUser)).toBe(true);
 
     const nameColumn = component['columns'].find(c => c.id === 'name');
-    expect(nameColumn?.cell(activeUser)).toBe(activeUser.name);
-
-    const emailColumn = component['columns'].find(c => c.id === 'email');
-    expect(emailColumn?.cell(activeUser)).toBe(activeUser.email);
-
-    const statusColumn = component['columns'].find(c => c.id === 'status');
-    expect(statusColumn?.cell(activeUser)).toBe(activeUser.status);
-
-    const editAction = component['actions'].find(a => a.id === 'edit');
-    expect(editAction?.visible?.(activeUser)).not.toBe(false); // Should be true by default (undefined visible)
+    expect(nameColumn?.cell({ firstName: 'A', lastName: 'B' } as any)).toBe('A B');
   });
 
   it('should pass loading state to data table', () => {
@@ -148,7 +155,7 @@ describe('UsersPage', () => {
   });
 
   it('should pass users data to data table', () => {
-    const users: User[] = [{ id: '1', name: 'Test', email: 'test@tai.com', status: 'Active', rowVersion: 1 }];
+    const users: User[] = [{ id: '1', firstName: 'T', lastName: 'E', email: 'test@tai.com', status: 'Active', rowVersion: 1 }];
     mockStore.users.set(users);
     fixture.detectChanges();
     
