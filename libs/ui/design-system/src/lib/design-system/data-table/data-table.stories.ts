@@ -110,7 +110,7 @@ export const Empty: Story = {
  * are interactive and correctly update the UI state.
  */
 export const InteractionAudit: Story = {
-  play: async ({ canvasElement, args }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
     // 1. Audit Table Rendering

@@ -12,7 +12,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 describe('ConfirmationDialogComponent', () => {
   let component: ConfirmationDialogComponent;
   let fixture: ComponentFixture<ConfirmationDialogComponent>;
-  let mockDialogRef: { close: any };
+  let mockDialogRef: { close: (result?: boolean) => void };
 
   const mockData: ConfirmationDialogData = {
     title: 'Test Confirmation',

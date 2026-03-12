@@ -1,4 +1,4 @@
-import { Component, Inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DialogRef, DIALOG_DATA } from '@angular/cdk/dialog';
 
@@ -37,13 +37,10 @@ export interface ConfirmationDialogData {
   styleUrl: './confirmation-dialog.scss',
 })
 export class ConfirmationDialogComponent {
-  /**
-   * Initializes the component with dialog reference and injected data.
-   */
-  constructor(
-    public readonly dialogRef: DialogRef<boolean>,
-    @Inject(DIALOG_DATA) public readonly data: ConfirmationDialogData
-  ) {}
+  /** The dialog reference for closing the modal. */
+  public readonly dialogRef = inject(DialogRef<boolean>);
+  /** The data injected into the dialog. */
+  public readonly data = inject<ConfirmationDialogData>(DIALOG_DATA);
 
   /**
    * Closes the dialog and returns 'true' indicating confirmation.
