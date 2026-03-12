@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Tai.Portal.Core.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Tai.Portal.Core.Infrastructure.Persistence;
 namespace Tai.Portal.Core.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(PortalDbContext))]
-    partial class PortalDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260311070305_UserApprovalAuditAndChangeTracking")]
+    partial class UserApprovalAuditAndChangeTracking
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -451,8 +454,6 @@ namespace Tai.Portal.Core.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex");
 
-                    b.HasIndex("TenantId");
-
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
@@ -487,10 +488,6 @@ namespace Tai.Portal.Core.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("TenantId", "Timestamp")
-                        .IsDescending(false, true)
-                        .HasDatabaseName("IX_AuditLogs_TenantId_TimestampDesc");
 
                     b.ToTable("AuditLogs");
                 });

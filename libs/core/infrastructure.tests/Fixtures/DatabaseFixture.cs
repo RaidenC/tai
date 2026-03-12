@@ -14,8 +14,7 @@ using Xunit;
 namespace Tai.Portal.Core.Infrastructure.Tests.Fixtures;
 
 public class DatabaseFixture : IAsyncLifetime {
-  private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder()
-    .WithImage("postgres:16-alpine")
+  private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder("postgres:17")
     .WithDatabase("portal_test")
     .WithUsername("postgres")
     .WithPassword("postgres")

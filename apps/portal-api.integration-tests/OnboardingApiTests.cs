@@ -203,7 +203,7 @@ public class OnboardingApiTests : IClassFixture<WebApplicationFactory<Program>> 
       var updatedUser = await userManager.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == targetUserId);
       Assert.NotNull(updatedUser);
       Assert.Equal(UserStatus.PendingVerification, updatedUser.Status);
-      Assert.Equal(TaiAdminId, updatedUser.ApprovedByUserId);
+      Assert.Equal(TaiAdminId, (string)updatedUser.ApprovedBy!);
     }
 
     // Verify side-effects (OTP generated for target user)

@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Moq;
+using System;
+using System.Threading.Tasks;
 using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.ValueObjects;
@@ -38,12 +40,12 @@ public class TenantResolutionMiddlewareTests {
         .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
         .Options;
 
-    using (var dbContext = new PortalDbContext(options, new TenantService())) {
+    using (var dbContext = new PortalDbContext(options, new TenantService(), new Mock<IServiceProvider>().Object)) {
       dbContext.Tenants.Add(new Tenant(tenantId, "Tenant 1", host));
       await dbContext.SaveChangesAsync();
     }
 
-    using (var dbContext = new PortalDbContext(options, new TenantService())) {
+    using (var dbContext = new PortalDbContext(options, new TenantService(), new Mock<IServiceProvider>().Object)) {
       var middleware = new TenantResolutionMiddleware(nextMock.Object, cacheMock.Object);
 
       // Act

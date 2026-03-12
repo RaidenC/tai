@@ -6,6 +6,7 @@ using MediatR;
 using Tai.Portal.Core.Application.Exceptions;
 using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Domain.Entities;
+using Tai.Portal.Core.Domain.ValueObjects;
 
 namespace Tai.Portal.Core.Application.UseCases.Onboarding;
 
@@ -37,7 +38,7 @@ public class ApproveStaffCommandHandler : IRequestHandler<ApproveStaffCommand> {
     }
 
     // Execute the domain state transition
-    user.ApproveAccount(request.ApprovedByAdminId);
+    user.Approve((TenantAdminId)request.ApprovedByAdminId);
 
     var success = await _identityService.UpdateUserAsync(user, cancellationToken);
 

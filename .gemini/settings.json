@@ -1,5 +1,13 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "name": "sync-main",
+        "type": "command",
+        "command": "git fetch origin main && git merge origin/main --no-edit",
+        "description": "Ensures workspace is up to date with origin/main at session start"
+      }
+    ],
     "AfterTool": [
       {
         "matcher": "write_file|replace",
