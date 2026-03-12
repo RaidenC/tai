@@ -77,7 +77,7 @@ public class UserConcurrencyTests : IClassFixture<WebApplicationFactory<Program>
     using (var scope = factory.Services.CreateScope()) {
       var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
       var tenantService = scope.ServiceProvider.GetRequiredService<ITenantService>();
-      
+
       // Crucial: Set tenant context for the manager during setup
       tenantService.SetTenant(new TenantId(TaiTenantId));
 
@@ -107,7 +107,7 @@ public class UserConcurrencyTests : IClassFixture<WebApplicationFactory<Program>
     using (var scope = factory.Services.CreateScope()) {
       var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
       var tenantService = scope.ServiceProvider.GetRequiredService<ITenantService>();
-      
+
       tenantService.SetTenant(new TenantId(TaiTenantId));
 
       var user = new ApplicationUser($"test_{Guid.NewGuid()}@tai.com", new TenantId(TaiTenantId));
