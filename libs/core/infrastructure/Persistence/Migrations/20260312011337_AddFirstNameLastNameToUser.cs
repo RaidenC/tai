@@ -1,38 +1,34 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Tai.Portal.Core.Infrastructure.Persistence.Migrations
-{
+namespace Tai.Portal.Core.Infrastructure.Persistence.Migrations {
+  /// <inheritdoc />
+  public partial class AddFirstNameLastNameToUser : Migration {
     /// <inheritdoc />
-    public partial class AddFirstNameLastNameToUser : Migration
-    {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.AddColumn<string>(
-                name: "FirstName",
-                table: "AspNetUsers",
-                type: "text",
-                nullable: true);
+    protected override void Up(MigrationBuilder migrationBuilder) {
+      migrationBuilder.AddColumn<string>(
+          name: "FirstName",
+          table: "AspNetUsers",
+          type: "text",
+          nullable: true);
 
-            migrationBuilder.AddColumn<string>(
-                name: "LastName",
-                table: "AspNetUsers",
-                type: "text",
-                nullable: true);
-        }
-
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropColumn(
-                name: "FirstName",
-                table: "AspNetUsers");
-
-            migrationBuilder.DropColumn(
-                name: "LastName",
-                table: "AspNetUsers");
-        }
+      migrationBuilder.AddColumn<string>(
+          name: "LastName",
+          table: "AspNetUsers",
+          type: "text",
+          nullable: true);
     }
+
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder) {
+      migrationBuilder.DropColumn(
+          name: "FirstName",
+          table: "AspNetUsers");
+
+      migrationBuilder.DropColumn(
+          name: "LastName",
+          table: "AspNetUsers");
+    }
+  }
 }
