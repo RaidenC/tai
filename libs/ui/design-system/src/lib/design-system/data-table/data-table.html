@@ -14,12 +14,17 @@
     @for (column of columns(); track column.id) {
       <ng-container [cdkColumnDef]="column.id">
         <th cdk-header-cell *cdkHeaderCellDef 
-            class="px-6 py-4 font-bold text-gray-900 bg-gray-50/80 border-b border-gray-200 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 transition-colors duration-200"
-            (click)="toggleSort(column.id)"
+            class="px-6 py-4 font-bold text-gray-900 bg-gray-50/80 border-b border-gray-200 uppercase tracking-wider"
             [attr.data-testid]="'header-' + column.id">
-          <div class="flex items-center gap-2">
-            {{ column.header }}
-            @if (column.sortable) {
+          
+          @if (column.sortable) {
+            <button 
+              type="button"
+              (click)="toggleSort(column.id)"
+              class="flex items-center gap-2 w-full h-full text-left outline-none focus:text-blue-600 transition-colors duration-200"
+              [attr.data-testid]="'sort-button-' + column.id"
+              [attr.aria-label]="'Sort by ' + column.header">
+              {{ column.header }}
               <span class="text-xs text-gray-400">
                 @if (sortState()?.columnId === column.id) {
                   {{ sortState()?.direction === 'asc' ? '↑' : '↓' }}
@@ -27,8 +32,12 @@
                   ↕
                 }
               </span>
-            }
-          </div>
+            </button>
+          } @else {
+            <div class="flex items-center gap-2">
+              {{ column.header }}
+            </div>
+          }
         </th>
         <td cdk-cell *cdkCellDef="let row" class="px-6 py-4 border-b border-gray-100" [attr.data-testid]="'cell-' + column.id">
           {{ column.cell(row) }}
@@ -78,7 +87,7 @@
   <!-- Pagination Footer -->
   @if (totalCount() > 0) {
     <div class="flex items-center justify-between px-6 py-4 bg-white border-t border-gray-200">
-      <div class="text-sm text-gray-700">
+      <div class="text-sm text-gray-700" data-testid="pagination-summary">
         Showing <span class="font-bold">{{ paginationSummary().start }}</span> to 
         <span class="font-bold">{{ paginationSummary().end }}</span> of 
         <span class="font-bold">{{ paginationSummary().total }}</span> records

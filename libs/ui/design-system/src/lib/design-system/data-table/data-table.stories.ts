@@ -64,8 +64,9 @@ const meta: Meta<DataTableComponent<TestData>> = {
     pageIndex: 1,
     pageSize: 10,
     loading: false,
-    // Note: Angular signals require function calls in templates, 
-    // but Storybook's 'args' for signals are handled by the component.
+    actionTriggered: fn(),
+    sortChanged: fn(),
+    pageChanged: fn(),
   },
   tags: ['autodocs'],
 };
@@ -104,7 +105,7 @@ export const Empty: Story = {
  * are interactive and correctly emit events.
  */
 export const InteractionAudit: Story = {
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
 
     // 1. Audit Table Rendering
@@ -112,23 +113,27 @@ export const InteractionAudit: Story = {
     await expect(canvas.getAllByRole('row')).toHaveLength(4); // 1 header + 3 data rows
 
     // 2. Audit Sorting Trigger
-    const nameHeader = canvas.getByTestId('header-name');
-    await userEvent.click(nameHeader);
-    // Visual indicator (↑/↓) should change (managed by component signal)
+    const nameSortBtn = canvas.getByTestId('sort-button-name');
+    await userEvent.click(nameSortBtn);
+    await waitFor(() => {
+      expect(args.sortChanged).toHaveBeenCalledWith({ columnId: 'name', direction: 'asc' });
+    });
 
     // 3. Audit Conditional Row Actions
     // User 1 (Active) should NOT have 'Approve' action
     const row1Actions = within(canvas.getAllByRole('row')[1]);
     await expect(row1Actions.queryByTestId('action-approve')).not.toBeInTheDocument();
-    await expect(row1Actions.getByTestId('action-edit')).toBeInTheDocument();
-
+    
     // User 2 (Pending) SHOULD have 'Approve' action
     const row2Actions = within(canvas.getAllByRole('row')[2]);
-    await expect(row2Actions.getByTestId('action-approve')).toBeInTheDocument();
+    const approveBtn = row2Actions.getByTestId('action-approve');
+    await userEvent.click(approveBtn);
+    await expect(args.actionTriggered).toHaveBeenCalledWith({ actionId: 'approve', row: data[1] });
 
     // 4. Audit Pagination
     const nextBtn = canvas.getByTestId('pagination-next');
     await expect(nextBtn).toBeEnabled();
     await userEvent.click(nextBtn);
+    await expect(args.pageChanged).toHaveBeenCalledWith(2);
   }
 };

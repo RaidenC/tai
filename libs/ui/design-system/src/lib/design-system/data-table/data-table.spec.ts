@@ -90,15 +90,50 @@ describe('DataTableComponent', () => {
     const spy = vi.fn();
     component.sortChanged.subscribe(spy);
     
-    const nameHeader = fixture.nativeElement.querySelector('[data-testid="header-name"]') as HTMLElement;
+    const nameSortBtn = fixture.nativeElement.querySelector('[data-testid="sort-button-name"]') as HTMLElement;
     
     // First click: asc
-    nameHeader.click();
+    nameSortBtn.click();
     expect(spy).toHaveBeenCalledWith({ columnId: 'name', direction: 'asc' });
 
     // Second click: desc
-    nameHeader.click();
+    nameSortBtn.click();
     expect(spy).toHaveBeenCalledWith({ columnId: 'name', direction: 'desc' });
+  });
+
+  it('should NOT render a sort button when a column is not sortable', () => {
+    const statusSortBtn = fixture.nativeElement.querySelector('[data-testid="sort-button-status"]');
+    expect(statusSortBtn).toBeFalsy();
+  });
+
+  it('should render the correct pagination summary text', () => {
+    fixture.componentRef.setInput('totalCount', 25);
+    fixture.componentRef.setInput('pageIndex', 2); // Page 2 of 10-per-page
+    fixture.componentRef.setInput('pageSize', 10);
+    fixture.detectChanges();
+    
+    const summary = fixture.nativeElement.querySelector('[data-testid="pagination-summary"]').textContent;
+    // (2-1)*10 + 1 = 11
+    // min(2*10, 25) = 20
+    expect(summary).toContain('Showing 11 to 20 of 25 records');
+  });
+
+  it('should disable the Previous button on the first page', () => {
+    fixture.componentRef.setInput('pageIndex', 1);
+    fixture.detectChanges();
+    
+    const prevBtn = fixture.nativeElement.querySelector('[data-testid="pagination-prev"]') as HTMLButtonElement;
+    expect(prevBtn.disabled).toBe(true);
+  });
+
+  it('should disable the Next button on the last page', () => {
+    fixture.componentRef.setInput('totalCount', 15);
+    fixture.componentRef.setInput('pageIndex', 2);
+    fixture.componentRef.setInput('pageSize', 10);
+    fixture.detectChanges();
+    
+    const nextBtn = fixture.nativeElement.querySelector('[data-testid="pagination-next"]') as HTMLButtonElement;
+    expect(nextBtn.disabled).toBe(true);
   });
 
   it('should render the loading overlay when loading input is true', () => {
