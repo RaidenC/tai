@@ -15,6 +15,7 @@ using Moq;
 using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Application.Models;
 using Tai.Portal.Core.Application.UseCases.Users;
+using Tai.Portal.Core.Application.Constants;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.ValueObjects;
 using Microsoft.AspNetCore.Identity;
@@ -35,8 +36,8 @@ public class UsersApiTests : IClassFixture<WebApplicationFactory<Program>> {
   private WebApplicationFactory<Program> CreateFactoryWithMockAuth(string userId) {
     return _factory.WithWebHostBuilder(builder => {
       builder.ConfigureTestServices(services => {
-        // Add a mock authentication handler with a UNIQUE name for this test class
-        const string scheme = "UsersApiTestsAuth";
+        // Add a mock authentication handler
+        const string scheme = "TestAuth";
         services.AddAuthentication(options => {
           options.DefaultAuthenticateScheme = scheme;
           options.DefaultChallengeScheme = scheme;
@@ -44,12 +45,12 @@ public class UsersApiTests : IClassFixture<WebApplicationFactory<Program>> {
         })
         .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(scheme, options => { });
 
-        // Override the DefaultPolicy to use our test scheme
+        // Override the ApiPolicy to use our test scheme
         services.AddAuthorization(options => {
-          options.DefaultPolicy = new AuthorizationPolicyBuilder()
-              .AddAuthenticationSchemes(scheme)
-              .RequireAuthenticatedUser()
-              .Build();
+          options.AddPolicy(AuthorizationPolicies.ApiPolicy, policy => {
+            policy.AddAuthenticationSchemes(scheme);
+            policy.RequireAuthenticatedUser();
+          });
         });
 
         services.AddSingleton(new TestUserContext { UserId = userId });

@@ -56,7 +56,8 @@ public class OidcSecurityHandshakeTests : IClassFixture<WebApplicationFactory<Pr
 
     var error = await response.Content.ReadFromJsonAsync<OpenIddictResponse>();
     Assert.NotNull(error);
-    Assert.Equal(OpenIddictConstants.Errors.InvalidGrant, error.Error);
+    Assert.Equal(OpenIddictConstants.Errors.InvalidRequest, error.Error);
+    Assert.Contains("code_verifier", error.ErrorDescription);
   }
 
   /// <summary>

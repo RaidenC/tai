@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.ValueObjects;
 using Tai.Portal.Core.Application.UseCases.Users;
+using Tai.Portal.Core.Application.Constants;
 using Xunit;
 using Tai.Portal.Core.Application.Interfaces;
 using Microsoft.AspNetCore.Authentication;
@@ -42,9 +43,8 @@ public class UserConcurrencyTests : IClassFixture<WebApplicationFactory<Program>
   private WebApplicationFactory<Program> CreateFactoryWithMockAuth(string userId) {
     return _factory.WithWebHostBuilder(builder => {
       builder.ConfigureTestServices(services => {
-        // Use a unique scheme for this test class
-        const string scheme = "UserConcurrencyTestsAuth";
-
+        // Register a mock authentication handler
+        const string scheme = "TestAuth";
         services.AddAuthentication(options => {
           options.DefaultAuthenticateScheme = scheme;
           options.DefaultChallengeScheme = scheme;
@@ -52,11 +52,12 @@ public class UserConcurrencyTests : IClassFixture<WebApplicationFactory<Program>
         })
         .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(scheme, options => { });
 
+        // Override the ApiPolicy to use our test scheme
         services.AddAuthorization(options => {
-          options.DefaultPolicy = new AuthorizationPolicyBuilder()
-              .AddAuthenticationSchemes(scheme)
-              .RequireAuthenticatedUser()
-              .Build();
+          options.AddPolicy(AuthorizationPolicies.ApiPolicy, policy => {
+            policy.AddAuthenticationSchemes(scheme);
+            policy.RequireAuthenticatedUser();
+          });
         });
 
         services.AddSingleton(new TestUserContext { UserId = userId });
@@ -76,7 +77,7 @@ public class UserConcurrencyTests : IClassFixture<WebApplicationFactory<Program>
     using (var scope = factory.Services.CreateScope()) {
       var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
       var tenantService = scope.ServiceProvider.GetRequiredService<ITenantService>();
-
+      
       // Crucial: Set tenant context for the manager during setup
       tenantService.SetTenant(new TenantId(TaiTenantId));
 
@@ -106,7 +107,7 @@ public class UserConcurrencyTests : IClassFixture<WebApplicationFactory<Program>
     using (var scope = factory.Services.CreateScope()) {
       var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
       var tenantService = scope.ServiceProvider.GetRequiredService<ITenantService>();
-
+      
       tenantService.SetTenant(new TenantId(TaiTenantId));
 
       var user = new ApplicationUser($"test_{Guid.NewGuid()}@tai.com", new TenantId(TaiTenantId));

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Validation.AspNetCore;
+using Tai.Portal.Core.Application.Constants;
 using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Application.UseCases.Users;
 using Tai.Portal.Core.Domain.ValueObjects;
@@ -13,7 +14,7 @@ namespace Tai.Portal.Api.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize(AuthenticationSchemes = $"{OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme},Identity.Application,TestAuth")]
+[Authorize(Policy = AuthorizationPolicies.ApiPolicy)]
 public class UsersController : ControllerBase {
   private readonly IMediator _mediator;
   private readonly ITenantService _tenantService;

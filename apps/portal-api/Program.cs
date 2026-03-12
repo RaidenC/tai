@@ -21,8 +21,10 @@ using Tai.Portal.Core.Infrastructure.Middleware;
 using Tai.Portal.Core.Infrastructure.Services;
 
 using Tai.Portal.Core.Application.Behaviors;
+using Tai.Portal.Core.Application.Constants;
 using FluentValidation;
 using MediatR;
+using Microsoft.AspNetCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -133,13 +135,16 @@ builder.Services.AddAuthentication(options => {
   options.DefaultScheme = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme;
 });
 
-// We register a dummy "TestAuth" scheme so that [Authorize] attributes can reference it
-// without crashing the app during startup. In integration tests, this is overridden.
-if (builder.Configuration["SKIP_TEST_AUTH"] != "true") {
-  builder.Services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, IntegrationTestStubHandler>("TestAuth", _ => { });
-}
+// Configure Authorization Policies
+builder.Services.AddAuthorization(options => {
+  options.AddPolicy(AuthorizationPolicies.ApiPolicy, policy => {
+    policy.AddAuthenticationSchemes(
+        OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
+        IdentityConstants.ApplicationScheme);
+    policy.RequireAuthenticatedUser();
+  });
+});
 
-builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 
 builder.Services.AddCors(options => {
@@ -161,68 +166,66 @@ builder.Services.ConfigureApplicationCookie(options => {
 
 var app = builder.Build();
 
-// We use a global exception handling middleware to map Domain 
+// This MUST be the first thing in the pipeline. 
+app.UseForwardedHeaders();
+
+// We use a custom exception handler to map Domain 
 // and Application exceptions to specific HTTP status codes (e.g., 404, 412). 
-// This keeps our Controllers thin and avoids repetitive try-catch blocks.
-app.Use(async (context, next) => {
-  try {
-    await next(context);
-  } catch (FluentValidation.ValidationException ex) {
-    context.Response.StatusCode = 400;
-    var problemDetails = new Microsoft.AspNetCore.Mvc.ValidationProblemDetails {
-      Title = "Validation Failed",
-      Status = 400,
-      Detail = "One or more validation errors occurred."
-    };
-    foreach (var error in ex.Errors) {
-      if (!problemDetails.Errors.ContainsKey(error.PropertyName)) {
-        problemDetails.Errors[error.PropertyName] = new string[] { error.ErrorMessage };
+app.UseExceptionHandler(exceptionHandlerApp => {
+  exceptionHandlerApp.Run(async context => {
+    var contextFeature = context.Features.Get<IExceptionHandlerFeature>();
+    if (contextFeature != null) {
+      var ex = contextFeature.Error;
+
+      if (ex is FluentValidation.ValidationException valEx) {
+        context.Response.StatusCode = 400;
+        var problemDetails = new Microsoft.AspNetCore.Mvc.ValidationProblemDetails {
+          Title = "Validation Failed",
+          Status = 400,
+          Detail = "One or more validation errors occurred."
+        };
+        foreach (var error in valEx.Errors) {
+          if (!problemDetails.Errors.ContainsKey(error.PropertyName)) {
+            problemDetails.Errors[error.PropertyName] = new string[] { error.ErrorMessage };
+          } else {
+            var existing = problemDetails.Errors[error.PropertyName];
+            problemDetails.Errors[error.PropertyName] = existing.Concat(new[] { error.ErrorMessage }).ToArray();
+          }
+        }
+        await context.Response.WriteAsJsonAsync(problemDetails);
+      } else if (ex is Tai.Portal.Core.Application.Exceptions.IdentityValidationException idEx) {
+        context.Response.StatusCode = 400;
+        await context.Response.WriteAsJsonAsync(new Microsoft.AspNetCore.Mvc.ProblemDetails {
+          Title = "Identity Validation Failed",
+          Status = 400,
+          Detail = idEx.Message
+        });
+      } else if (ex is Tai.Portal.Core.Application.Exceptions.UserNotFoundException nfEx) {
+        context.Response.StatusCode = 404;
+        await context.Response.WriteAsJsonAsync(new Microsoft.AspNetCore.Mvc.ProblemDetails {
+          Title = "Resource Not Found",
+          Status = 404,
+          Detail = nfEx.Message
+        });
+      } else if (ex is Tai.Portal.Core.Application.Exceptions.ConcurrencyException conEx) {
+        context.Response.StatusCode = 412;
+        await context.Response.WriteAsJsonAsync(new Microsoft.AspNetCore.Mvc.ProblemDetails {
+          Title = "Concurrency Conflict",
+          Status = 412,
+          Detail = conEx.Message
+        });
       } else {
-        var existing = problemDetails.Errors[error.PropertyName];
-        problemDetails.Errors[error.PropertyName] = existing.Concat(new[] { error.ErrorMessage }).ToArray();
+        // Fallback for other exceptions
+        context.Response.StatusCode = 500;
+        await context.Response.WriteAsJsonAsync(new { error = "An unexpected error occurred." });
       }
     }
-    await context.Response.WriteAsJsonAsync(problemDetails);
-  } catch (Tai.Portal.Core.Application.Exceptions.IdentityValidationException ex) {
-    context.Response.StatusCode = 400;
-    var problemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails {
-      Title = "Identity Validation Failed",
-      Status = 400,
-      Detail = ex.Message
-    };
-    await context.Response.WriteAsJsonAsync(problemDetails);
-  } catch (Tai.Portal.Core.Application.Exceptions.UserNotFoundException ex) {
-    context.Response.StatusCode = 404;
-    var problemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails {
-      Title = "Resource Not Found",
-      Status = 404,
-      Detail = ex.Message
-    };
-    await context.Response.WriteAsJsonAsync(problemDetails);
-  } catch (Tai.Portal.Core.Application.Exceptions.ConcurrencyException ex) {
-    context.Response.StatusCode = 412;
-    var problemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails {
-      Title = "Concurrency Conflict",
-      Status = 412,
-      Detail = ex.Message
-    };
-    await context.Response.WriteAsJsonAsync(problemDetails);
-  }
+  });
 });
-
-// JUNIOR RATIONALE: This MUST be the first thing in the pipeline. 
-// It tells the API to look at the headers from the Gateway (like Host and IP) 
-// and pretend it IS the Gateway.
-app.UseForwardedHeaders();
 
 // Seed the database with initial data in development.
 if (app.Environment.IsDevelopment()) {
   SeedData.Initialize(app.Services);
-}
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment()) {
-  app.UseDeveloperExceptionPage();
 }
 
 app.UseRouting();

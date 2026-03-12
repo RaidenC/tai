@@ -16,6 +16,7 @@ using Moq;
 using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Application.Models;
 using Tai.Portal.Core.Application.UseCases.Onboarding;
+using Tai.Portal.Core.Application.Constants;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.Enums;
 using Tai.Portal.Core.Domain.ValueObjects;
@@ -52,8 +53,8 @@ public class OnboardingApiTests : IClassFixture<WebApplicationFactory<Program>> 
 
         var userId = overrideUserId ?? TaiAdminId;
 
-        // Add a mock authentication handler with a UNIQUE name for this test class
-        const string scheme = "OnboardingTestsAuth";
+        // Add a mock authentication handler
+        const string scheme = "TestAuth";
         services.AddAuthentication(options => {
           options.DefaultAuthenticateScheme = scheme;
           options.DefaultChallengeScheme = scheme;
@@ -61,12 +62,12 @@ public class OnboardingApiTests : IClassFixture<WebApplicationFactory<Program>> 
         })
         .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(scheme, options => { });
 
-        // Override the DefaultPolicy to use our test scheme
+        // Override the ApiPolicy to use our test scheme
         services.AddAuthorization(options => {
-          options.DefaultPolicy = new AuthorizationPolicyBuilder()
-              .AddAuthenticationSchemes(scheme)
-              .RequireAuthenticatedUser()
-              .Build();
+          options.AddPolicy(AuthorizationPolicies.ApiPolicy, policy => {
+            policy.AddAuthenticationSchemes(scheme);
+            policy.RequireAuthenticatedUser();
+          });
         });
 
         // We also need to provide the UserId to the handler
