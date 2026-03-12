@@ -11,7 +11,7 @@ namespace Tai.Portal.Api.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize]
+[Authorize(AuthenticationSchemes = $"{OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme},Identity.Application,TestAuth")]
 public class OnboardingController : ControllerBase {
   private readonly IMediator _mediator;
   private readonly ITenantService _tenantService;

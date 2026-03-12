@@ -1,5 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.Extensions.Options;
+using System.Text.Encodings.Web;
+using Microsoft.Extensions.Logging;
 using OpenIddict.Validation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,9 +23,6 @@ using Tai.Portal.Core.Infrastructure.Services;
 using Tai.Portal.Core.Application.Behaviors;
 using FluentValidation;
 using MediatR;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.Extensions.Options;
-using System.Text.Encodings.Web;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -134,7 +135,7 @@ builder.Services.AddAuthentication(options => {
 
 // We register a dummy "TestAuth" scheme so that [Authorize] attributes can reference it
 // without crashing the app during startup. In integration tests, this is overridden.
-if (builder.Configuration["SKIP_TEST_AUTH"] == "false" || builder.Environment.IsProduction()) {
+if (builder.Configuration["SKIP_TEST_AUTH"] != "true") {
   builder.Services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, IntegrationTestStubHandler>("TestAuth", _ => { });
 }
 
