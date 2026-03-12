@@ -11,7 +11,7 @@ namespace Tai.Portal.Api.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
-[Authorize(AuthenticationSchemes = $"{OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme},Identity.Application")]
+[Authorize(AuthenticationSchemes = $"{OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme},Identity.Application,IntegrationTestAuth")]
 public class UsersController : ControllerBase {
   private readonly IMediator _mediator;
   private readonly ITenantService _tenantService;
