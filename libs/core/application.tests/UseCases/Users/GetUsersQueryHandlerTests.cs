@@ -51,7 +51,7 @@ public class GetUsersQueryHandlerTests {
     // Assert
     result.Items.Should().HaveCount(2);
     result.TotalCount.Should().Be(2);
-    result.Page.Should().Be(1);
+    result.PageNumber.Should().Be(1);
     result.PageSize.Should().Be(10);
 
     result.Items[0].Id.Should().Be("1");
@@ -73,7 +73,7 @@ public class GetUsersQueryHandlerTests {
   public async Task Handle_CalculatesSkipCorrectlyForPagination() {
     // Arrange
     var tenantId = Guid.NewGuid();
-    var query = new GetUsersQuery(tenantId, Page: 3, PageSize: 5);
+    var query = new GetUsersQuery(tenantId, PageNumber: 3, PageSize: 5);
     _mockIdentityService
       .Setup(s => s.GetUsersByTenantAsync(It.IsAny<TenantId>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
       .ReturnsAsync(new List<ApplicationUser>());
