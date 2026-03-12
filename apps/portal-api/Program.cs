@@ -223,6 +223,8 @@ if (app.Environment.IsDevelopment()) {
   app.UseDeveloperExceptionPage();
 }
 
+app.UseRouting();
+
 app.UseCors();
 
 // JUNIOR RATIONALE: We place the Trust check AFTER CORS so browser 'OPTIONS' 
