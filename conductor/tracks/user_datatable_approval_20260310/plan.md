@@ -1,6 +1,6 @@
 # Implementation Plan: User DataTable and Approval Workflow
 
-## Phase 1: Backend Domain & Persistence
+## Phase 1: Backend Domain & Persistence [checkpoint: f5b5843]
 - [x] Task: Update `ApplicationUser` Domain Entity
     - [x] Write failing unit test for `Approve` method (validates pending state, raises event).
     - [x] Implement `Approve(TenantAdminId approvedBy)` method in `ApplicationUser`.
@@ -16,9 +16,9 @@
     - [x] Add `CreatedAt`, `CreatedBy`, `LastModifiedAt`, `LastModifiedBy` to `ApplicationUser` and `Tenant`.
     - [x] Implement automatic population of audit fields in `PortalDbContext.SaveChangesAsync`.
     - [x] Register `ICurrentUserService` and `IHttpContextAccessor` in `Program.cs`.
-- [ ] Task: Conductor - User Manual Verification 'Backend Domain & Persistence' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Backend Domain & Persistence' (Protocol in workflow.md) f5b5843
 
-## Phase 2: Backend Application & API
+## Phase 2: Backend Application & API [checkpoint: f5b5843]
 - [x] Task: Update Pagination API Contract [c091a91]
     - [x] Ensure the Users Query UseCase supports Offset-based pagination (PageNumber, PageSize).
 - [x] Task: Implement Concurrency in Users Controller [c091a91]
@@ -26,21 +26,21 @@
     - [x] Update `GET /users/:id` endpoint to return `ETag`.
     - [x] Write failing integration test for `PUT/PATCH` actions handling `If-Match` header.
     - [x] Update approval and edit endpoints to validate `If-Match` and return `409/412` on conflict.
-- [ ] Task: Conductor - User Manual Verification 'Backend Application & API' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Backend Application & API' (Protocol in workflow.md) f5b5843
 
-## Phase 3: Frontend Design System (CDK Table & Modal)
-- [ ] Task: Generic Confirmation Modal
-    - [ ] Check `libs/ui/design-system` for existing confirmation modal.
-    - [ ] If missing, build `<tai-confirmation-dialog>` using `@angular/cdk/dialog` and Tailwind CSS 4.0.
-    - [ ] Add Storybook stories and interaction tests (Axe-core validation).
-- [ ] Task: Headless DataTable Component
-    - [ ] Create `DataTableComponent` using `@angular/cdk/table` in `libs/ui/design-system`.
-    - [ ] Implement generic columns, data binding, sorting, and pagination inputs/outputs.
-    - [ ] Implement Declarative Row Actions (`TableActionDef<T>`) emitting `actionTriggered`.
-    - [ ] Add Empty State and Loading State UI.
-    - [ ] Add Storybook stories with Axe-core validation.
-    - [ ] Ensure `data-testid` attributes exist on all interactive elements.
-- [ ] Task: Conductor - User Manual Verification 'Frontend Design System' (Protocol in workflow.md)
+## Phase 3: Frontend Design System (CDK Table & Modal) [checkpoint: 2141654]
+- [x] Task: Generic Confirmation Modal [2a35980]
+    - [x] Check `libs/ui/design-system` for existing confirmation modal.
+    - [x] If missing, build `<tai-confirmation-dialog>` using `@angular/cdk/dialog` and Tailwind CSS 4.0.
+    - [x] Add Storybook stories and interaction tests (Axe-core validation).
+- [x] Task: Headless DataTable Component [c4bc409]
+    - [x] Create `DataTableComponent` using `@angular/cdk/table` in `libs/ui/design-system`.
+    - [x] Implement generic columns, data binding, sorting, and pagination inputs/outputs.
+    - [x] Implement Declarative Row Actions (`TableActionDef<T>`) emitting `actionTriggered`.
+    - [x] Add Empty State and Loading State UI.
+    - [x] Add Storybook stories with Axe-core validation.
+    - [x] Ensure `data-testid` attributes exist on all interactive elements.
+- [x] Task: Conductor - User Manual Verification 'Frontend Design System' (Protocol in workflow.md) 2141654
 
 ## Phase 4: Frontend Users Feature (Integration)
 - [ ] Task: Regenerate API Client
