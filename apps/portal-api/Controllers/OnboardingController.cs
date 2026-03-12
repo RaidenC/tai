@@ -26,13 +26,9 @@ public class OnboardingController : ControllerBase {
   [HttpPost("verify")]
   [AllowAnonymous]
   public async Task<IActionResult> Verify([FromBody] VerifyRequest request) {
-    try {
-      var command = new ActivateUserCommand(request.UserId, request.Code);
-      await _mediator.Send(command);
-      return Ok();
-    } catch (System.Exception ex) {
-      return BadRequest(new { error = ex.Message, detail = ex.ToString() });
-    }
+    var command = new ActivateUserCommand(request.UserId, request.Code);
+    await _mediator.Send(command);
+    return Ok();
   }
 
   public record RegistrationRequest(string Email, string Password, string FirstName, string LastName);
@@ -91,12 +87,8 @@ public class OnboardingController : ControllerBase {
       }
     }
 
-    try {
-      var command = new ApproveStaffCommand(request.TargetUserId, approverId, expectedRowVersion);
-      await _mediator.Send(command);
-      return Ok();
-    } catch (Tai.Portal.Core.Application.Exceptions.ConcurrencyException) {
-      return StatusCode(StatusCodes.Status412PreconditionFailed, new { error = "Optimistic concurrency conflict. The user record has changed." });
-    }
+    var command = new ApproveStaffCommand(request.TargetUserId, approverId, expectedRowVersion);
+    await _mediator.Send(command);
+    return Ok();
   }
 }

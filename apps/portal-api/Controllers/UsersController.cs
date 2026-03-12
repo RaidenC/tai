@@ -2,10 +2,12 @@ using System;
 using System.Threading.Tasks;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Validation.AspNetCore;
 using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Application.UseCases.Users;
+using Tai.Portal.Core.Domain.ValueObjects;
 
 namespace Tai.Portal.Api.Controllers;
 
@@ -57,14 +59,8 @@ public class UsersController : ControllerBase {
       }
     }
 
-    try {
-      var command = new UpdateUserCommand(id, request.Email, request.FirstName, request.LastName, expectedRowVersion);
-      await _mediator.Send(command);
-      return NoContent();
-    } catch (Tai.Portal.Core.Application.Exceptions.ConcurrencyException) {
-      return StatusCode(StatusCodes.Status412PreconditionFailed, new { error = "Optimistic concurrency conflict. The user record has changed." });
-    } catch (Tai.Portal.Core.Application.Exceptions.UserNotFoundException) {
-      return NotFound();
-    }
+    var command = new UpdateUserCommand(id, request.Email, request.FirstName, request.LastName, expectedRowVersion);
+    await _mediator.Send(command);
+    return NoContent();
   }
 }

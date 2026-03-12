@@ -140,9 +140,7 @@ if (builder.Configuration["SKIP_TEST_AUTH"] != "true") {
 }
 
 builder.Services.AddAuthorization();
-builder.Services.AddControllers(options => {
-  options.Filters.Add<Tai.Portal.Api.Filters.ValidationExceptionFilter>();
-});
+builder.Services.AddControllers();
 
 builder.Services.AddCors(options => {
   options.AddDefaultPolicy(policy => {
@@ -162,6 +160,53 @@ builder.Services.ConfigureApplicationCookie(options => {
 });
 
 var app = builder.Build();
+
+// Global Exception Handling Middleware
+app.Use(async (context, next) => {
+  try {
+    await next(context);
+  } catch (FluentValidation.ValidationException ex) {
+    context.Response.StatusCode = 400;
+    var problemDetails = new Microsoft.AspNetCore.Mvc.ValidationProblemDetails {
+      Title = "Validation Failed",
+      Status = 400,
+      Detail = "One or more validation errors occurred."
+    };
+    foreach (var error in ex.Errors) {
+      if (!problemDetails.Errors.ContainsKey(error.PropertyName)) {
+        problemDetails.Errors[error.PropertyName] = new string[] { error.ErrorMessage };
+      } else {
+        var existing = problemDetails.Errors[error.PropertyName];
+        problemDetails.Errors[error.PropertyName] = existing.Concat(new[] { error.ErrorMessage }).ToArray();
+      }
+    }
+    await context.Response.WriteAsJsonAsync(problemDetails);
+  } catch (Tai.Portal.Core.Application.Exceptions.IdentityValidationException ex) {
+    context.Response.StatusCode = 400;
+    var problemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails {
+      Title = "Identity Validation Failed",
+      Status = 400,
+      Detail = ex.Message
+    };
+    await context.Response.WriteAsJsonAsync(problemDetails);
+  } catch (Tai.Portal.Core.Application.Exceptions.UserNotFoundException ex) {
+    context.Response.StatusCode = 404;
+    var problemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails {
+      Title = "Resource Not Found",
+      Status = 404,
+      Detail = ex.Message
+    };
+    await context.Response.WriteAsJsonAsync(problemDetails);
+  } catch (Tai.Portal.Core.Application.Exceptions.ConcurrencyException ex) {
+    context.Response.StatusCode = 412;
+    var problemDetails = new Microsoft.AspNetCore.Mvc.ProblemDetails {
+      Title = "Concurrency Conflict",
+      Status = 412,
+      Detail = ex.Message
+    };
+    await context.Response.WriteAsJsonAsync(problemDetails);
+  }
+});
 
 // JUNIOR RATIONALE: This MUST be the first thing in the pipeline. 
 // It tells the API to look at the headers from the Gateway (like Host and IP) 
