@@ -10,7 +10,7 @@ using Tai.Portal.Core.Domain.ValueObjects;
 
 namespace Tai.Portal.Core.Application.UseCases.Onboarding;
 
-public record ApproveStaffCommand(string TargetUserId, string ApprovedByAdminId) : IRequest;
+public record ApproveStaffCommand(string TargetUserId, string ApprovedByAdminId, uint? ExpectedRowVersion = null) : IRequest;
 
 public class ApproveStaffCommandValidator : AbstractValidator<ApproveStaffCommand> {
   public ApproveStaffCommandValidator() {
@@ -35,6 +35,11 @@ public class ApproveStaffCommandHandler : IRequestHandler<ApproveStaffCommand> {
 
     if (user == null) {
       throw new UserNotFoundException(request.TargetUserId);
+    }
+
+    // Manual check for concurrency before domain logic (Fast fail)
+    if (request.ExpectedRowVersion.HasValue && user.RowVersion != request.ExpectedRowVersion.Value) {
+      throw new ConcurrencyException("The user record was modified by another process.");
     }
 
     // Execute the domain state transition

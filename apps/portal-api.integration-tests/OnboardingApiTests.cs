@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Tai.Portal.Core.Application.Interfaces;
+using Tai.Portal.Core.Application.Models;
 using Tai.Portal.Core.Application.UseCases.Onboarding;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.Enums;
@@ -246,8 +247,9 @@ public class OnboardingApiTests : IClassFixture<WebApplicationFactory<Program>> 
     // Assert: Even though there is a pending user in TAI, the tenant isolation 
     // should prevent ACME from seeing it.
     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    var approvals = await response.Content.ReadFromJsonAsync<List<UserSummaryDto>>();
-    Assert.NotNull(approvals);
+    var result = await response.Content.ReadFromJsonAsync<PaginatedList<UserSummaryDto>>();
+    Assert.NotNull(result);
+    var approvals = result.Items;
 
     // Ensure no TAI users leaked into ACME's list
     Assert.All(approvals, u => Assert.DoesNotContain("@tai.com", u.Email));

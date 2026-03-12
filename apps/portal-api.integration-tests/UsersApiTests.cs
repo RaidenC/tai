@@ -12,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using Tai.Portal.Core.Application.Interfaces;
+using Tai.Portal.Core.Application.Models;
 using Tai.Portal.Core.Application.UseCases.Users;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.ValueObjects;

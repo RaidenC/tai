@@ -15,4 +15,5 @@ public interface IIdentityService {
   Task<IEnumerable<ApplicationUser>> GetUsersByStatusAndTenantAsync(UserStatus status, TenantId tenantId, int skip, int take, CancellationToken cancellationToken = default);
   Task<IEnumerable<ApplicationUser>> GetUsersByTenantAsync(TenantId tenantId, int skip, int take, CancellationToken cancellationToken = default);
   Task<int> CountUsersByTenantAsync(TenantId tenantId, CancellationToken cancellationToken = default);
+  Task<int> CountUsersByStatusAndTenantAsync(UserStatus status, TenantId tenantId, CancellationToken cancellationToken = default);
 }

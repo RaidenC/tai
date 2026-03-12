@@ -40,6 +40,9 @@ public class ApplicationUser : IdentityUser, IMultiTenantEntity, IHasDomainEvent
   public DateTimeOffset? LastModifiedAt { get; set; }
   public string? LastModifiedBy { get; set; }
 
+  public string? FirstName { get; set; }
+  public string? LastName { get; set; }
+
   /// <summary>
   /// An example of using the field keyword for data sanitization on a standard property.
   /// </summary>
@@ -57,7 +60,7 @@ public class ApplicationUser : IdentityUser, IMultiTenantEntity, IHasDomainEvent
   /// Optimistic Concurrency Token (ETag).
   /// Maps to the PostgreSQL system column 'xmin'.
   /// </summary>
-  public uint RowVersion { get; private set; }
+  public uint RowVersion { get; set; }
 
   private readonly List<IDomainEvent> _domainEvents = new();
   public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();

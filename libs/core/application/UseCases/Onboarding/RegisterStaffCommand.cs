@@ -35,7 +35,9 @@ public class RegisterStaffCommandHandler : IRequestHandler<RegisterStaffCommand,
     var tenantId = new TenantId(request.TenantId);
     var user = new ApplicationUser(request.Email, tenantId) {
       Email = request.Email,
-      UserName = request.Email
+      UserName = request.Email,
+      FirstName = request.FirstName,
+      LastName = request.LastName
     };
 
     // Use the Domain method to initiate the state machine for a staff member

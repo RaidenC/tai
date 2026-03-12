@@ -22,9 +22,49 @@ public class UsersController : ControllerBase {
   }
 
   [HttpGet]
-  public async Task<IActionResult> GetUsers([FromQuery] int page = 1, [FromQuery] int pageSize = 10) {
-    var query = new GetUsersQuery(_tenantService.TenantId.Value, page, pageSize);
+  public async Task<IActionResult> GetUsers([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10) {
+    var query = new GetUsersQuery(_tenantService.TenantId.Value, pageNumber, pageSize);
     var result = await _mediator.Send(query);
     return Ok(result);
+  }
+
+  [HttpGet("{id}")]
+  public async Task<IActionResult> GetUser(string id) {
+    var query = new GetUserByIdQuery(id);
+    var result = await _mediator.Send(query);
+
+    if (result == null) {
+      return NotFound();
+    }
+
+    // Set ETag header for optimistic concurrency
+    Response.Headers.ETag = $"\"{result.RowVersion}\"";
+
+    return Ok(result);
+  }
+
+  public record UpdateUserRequest(string Email, string FirstName, string LastName);
+
+  [HttpPut("{id}")]
+  public async Task<IActionResult> UpdateUser(string id, [FromBody] UpdateUserRequest request) {
+    uint? expectedRowVersion = null;
+    var ifMatch = Request.Headers.IfMatch.ToString();
+    if (!string.IsNullOrEmpty(ifMatch)) {
+      if (uint.TryParse(ifMatch.Trim('"'), out var version)) {
+        expectedRowVersion = version;
+      } else {
+        return BadRequest(new { error = "Invalid If-Match header format. Expected numeric row version." });
+      }
+    }
+
+    try {
+      var command = new UpdateUserCommand(id, request.Email, request.FirstName, request.LastName, expectedRowVersion);
+      await _mediator.Send(command);
+      return NoContent();
+    } catch (Tai.Portal.Core.Application.Exceptions.ConcurrencyException) {
+      return StatusCode(StatusCodes.Status412PreconditionFailed, new { error = "Optimistic concurrency conflict. The user record has changed." });
+    } catch (Tai.Portal.Core.Application.Exceptions.UserNotFoundException) {
+      return NotFound();
+    }
   }
 }

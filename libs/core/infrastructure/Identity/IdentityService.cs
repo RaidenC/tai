@@ -45,6 +45,7 @@ public class IdentityService : IIdentityService {
     // Because UserManager.Users is an IQueryable, we can safely apply LINQ
     // operations here which will be translated to SQL by EF Core.
     return await _userManager.Users
+      .IgnoreQueryFilters()
       .Where(u => u.Status == status && u.TenantId == tenantId)
       .OrderByDescending(u => u.UserName)
       .Skip(skip)
@@ -66,6 +67,13 @@ public class IdentityService : IIdentityService {
     return await _userManager.Users
       .IgnoreQueryFilters()
       .Where(u => u.TenantId == tenantId)
+      .CountAsync(cancellationToken);
+  }
+
+  public async Task<int> CountUsersByStatusAndTenantAsync(UserStatus status, TenantId tenantId, CancellationToken cancellationToken = default) {
+    return await _userManager.Users
+      .IgnoreQueryFilters()
+      .Where(u => u.Status == status && u.TenantId == tenantId)
       .CountAsync(cancellationToken);
   }
 }

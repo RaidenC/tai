@@ -38,6 +38,9 @@ public class GetPendingApprovalsQueryHandlerTests {
     _mockIdentityService.Setup(x => x.GetUsersByStatusAndTenantAsync(UserStatus.PendingApproval, tenantIdA, 0, 10, It.IsAny<CancellationToken>()))
       .ReturnsAsync(usersList);
 
+    _mockIdentityService.Setup(x => x.CountUsersByStatusAndTenantAsync(UserStatus.PendingApproval, tenantIdA, It.IsAny<CancellationToken>()))
+      .ReturnsAsync(1);
+
     var query = new GetPendingApprovalsQuery(tenantIdA.Value);
 
     // Act
@@ -45,9 +48,10 @@ public class GetPendingApprovalsQueryHandlerTests {
 
     // Assert
     result.Should().NotBeNull();
-    result.Should().HaveCount(1);
+    result.Items.Should().HaveCount(1);
+    result.TotalCount.Should().Be(1);
 
-    var returnedUser = result.First();
+    var returnedUser = result.Items.First();
     returnedUser.Id.Should().Be("id2");
     returnedUser.Email.Should().Be("user2@test.com");
     returnedUser.Status.Should().Be(UserStatus.PendingApproval.ToString());
@@ -66,11 +70,15 @@ public class GetPendingApprovalsQueryHandlerTests {
     _mockIdentityService.Setup(x => x.GetUsersByStatusAndTenantAsync(UserStatus.PendingApproval, tenantId, 10, 10, It.IsAny<CancellationToken>()))
       .ReturnsAsync(usersList);
 
+    _mockIdentityService.Setup(x => x.CountUsersByStatusAndTenantAsync(UserStatus.PendingApproval, tenantId, It.IsAny<CancellationToken>()))
+      .ReturnsAsync(15);
+
     // Page 2, Size 10 (Skip 10, Take 10)
     var queryPage2 = new GetPendingApprovalsQuery(tenantId.Value, 2, 10);
     var resultPage2 = await _handler.Handle(queryPage2, CancellationToken.None);
-    resultPage2.Should().HaveCount(5);
-    resultPage2.First().Id.Should().Be("id11");
+    resultPage2.Items.Should().HaveCount(5);
+    resultPage2.TotalCount.Should().Be(15);
+    resultPage2.Items.First().Id.Should().Be("id11");
   }
 
   [Fact]
@@ -81,6 +89,9 @@ public class GetPendingApprovalsQueryHandlerTests {
     _mockIdentityService.Setup(x => x.GetUsersByStatusAndTenantAsync(UserStatus.PendingApproval, tenantId, 0, 10, It.IsAny<CancellationToken>()))
       .ReturnsAsync(new List<ApplicationUser>());
 
+    _mockIdentityService.Setup(x => x.CountUsersByStatusAndTenantAsync(UserStatus.PendingApproval, tenantId, It.IsAny<CancellationToken>()))
+      .ReturnsAsync(0);
+
     var query = new GetPendingApprovalsQuery(tenantId.Value);
 
     // Act
@@ -88,6 +99,7 @@ public class GetPendingApprovalsQueryHandlerTests {
 
     // Assert
     result.Should().NotBeNull();
-    result.Should().BeEmpty();
+    result.Items.Should().BeEmpty();
+    result.TotalCount.Should().Be(0);
   }
 }

@@ -57,16 +57,16 @@ public class OnboardingController : ControllerBase {
   }
 
   [HttpGet("pending-approvals")]
-  public async Task<IActionResult> GetPendingApprovals([FromQuery] int page = 1, [FromQuery] int pageSize = 10) {
-    var query = new GetPendingApprovalsQuery(_tenantService.TenantId.Value, page, pageSize);
+  public async Task<IActionResult> GetPendingApprovals([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10) {
+    var query = new GetPendingApprovalsQuery(_tenantService.TenantId.Value, pageNumber, pageSize);
     var result = await _mediator.Send(query);
     return Ok(result);
   }
 
   [HttpGet("diag-pending-approvals")]
   [AllowAnonymous]
-  public async Task<IActionResult> DiagGetPendingApprovals([FromQuery] int page = 1, [FromQuery] int pageSize = 10) {
-    var query = new GetPendingApprovalsQuery(_tenantService.TenantId.Value, page, pageSize);
+  public async Task<IActionResult> DiagGetPendingApprovals([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10) {
+    var query = new GetPendingApprovalsQuery(_tenantService.TenantId.Value, pageNumber, pageSize);
     var result = await _mediator.Send(query);
     return Ok(result);
   }
@@ -80,8 +80,22 @@ public class OnboardingController : ControllerBase {
       return Unauthorized();
     }
 
-    var command = new ApproveStaffCommand(request.TargetUserId, approverId);
-    await _mediator.Send(command);
-    return Ok();
+    uint? expectedRowVersion = null;
+    var ifMatch = Request.Headers.IfMatch.ToString();
+    if (!string.IsNullOrEmpty(ifMatch)) {
+      if (uint.TryParse(ifMatch.Trim('"'), out var version)) {
+        expectedRowVersion = version;
+      } else {
+        return BadRequest(new { error = "Invalid If-Match header format. Expected numeric row version." });
+      }
+    }
+
+    try {
+      var command = new ApproveStaffCommand(request.TargetUserId, approverId, expectedRowVersion);
+      await _mediator.Send(command);
+      return Ok();
+    } catch (Tai.Portal.Core.Application.Exceptions.ConcurrencyException) {
+      return StatusCode(StatusCodes.Status412PreconditionFailed, new { error = "Optimistic concurrency conflict. The user record has changed." });
+    }
   }
 }
