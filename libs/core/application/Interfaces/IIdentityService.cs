@@ -13,6 +13,6 @@ public interface IIdentityService {
   Task<ApplicationUser?> GetUserByIdAsync(string userId, CancellationToken cancellationToken = default);
   Task<bool> UpdateUserAsync(ApplicationUser user, CancellationToken cancellationToken = default);
   Task<IEnumerable<ApplicationUser>> GetUsersByStatusAndTenantAsync(UserStatus status, TenantId tenantId, int skip, int take, CancellationToken cancellationToken = default);
-  Task<IEnumerable<ApplicationUser>> GetUsersByTenantAsync(TenantId tenantId, int skip, int take, CancellationToken cancellationToken = default);
-  Task<int> CountUsersByTenantAsync(TenantId tenantId, CancellationToken cancellationToken = default);
+  Task<IEnumerable<ApplicationUser>> GetUsersByTenantAsync(TenantId tenantId, int skip, int take, string? sortColumn = null, string? sortDirection = null, string? search = null, CancellationToken cancellationToken = default);
+  Task<int> CountUsersByTenantAsync(TenantId tenantId, string? search = null, CancellationToken cancellationToken = default);
 }
