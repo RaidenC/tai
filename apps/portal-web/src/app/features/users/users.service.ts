@@ -50,10 +50,19 @@ export class UsersService {
   private readonly baseUrl = '/api/users';
 
   /**
-   * Fetches a paginated list of users.
+   * Fetches a paginated list of users with optional sorting and search.
    */
-  public getUsers(pageNumber = 1, pageSize = 10): Observable<PaginatedUsers> {
-    return this.http.get<PaginatedUsers>(`${this.baseUrl}?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+  public getUsers(
+    pageNumber = 1, 
+    pageSize = 10, 
+    sortColumn?: string, 
+    sortDirection?: 'asc' | 'desc', 
+    search?: string
+  ): Observable<PaginatedUsers> {
+    let url = `${this.baseUrl}?pageNumber=${pageNumber}&pageSize=${pageSize}`;
+    if (sortColumn) url += `&sort=${sortColumn}&dir=${sortDirection || 'asc'}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    return this.http.get<PaginatedUsers>(url);
   }
 
   /**
