@@ -1,6 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Dialog, DialogModule } from '@angular/cdk/dialog';
+import { Router } from '@angular/router';
 import { 
   DataTableComponent, 
   TableColumnDef, 
@@ -70,6 +71,7 @@ import { User } from './users.service';
 export class UsersPage implements OnInit {
   protected readonly store = inject(UsersStore);
   private readonly dialog = inject(Dialog);
+  private readonly router = inject(Router);
 
   /**
    * Column definitions for the user directory.
@@ -78,7 +80,7 @@ export class UsersPage implements OnInit {
     { 
       id: 'name', 
       header: 'Name', 
-      cell: (user) => user.name,
+      cell: (user) => `${user.firstName} ${user.lastName}`,
       sortable: true 
     },
     { 
@@ -132,6 +134,9 @@ export class UsersPage implements OnInit {
   protected onAction(event: { actionId: string; row: User }): void {
     if (event.actionId === 'approve') {
       this.confirmApproval(event.row);
+    } else if (event.actionId === 'view' || event.actionId === 'edit') {
+      const queryParams = event.actionId === 'edit' ? { edit: 'true' } : {};
+      this.router.navigate(['/users', event.row.id], { queryParams });
     }
   }
 
@@ -143,7 +148,7 @@ export class UsersPage implements OnInit {
     const dialogRef = this.dialog.open<boolean>(ConfirmationDialogComponent, {
       data: {
         title: 'Approve User Registration',
-        message: `Are you sure you want to approve the registration for ${user.name} (${user.email})? This will grant them access to the platform immediately.`,
+        message: `Are you sure you want to approve the registration for ${user.firstName} ${user.lastName} (${user.email})? This will grant them access to the platform immediately.`,
         confirmText: 'Approve User',
         cancelText: 'Cancel',
         confirmButtonClass: 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-600/20'

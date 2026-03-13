@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { UsersStore } from './users.store';
-import { UsersService, User, PaginatedUsers } from './users.service';
+import { UsersService, User, PaginatedUsers, UserDetail } from './users.service';
 import { of, throwError } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -12,6 +12,8 @@ describe('UsersStore', () => {
   beforeEach(() => {
     mockService = {
       getUsers: vi.fn(),
+      getUserById: vi.fn(),
+      updateUser: vi.fn(),
       approveUser: vi.fn(),
     };
 
@@ -32,7 +34,7 @@ describe('UsersStore', () => {
 
   it('should load users successfully', () => {
     const mockResponse: PaginatedUsers = {
-      items: [{ id: '1', name: 'John', email: 'john@tai.com', status: 'Active', rowVersion: 1 }],
+      items: [{ id: '1', firstName: 'John', lastName: 'Doe', email: 'john@tai.com', status: 'Active', rowVersion: 1 }],
       totalCount: 1,
       pageNumber: 1,
       pageSize: 10
@@ -45,6 +47,40 @@ describe('UsersStore', () => {
     expect(store.users()).toEqual(mockResponse.items);
     expect(store.totalCount()).toBe(1);
     expect(store.pageIndex()).toBe(1);
+  });
+
+  it('should load a single user successfully', () => {
+    const mockUser: UserDetail = { id: '1', firstName: 'John', lastName: 'Doe', email: 'john@tai.com', status: 'Active', rowVersion: 1 };
+    mockService.getUserById.mockReturnValue(of(mockUser));
+
+    store.loadUser('1');
+
+    expect(store.status()).toBe('Success');
+    expect(store.selectedUser()).toEqual(mockUser);
+  });
+
+  it('should handle API errors when loading a user', () => {
+    const errorResponse = new HttpErrorResponse({
+      error: { detail: 'Not Found' },
+      status: 404
+    });
+    mockService.getUserById.mockReturnValue(throwError(() => errorResponse));
+
+    store.loadUser('unknown');
+
+    expect(store.status()).toBe('Error');
+    expect(store.errorMessage()).toBe('Not Found');
+  });
+
+  it('should update a user and reload', () => {
+    const mockUser: UserDetail = { id: '1', firstName: 'John', lastName: 'Doe', email: 'john@tai.com', status: 'Active', rowVersion: 1 };
+    mockService.updateUser.mockReturnValue(of(void 0));
+    mockService.getUserById.mockReturnValue(of(mockUser));
+
+    store.updateUser('1', { firstName: 'Johnny' }, 1);
+
+    expect(mockService.updateUser).toHaveBeenCalledWith('1', { firstName: 'Johnny' }, 1);
+    expect(mockService.getUserById).toHaveBeenCalledWith('1');
   });
 
   it('should handle API errors when loading users', () => {
@@ -104,7 +140,7 @@ describe('UsersStore', () => {
     
     // Setup initial state and mock a refresh
     const mockResponse: PaginatedUsers = {
-      items: [{ id: '1', name: 'John', email: 'john@tai.com', status: 'Active', rowVersion: 1 }],
+      items: [{ id: '1', firstName: 'John', lastName: 'Doe', email: 'john@tai.com', status: 'Active', rowVersion: 1 }],
       totalCount: 1,
       pageNumber: 1,
       pageSize: 10
@@ -130,10 +166,12 @@ describe('UsersStore', () => {
     // Set error state
     (store as any)._status.set('Error');
     (store as any)._errorMessage.set('Fail');
+    (store as any)._selectedUser.set({ id: '1' });
     
     store.reset();
     
     expect(store.status()).toBe('Idle');
     expect(store.errorMessage()).toBeNull();
+    expect(store.selectedUser()).toBeNull();
   });
 });

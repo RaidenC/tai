@@ -8,9 +8,17 @@ import { Observable } from 'rxjs';
 export interface User {
   id: string;
   email: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   status: string;
   rowVersion: number;
+}
+
+/**
+ * User Details including institution.
+ */
+export interface UserDetail extends User {
+  institution?: string;
 }
 
 /**
@@ -51,8 +59,17 @@ export class UsersService {
   /**
    * Fetches a single user by ID.
    */
-  public getUserById(id: string): Observable<User> {
-    return this.http.get<User>(`${this.baseUrl}/${id}`);
+  public getUserById(id: string): Observable<UserDetail> {
+    return this.http.get<UserDetail>(`${this.baseUrl}/${id}`);
+  }
+
+  /**
+   * Updates an existing user profile.
+   * Requires RowVersion (xmin) in the If-Match header for concurrency safety.
+   */
+  public updateUser(id: string, user: Partial<User>, rowVersion: number): Observable<void> {
+    const headers = new HttpHeaders().set('If-Match', `"${rowVersion}"`);
+    return this.http.put<void>(`${this.baseUrl}/${id}`, user, { headers });
   }
 
   /**

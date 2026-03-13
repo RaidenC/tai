@@ -41,6 +41,26 @@ public class UsersController : ControllerBase {
     return Ok(result);
   }
 
+  public record UpdateUserRequest(string FirstName, string LastName, string Email);
+
+  [HttpPut("{id}")]
+  public async Task<IActionResult> UpdateUser(string id, [FromBody] UpdateUserRequest request) {
+    if (!Request.Headers.TryGetValue("If-Match", out var ifMatch) || !uint.TryParse(ifMatch.ToString().Trim('"'), out var rowVersion)) {
+      return BadRequest("If-Match header is required and must contain a valid ETag.");
+    }
+
+    var command = new UpdateUserCommand(id, request.FirstName, request.LastName, request.Email, rowVersion);
+    try {
+      var result = await _mediator.Send(command);
+      if (!result) {
+        return NotFound();
+      }
+      return NoContent();
+    } catch (Exception ex) when (ex.Message.Contains("Concurrency conflict")) {
+      return Conflict(new { message = ex.Message });
+    }
+  }
+
   [HttpPost("{id}/approve")]
   public async Task<IActionResult> ApproveUser(string id) {
     if (!Request.Headers.TryGetValue("If-Match", out var ifMatch) || !uint.TryParse(ifMatch.ToString().Trim('"'), out var rowVersion)) {

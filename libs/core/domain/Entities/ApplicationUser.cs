@@ -49,6 +49,9 @@ public class ApplicationUser : IdentityUser, IMultiTenantEntity, IHasDomainEvent
     set => field = value?.Trim().ToLowerInvariant();
   }
 
+  public string? FirstName { get; set; }
+  public string? LastName { get; set; }
+
   public UserStatus Status { get; private set; } = UserStatus.Created;
 
   public TenantAdminId? ApprovedBy { get; private set; }
