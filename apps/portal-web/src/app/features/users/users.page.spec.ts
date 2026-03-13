@@ -3,11 +3,12 @@ import { UsersPage } from './users.page';
 import { UsersStore } from './users.store';
 import { signal } from '@angular/core';
 import { Dialog, DialogModule } from '@angular/cdk/dialog';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { User } from './users.service';
 import { By } from '@angular/platform-browser';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 
 describe('UsersPage', () => {
   let component: UsersPage;
@@ -15,6 +16,7 @@ describe('UsersPage', () => {
   let mockStore: any;
   let mockDialog: any;
   let mockRouter: any;
+  let mockActivatedRoute: any;
 
   beforeEach(async () => {
     mockStore = {
@@ -22,6 +24,9 @@ describe('UsersPage', () => {
       totalCount: signal(0),
       pageIndex: signal(1),
       pageSize: signal(10),
+      sortColumn: signal(null),
+      sortDirection: signal(null),
+      search: signal(null),
       isLoading: signal(false),
       isError: signal(false),
       errorMessage: signal(null),
@@ -40,15 +45,23 @@ describe('UsersPage', () => {
       navigate: vi.fn()
     };
 
+    mockActivatedRoute = {
+      snapshot: {
+        queryParams: {}
+      },
+      queryParams: of({})
+    };
+
     await TestBed.configureTestingModule({
-      imports: [UsersPage],
+      imports: [UsersPage, FormsModule],
     })
     .overrideComponent(UsersPage, {
       remove: { imports: [DialogModule] },
       add: { providers: [
         { provide: UsersStore, useValue: mockStore },
         { provide: Dialog, useValue: mockDialog },
-        { provide: Router, useValue: mockRouter }
+        { provide: Router, useValue: mockRouter },
+        { provide: ActivatedRoute, useValue: mockActivatedRoute }
       ]}
     })
     .compileComponents();
@@ -69,9 +82,12 @@ describe('UsersPage', () => {
     expect(p.textContent).toBe('Manage tenant users and approve pending registrations.');
   });
 
-  it('should call setPage when onPageChange is triggered', () => {
+  it('should call router.navigate when onPageChange is triggered', () => {
     component['onPageChange'](3);
-    expect(mockStore.setPage).toHaveBeenCalledWith(3);
+    expect(mockRouter.navigate).toHaveBeenCalledWith([], expect.objectContaining({
+      queryParams: { page: 3 },
+      queryParamsHandling: 'merge'
+    }));
   });
 
   it('should trigger approval flow when approve action is clicked', () => {
@@ -161,5 +177,26 @@ describe('UsersPage', () => {
     
     const table = fixture.debugElement.query(By.css('tai-data-table'));
     expect(table.componentInstance.data()).toEqual(users);
+  });
+
+  it('should call router.navigate when sorting is changed', () => {
+    component['onSortChange']({ columnId: 'name', direction: 'desc' });
+    expect(mockRouter.navigate).toHaveBeenCalledWith([], expect.objectContaining({
+      queryParams: { sort: 'name', dir: 'desc', page: 1 },
+      queryParamsHandling: 'merge'
+    }));
+  });
+
+  it('should update search term and navigate when search changes', async () => {
+    vi.useFakeTimers();
+    component['onSearchChange']('test');
+    
+    vi.advanceTimersByTime(400);
+    
+    expect(mockRouter.navigate).toHaveBeenCalledWith([], expect.objectContaining({
+      queryParams: { search: 'test', page: 1 },
+      queryParamsHandling: 'merge'
+    }));
+    vi.useRealTimers();
   });
 });

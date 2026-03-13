@@ -132,7 +132,7 @@ describe('UsersStore', () => {
 
     store.loadUsers();
 
-    expect(mockService.getUsers).toHaveBeenCalledWith(1, 10);
+    expect(mockService.getUsers).toHaveBeenCalledWith(1, 10, undefined, undefined, undefined);
   });
 
   it('should approve a user and refresh the list', () => {
@@ -150,7 +150,7 @@ describe('UsersStore', () => {
     store.approveUser('user-1', 123);
 
     expect(mockService.approveUser).toHaveBeenCalledWith('user-1', 123);
-    expect(mockService.getUsers).toHaveBeenCalled();
+    expect(mockService.getUsers).toHaveBeenCalledWith(1, 10, undefined, undefined, undefined);
   });
 
   it('should set page and refresh users', () => {
@@ -159,7 +159,7 @@ describe('UsersStore', () => {
     store.setPage(2);
     
     expect(store.pageIndex()).toBe(2);
-    expect(mockService.getUsers).toHaveBeenCalledWith(2, 10);
+    expect(mockService.getUsers).toHaveBeenCalledWith(2, 10, undefined, undefined, undefined);
   });
 
   it('should reset state on reset()', () => {
