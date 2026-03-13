@@ -7,9 +7,19 @@ namespace Tai.Portal.Core.Infrastructure.Persistence.Migrations {
   public partial class AddUserNames : Migration {
     /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder) {
-      // Columns already exist in the database environment.
-      // This migration is being registered to synchronize the model snapshot.
+      migrationBuilder.AddColumn<string>(
+          name: "FirstName",
+          table: "AspNetUsers",
+          type: "text",
+          nullable: true);
+
+      migrationBuilder.AddColumn<string>(
+          name: "LastName",
+          table: "AspNetUsers",
+          type: "text",
+          nullable: true);
     }
+
 
     /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder) {
