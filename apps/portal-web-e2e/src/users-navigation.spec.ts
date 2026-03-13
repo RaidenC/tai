@@ -51,16 +51,16 @@ test.describe('Users Page Navigation', () => {
     // The spec requires sorting to be URL-driven.
     await page.getByTestId('sort-button-name').click();
 
-    // 2. Verify URL updated to sort by name desc (default toggle)
-    await expect(page).toHaveURL(/sort=name&dir=desc/);
+    // 2. Verify URL updated to sort by name asc (first click default)
+    await expect(page).toHaveURL(/sort=name&dir=asc/);
 
     // 3. Refresh the browser
     await page.reload();
 
     // 4. Verify state restored from URL
-    await expect(page).toHaveURL(/sort=name&dir=desc/);
+    await expect(page).toHaveURL(/sort=name&dir=asc/);
     // Verify the visual indicator in the table header
-    await expect(page.getByTestId('sort-button-name')).toContainText('↓');
+    await expect(page.getByTestId('sort-button-name')).toContainText('↑');
   });
 
   test('Filtering: should reset pagination to page 1', async ({ page }) => {
