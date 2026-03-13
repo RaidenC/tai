@@ -23,6 +23,9 @@ export class UsersStore {
   private readonly _totalCount = signal<number>(0);
   private readonly _pageIndex = signal<number>(1);
   private readonly _pageSize = signal<number>(10);
+  private readonly _sortColumn = signal<string | null>(null);
+  private readonly _sortDirection = signal<'asc' | 'desc' | null>(null);
+  private readonly _search = signal<string | null>(null);
   private readonly _status = signal<UsersStatus>('Idle');
   private readonly _errorMessage = signal<string | null>(null);
 
@@ -32,6 +35,9 @@ export class UsersStore {
   public readonly totalCount = this._totalCount.asReadonly();
   public readonly pageIndex = this._pageIndex.asReadonly();
   public readonly pageSize = this._pageSize.asReadonly();
+  public readonly sortColumn = this._sortColumn.asReadonly();
+  public readonly sortDirection = this._sortDirection.asReadonly();
+  public readonly search = this._search.asReadonly();
   public readonly status = this._status.asReadonly();
   public readonly errorMessage = this._errorMessage.asReadonly();
 
@@ -40,16 +46,31 @@ export class UsersStore {
   public readonly isError = computed(() => this._status() === 'Error');
 
   /**
-   * Loads the list of users with pagination.
+   * Loads the list of users with pagination, sorting and filtering.
    */
-  public loadUsers(pageIndex?: number, pageSize?: number): void {
-    if (pageIndex) this._pageIndex.set(pageIndex);
-    if (pageSize) this._pageSize.set(pageSize);
+  public loadUsers(
+    pageIndex?: number, 
+    pageSize?: number, 
+    sortColumn?: string, 
+    sortDirection?: 'asc' | 'desc', 
+    search?: string
+  ): void {
+    if (pageIndex !== undefined) this._pageIndex.set(pageIndex);
+    if (pageSize !== undefined) this._pageSize.set(pageSize);
+    if (sortColumn !== undefined) this._sortColumn.set(sortColumn || null);
+    if (sortDirection !== undefined) this._sortDirection.set(sortDirection || null);
+    if (search !== undefined) this._search.set(search || null);
 
     this._status.set('Loading');
     this._errorMessage.set(null);
 
-    this.usersService.getUsers(this._pageIndex(), this._pageSize())
+    this.usersService.getUsers(
+      this._pageIndex(), 
+      this._pageSize(), 
+      this._sortColumn() || undefined, 
+      this._sortDirection() || undefined, 
+      this._search() || undefined
+    )
       .pipe(finalize(() => {
         // Status remains Success or Error after completion
       }))

@@ -1,7 +1,8 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Dialog, DialogModule } from '@angular/cdk/dialog';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { 
   DataTableComponent, 
   TableColumnDef, 
@@ -11,6 +12,7 @@ import {
 } from '@tai/ui-design-system';
 import { UsersStore } from './users.store';
 import { User } from './users.service';
+import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 
 /**
  * UsersPage
@@ -23,11 +25,12 @@ import { User } from './users.service';
  * 2. Concurrency-safe approval workflow using CDK Dialog and ETag/xmin tokens.
  * 3. Signal-based state management via UsersStore.
  * 4. Zero-Trust compliant UI (No inline styles, strict CSP).
+ * 5. URL-driven state synchronization (Deep linking).
  */
 @Component({
   selector: 'app-users-page',
   standalone: true,
-  imports: [CommonModule, DataTableComponent, DialogModule],
+  imports: [CommonModule, DataTableComponent, DialogModule, FormsModule],
   template: `
     <div class="p-8 max-w-7xl mx-auto">
       <header class="mb-8">
@@ -50,6 +53,24 @@ import { User } from './users.service';
         </div>
       }
 
+      <!-- Search and Filter Bar -->
+      <div class="mb-6 flex items-center gap-4">
+        <div class="relative flex-1 max-w-md">
+          <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </span>
+          <input 
+            type="text" 
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="onSearchChange($event)"
+            placeholder="Search users..." 
+            class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent sm:text-sm transition-all duration-200"
+            data-testid="user-search-input">
+        </div>
+      </div>
+
       <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
         <tai-data-table
           [data]="store.users()"
@@ -59,6 +80,8 @@ import { User } from './users.service';
           [totalCount]="store.totalCount()"
           [pageIndex]="store.pageIndex()"
           [pageSize]="store.pageSize()"
+          [sortColumnId]="store.sortColumn()"
+          [sortDirection]="store.sortDirection()"
           (pageChanged)="onPageChange($event)"
           (sortChanged)="onSortChange($event)"
           (actionTriggered)="onAction($event)">
@@ -72,6 +95,10 @@ export class UsersPage implements OnInit {
   protected readonly store = inject(UsersStore);
   private readonly dialog = inject(Dialog);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
+  protected searchTerm = '';
+  private readonly searchSubject = new Subject<string>();
 
   /**
    * Column definitions for the user directory.
@@ -119,16 +146,53 @@ export class UsersPage implements OnInit {
   ];
 
   ngOnInit(): void {
-    this.store.loadUsers();
+    // Initial sync and default parameter enforcement
+    const currentParams = this.route.snapshot.queryParams;
+    if (!currentParams['page'] || !currentParams['size']) {
+      this.updateUrl({
+        page: currentParams['page'] || 1,
+        size: currentParams['size'] || 10,
+        sort: currentParams['sort'] || null,
+        dir: currentParams['dir'] || null,
+        search: currentParams['search'] || null
+      });
+    }
+
+    // Synchronize Store with URL query parameters
+    this.route.queryParams.subscribe(params => {
+      const page = +params['page'] || 1;
+      const size = +params['size'] || 10;
+      const sort = params['sort'] || null;
+      const dir = params['dir'] || null;
+      const search = params['search'] || '';
+
+      this.searchTerm = search;
+      this.store.loadUsers(page, size, sort, dir, search);
+    });
+
+    // Handle search with debounce
+    this.searchSubject.pipe(
+      debounceTime(400),
+      distinctUntilChanged()
+    ).subscribe(search => {
+      this.updateUrl({ search, page: 1 });
+    });
   }
 
   protected onPageChange(page: number): void {
-    this.store.setPage(page);
+    this.updateUrl({ page });
   }
 
   protected onSortChange(sort: { columnId: string; direction: 'asc' | 'desc' }): void {
-    // Server-side sorting can be implemented here if needed by the API
-    console.log('Sort changed:', sort);
+    this.updateUrl({ 
+      sort: sort.columnId, 
+      dir: sort.direction,
+      page: 1 // Reset to page 1 on sort change
+    });
+  }
+
+  protected onSearchChange(search: string): void {
+    this.searchSubject.next(search);
   }
 
   protected onAction(event: { actionId: string; row: User }): void {
@@ -138,6 +202,17 @@ export class UsersPage implements OnInit {
       const queryParams = event.actionId === 'edit' ? { edit: 'true' } : {};
       this.router.navigate(['/users', event.row.id], { queryParams });
     }
+  }
+
+  /**
+   * Updates the URL query parameters.
+   */
+  private updateUrl(params: Partial<{ page: number; size: number; sort: string; dir: string; search: string }>): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: params,
+      queryParamsHandling: 'merge'
+    });
   }
 
   /**
@@ -162,3 +237,4 @@ export class UsersPage implements OnInit {
     });
   }
 }
+

@@ -1,4 +1,4 @@
-import { Component, input, output, ChangeDetectionStrategy, signal, computed } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkTableModule } from '@angular/cdk/table';
 import { CdkMenuModule } from '@angular/cdk/menu';
@@ -68,6 +68,10 @@ export class DataTableComponent<T> {
   public readonly pageIndex = input<number>(1);
   /** Number of items per page. */
   public readonly pageSize = input<number>(10);
+  /** The current sort column ID. */
+  public readonly sortColumnId = input<string | null>(null);
+  /** The current sort direction. */
+  public readonly sortDirection = input<'asc' | 'desc' | null>(null);
 
   /** Emitted when a row action is triggered. */
   public readonly actionTriggered = output<{ actionId: string; row: T }>();
@@ -78,6 +82,19 @@ export class DataTableComponent<T> {
 
   /** Current sort state. */
   protected readonly sortState = signal<{ columnId: string; direction: 'asc' | 'desc' } | null>(null);
+
+  constructor() {
+    // Synchronize internal sortState with inputs (driven by URL)
+    effect(() => {
+      const colId = this.sortColumnId();
+      const dir = this.sortDirection();
+      if (colId && dir) {
+        this.sortState.set({ columnId: colId, direction: dir });
+      } else {
+        this.sortState.set(null);
+      }
+    }, { allowSignalWrites: true });
+  }
 
   /**
    * IDs of the columns to be displayed, including the 'actions' column if provided.
@@ -116,7 +133,7 @@ export class DataTableComponent<T> {
     }
 
     this.sortState.set(newState);
-    this.sortChanged.emit(newState);
+    this.sortChanged.emit(newState!);
   }
 
   /**
