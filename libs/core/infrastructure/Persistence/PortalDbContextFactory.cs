@@ -18,6 +18,6 @@ public class PortalDbContextFactory : IDesignTimeDbContextFactory<PortalDbContex
     var optionsBuilder = new DbContextOptionsBuilder<PortalDbContext>();
     optionsBuilder.UseNpgsql(configuration.GetConnectionString("DefaultConnection"));
 
-    return new PortalDbContext(optionsBuilder.Options, new TenantService());
+    return new PortalDbContext(optionsBuilder.Options, new TenantService(), null!);
   }
 }

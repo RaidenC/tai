@@ -33,10 +33,11 @@ public class RegisterCustomerCommandHandler : IRequestHandler<RegisterCustomerCo
 
   public async Task<string> Handle(RegisterCustomerCommand request, CancellationToken cancellationToken) {
     var tenantId = new TenantId(request.TenantId);
-    // In our POC model, we concatenate names if needed or just use Email as identifier
     var user = new ApplicationUser(request.Email, tenantId) {
       Email = request.Email,
-      UserName = request.Email
+      UserName = request.Email,
+      FirstName = request.FirstName,
+      LastName = request.LastName
     };
 
     // Use the Domain method to initiate the state machine for a customer

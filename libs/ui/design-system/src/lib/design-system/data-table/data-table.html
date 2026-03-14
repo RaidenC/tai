@@ -1,0 +1,129 @@
+<div class="data-table-container relative overflow-x-auto shadow-md rounded-lg border border-gray-200">
+  <!-- Loading State Overlay -->
+  @if (loading()) {
+    <div class="absolute inset-0 z-10 bg-white/60 flex items-center justify-center backdrop-blur-[2px]" data-testid="table-loading">
+      <div class="flex flex-col items-center">
+        <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <span class="mt-2 text-sm font-semibold text-gray-700">Loading data...</span>
+      </div>
+    </div>
+  }
+
+  <table cdk-table [dataSource]="data()" class="w-full text-sm text-left text-gray-700 bg-white" data-testid="data-table">
+    <!-- Dynamic Columns -->
+    @for (column of columns(); track column.id) {
+      <ng-container [cdkColumnDef]="column.id">
+        <th cdk-header-cell *cdkHeaderCellDef 
+            class="px-6 py-4 font-bold text-gray-900 bg-gray-50/80 border-b border-gray-200 uppercase tracking-wider"
+            [attr.data-testid]="'header-' + column.id">
+          
+          @if (column.sortable) {
+            <button 
+              type="button"
+              (click)="toggleSort(column.id)"
+              class="flex items-center gap-2 w-full h-full text-left outline-none focus:text-blue-600 transition-colors duration-200"
+              [attr.data-testid]="'sort-button-' + column.id"
+              [attr.aria-label]="'Sort by ' + column.header">
+              {{ column.header }}
+              <span class="text-xs text-gray-400">
+                @if (sortState()?.columnId === column.id) {
+                  {{ sortState()?.direction === 'asc' ? '↑' : '↓' }}
+                } @else {
+                  ↕
+                }
+              </span>
+            </button>
+          } @else {
+            <div class="flex items-center gap-2">
+              {{ column.header }}
+            </div>
+          }
+        </th>
+        <td cdk-cell *cdkCellDef="let row" class="px-6 py-4 border-b border-gray-100" [attr.data-testid]="'cell-' + column.id">
+          {{ column.cell(row) }}
+        </td>
+      </ng-container>
+    }
+
+    <!-- Actions Column -->
+    @if (actions().length > 0) {
+      <ng-container cdkColumnDef="actions">
+        <th cdk-header-cell *cdkHeaderCellDef class="px-6 py-4 font-bold text-gray-900 bg-gray-50/80 border-b border-gray-200 text-right">Actions</th>
+        <td cdk-cell *cdkCellDef="let row" class="px-6 py-4 border-b border-gray-100 text-right">
+          <button 
+            type="button"
+            [cdkMenuTriggerFor]="menu" 
+            class="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+            [attr.data-testid]="'action-menu-trigger-' + (row.id || row.Id)">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+            </svg>
+          </button>
+
+          <ng-template #menu>
+            <div class="flex flex-col min-w-[120px] bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-50 overflow-hidden" cdkMenu>
+              @for (action of actions(); track action.id) {
+                @if (isActionVisible(action, row)) {
+                  <button 
+                    type="button"
+                    class="px-4 py-2 text-sm text-left hover:bg-gray-50 transition-colors duration-150 disabled:opacity-50"
+                    [class]="action.class"
+                    (click)="onAction(action.id, row)"
+                    [attr.data-testid]="'action-' + action.id"
+                    cdkMenuItem>
+                    {{ action.label }}
+                  </button>
+                }
+              }
+            </div>
+          </ng-template>
+        </td>
+      </ng-container>
+    }
+
+    <tr cdk-header-row *cdkHeaderRowDef="displayedColumns()" class="sticky top-0 z-0"></tr>
+    <tr cdk-row *cdkRowDef="let row; columns: displayedColumns()" class="hover:bg-gray-50/50 transition-colors duration-200"></tr>
+  </table>
+
+  <!-- Empty State -->
+  @if (!loading() && data().length === 0) {
+    <div class="flex flex-col items-center justify-center p-12 bg-white" data-testid="table-empty">
+      <div class="text-gray-400 mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <h4 class="text-lg font-bold text-gray-900">No records found</h4>
+      <p class="text-gray-500 mt-1">Try adjusting your filters or search query.</p>
+    </div>
+  }
+
+  <!-- Pagination Footer -->
+  @if (totalCount() > 0) {
+    <div class="flex items-center justify-between px-6 py-4 bg-white border-t border-gray-200">
+      <div class="text-sm text-gray-700" data-testid="pagination-summary">
+        Showing <span class="font-bold">{{ paginationSummary().start }}</span> to 
+        <span class="font-bold">{{ paginationSummary().end }}</span> of 
+        <span class="font-bold">{{ paginationSummary().total }}</span> records
+      </div>
+      <div class="flex gap-2">
+        <button 
+          type="button"
+          class="px-4 py-2 border border-gray-300 rounded-md text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+          [disabled]="pageIndex() === 1"
+          (click)="onPageChange(pageIndex() - 1)"
+          data-testid="pagination-prev">
+          Previous
+        </button>
+        <button 
+          type="button"
+          class="px-4 py-2 border border-gray-300 rounded-md text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+          [disabled]="pageIndex() === totalPages()"
+          (click)="onPageChange(pageIndex() + 1)"
+          data-testid="pagination-next">
+          Next
+        </button>
+      </div>
+    </div>
+  }
+</div>

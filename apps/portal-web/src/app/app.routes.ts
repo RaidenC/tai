@@ -24,6 +24,11 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./features/users/users.page').then(m => m.UsersPage),
         canActivate: [authGuard]
     },
+    { 
+        path: 'users/:id', 
+        loadComponent: () => import('./features/users/user-detail.page').then(m => m.UserDetailPage),
+        canActivate: [authGuard]
+    },
     { path: 'unauthorized', redirectTo: '' },
     { path: 'forbidden', redirectTo: '' },
 ];

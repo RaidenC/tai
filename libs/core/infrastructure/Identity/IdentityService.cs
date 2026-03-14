@@ -52,20 +52,55 @@ public class IdentityService : IIdentityService {
       .ToListAsync(cancellationToken);
   }
 
-  public async Task<IEnumerable<ApplicationUser>> GetUsersByTenantAsync(TenantId tenantId, int skip, int take, CancellationToken cancellationToken = default) {
-    return await _userManager.Users
+  public async Task<IEnumerable<ApplicationUser>> GetUsersByTenantAsync(
+      TenantId tenantId,
+      int skip,
+      int take,
+      string? sortColumn = null,
+      string? sortDirection = null,
+      string? search = null,
+      CancellationToken cancellationToken = default) {
+
+    var query = _userManager.Users
       .IgnoreQueryFilters()
-      .Where(u => u.TenantId == tenantId)
-      .OrderBy(u => u.UserName)
+      .Where(u => u.TenantId == tenantId);
+
+    if (!string.IsNullOrWhiteSpace(search)) {
+      query = query.Where(u =>
+        (u.Email != null && u.Email.Contains(search)) ||
+        (u.FirstName != null && u.FirstName.Contains(search)) ||
+        (u.LastName != null && u.LastName.Contains(search)) ||
+        (u.UserName != null && u.UserName.Contains(search)));
+    }
+
+    // Apply Sorting
+    query = (sortColumn?.ToLower(), sortDirection?.ToLower()) switch {
+      ("name", "desc") => query.OrderByDescending(u => u.FirstName).ThenByDescending(u => u.LastName),
+      ("name", "asc") => query.OrderBy(u => u.FirstName).ThenBy(u => u.LastName),
+      ("email", "desc") => query.OrderByDescending(u => u.Email),
+      ("email", "asc") => query.OrderBy(u => u.Email),
+      _ => query.OrderBy(u => u.UserName)
+    };
+
+    return await query
       .Skip(skip)
       .Take(take)
       .ToListAsync(cancellationToken);
   }
 
-  public async Task<int> CountUsersByTenantAsync(TenantId tenantId, CancellationToken cancellationToken = default) {
-    return await _userManager.Users
+  public async Task<int> CountUsersByTenantAsync(TenantId tenantId, string? search = null, CancellationToken cancellationToken = default) {
+    var query = _userManager.Users
       .IgnoreQueryFilters()
-      .Where(u => u.TenantId == tenantId)
-      .CountAsync(cancellationToken);
+      .Where(u => u.TenantId == tenantId);
+
+    if (!string.IsNullOrWhiteSpace(search)) {
+      query = query.Where(u =>
+        (u.Email != null && u.Email.Contains(search)) ||
+        (u.FirstName != null && u.FirstName.Contains(search)) ||
+        (u.LastName != null && u.LastName.Contains(search)) ||
+        (u.UserName != null && u.UserName.Contains(search)));
+    }
+
+    return await query.CountAsync(cancellationToken);
   }
 }

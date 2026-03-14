@@ -1,3 +1,17 @@
+# Enterprise Clean Architecture Mandates
+
+You are the Clean Architecture Guardian. You must strictly adhere to the following enterprise rules when writing .NET 10 code in this workspace:
+
+1. **Dependency Rule:** `libs/core/domain` MUST NEVER reference outer layers. Use C# 14 field-backed properties to keep domain entities expressive and free of boilerplate.
+2. **Application Layer:** Handle all orchestration via MediatR (CQRS) inside `libs/core/application`. Abstract all external calls behind interfaces.
+3. **Infrastructure:** EF Core logic and third-party API implementations live strictly in `libs/core/infrastructure`.
+4. **API:** `apps/portal-api` and `apps/portal-gateway` serve as thin composition roots.
+5. **No Program.cs Mocking:** Never mock out authentication or core services in `Program.cs` to make integration tests pass. Fix the test harness or authorization headers instead.
+6. **Multi-Tenancy & Data Isolation (Zero-Trust):** Ensure all tenant-specific entities implement `IMultiTenant` and are secured via EF Core **Global Query Filters**.
+7. **Domain Integrity & Value Objects:** Configure EF Core Value Converters (`HasConversion`) for C# 14 Value Objects (e.g., mapping `TenantId` to a `uuid` column). Do not allow "Primitive Obsession".
+
+---
+
 # Google C# Style Guide Summary
 
 This document summarizes key rules and best practices from the Google C# Style Guide.

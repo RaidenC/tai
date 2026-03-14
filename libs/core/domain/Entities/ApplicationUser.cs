@@ -13,7 +13,7 @@ namespace Tai.Portal.Core.Domain.Entities;
 /// Inherits from IdentityUser to leverage .NET Core Identity infrastructure
 /// while extending it with domain-specific concerns.
 /// </summary>
-public class ApplicationUser : IdentityUser, IMultiTenantEntity {
+public class ApplicationUser : IdentityUser, IMultiTenantEntity, IHasDomainEvents, IAuditableEntity {
   /// <summary>
   /// The unique identifier of the tenant this user belongs to.
   /// 
@@ -35,6 +35,11 @@ public class ApplicationUser : IdentityUser, IMultiTenantEntity {
   /// </summary>
   public TenantId AssociatedTenantId => TenantId;
 
+  public DateTimeOffset CreatedAt { get; set; }
+  public string? CreatedBy { get; set; }
+  public DateTimeOffset? LastModifiedAt { get; set; }
+  public string? LastModifiedBy { get; set; }
+
   /// <summary>
   /// An example of using the field keyword for data sanitization on a standard property.
   /// </summary>
@@ -44,9 +49,18 @@ public class ApplicationUser : IdentityUser, IMultiTenantEntity {
     set => field = value?.Trim().ToLowerInvariant();
   }
 
+  public string? FirstName { get; set; }
+  public string? LastName { get; set; }
+
   public UserStatus Status { get; private set; } = UserStatus.Created;
 
-  public string? ApprovedByUserId { get; private set; }
+  public TenantAdminId? ApprovedBy { get; private set; }
+
+  /// <summary>
+  /// Optimistic Concurrency Token (ETag).
+  /// Maps to the PostgreSQL system column 'xmin'.
+  /// </summary>
+  public uint RowVersion { get; private set; }
 
   private readonly List<IDomainEvent> _domainEvents = new();
   public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
@@ -62,6 +76,7 @@ public class ApplicationUser : IdentityUser, IMultiTenantEntity {
   public ApplicationUser(string userName, TenantId tenantId) : base(userName) {
     // The init accessor logic will run when we assign the property here.
     TenantId = tenantId;
+    Id = Guid.NewGuid().ToString(); // Ensure ID is generated for unit tests that need it before saving.
   }
 
   public void StartCustomerOnboarding() {
@@ -80,16 +95,16 @@ public class ApplicationUser : IdentityUser, IMultiTenantEntity {
     _domainEvents.Add(new UserRegisteredEvent(Id));
   }
 
-  public void ApproveAccount(string approvedByUserId) {
+  public void Approve(TenantAdminId approvedBy) {
     if (Status != UserStatus.PendingApproval) {
       throw new InvalidOperationException($"User account cannot be approved in state {Status}");
     }
-    if (Id == approvedByUserId) {
+    if (Id == (string)approvedBy) {
       throw new InvalidOperationException("Users cannot approve their own accounts.");
     }
     Status = UserStatus.PendingVerification;
-    ApprovedByUserId = approvedByUserId;
-    _domainEvents.Add(new UserApprovedEvent(Id, approvedByUserId));
+    ApprovedBy = approvedBy;
+    _domainEvents.Add(new UserApprovedEvent(Id, approvedBy));
   }
 
   public void ActivateAccount() {

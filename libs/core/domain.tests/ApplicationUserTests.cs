@@ -55,13 +55,16 @@ public class ApplicationUserTests {
     var user = new ApplicationUser("staff", (TenantId)Guid.NewGuid());
     user.StartStaffOnboarding();
     user.ClearDomainEvents();
+    var adminId = (TenantAdminId)"admin_user_id";
 
     // Act
-    user.ApproveAccount("admin_user_id");
+    user.Approve(adminId);
 
     // Assert
     user.Status.Should().Be(UserStatus.PendingVerification);
     user.DomainEvents.Should().ContainSingle(e => e is UserApprovedEvent);
+    var evt = (UserApprovedEvent)user.DomainEvents.Single();
+    evt.ApprovedByUserId.Should().Be(adminId);
   }
 
   [Fact]
@@ -69,12 +72,27 @@ public class ApplicationUserTests {
     // Arrange
     var user = new ApplicationUser("staff", (TenantId)Guid.NewGuid());
     // User is in Created state, not PendingApproval
+    var adminId = (TenantAdminId)"admin_user_id";
 
     // Act
-    Action act = () => user.ApproveAccount("admin_user_id");
+    Action act = () => user.Approve(adminId);
 
     // Assert
     act.Should().Throw<InvalidOperationException>().WithMessage("*cannot be approved*");
+  }
+
+  [Fact]
+  public void ApproveAccount_BySelf_ShouldThrowException() {
+    // Arrange
+    var user = new ApplicationUser("staff", (TenantId)Guid.NewGuid());
+    user.StartStaffOnboarding();
+    var adminId = (TenantAdminId)user.Id;
+
+    // Act
+    Action act = () => user.Approve(adminId);
+
+    // Assert
+    act.Should().Throw<InvalidOperationException>().WithMessage("*cannot approve their own accounts*");
   }
 
   [Fact]
