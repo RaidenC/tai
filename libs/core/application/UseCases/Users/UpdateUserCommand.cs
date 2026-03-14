@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using FluentValidation;
 using MediatR;
 using Tai.Portal.Core.Application.Interfaces;
+using Tai.Portal.Core.Domain.Exceptions;
 
 namespace Tai.Portal.Core.Application.UseCases.Users;
 
@@ -38,7 +39,7 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, bool>
 
     // Concurrency Check
     if (user.RowVersion != request.RowVersion) {
-      throw new Exception("Concurrency conflict: The user has been modified by another process.");
+      throw new ConcurrencyException("The user has been modified by another process.");
     }
 
     user.FirstName = request.FirstName;
