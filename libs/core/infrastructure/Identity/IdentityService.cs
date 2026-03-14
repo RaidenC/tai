@@ -53,23 +53,23 @@ public class IdentityService : IIdentityService {
   }
 
   public async Task<IEnumerable<ApplicationUser>> GetUsersByTenantAsync(
-      TenantId tenantId, 
-      int skip, 
-      int take, 
-      string? sortColumn = null, 
-      string? sortDirection = null, 
-      string? search = null, 
+      TenantId tenantId,
+      int skip,
+      int take,
+      string? sortColumn = null,
+      string? sortDirection = null,
+      string? search = null,
       CancellationToken cancellationToken = default) {
-    
+
     var query = _userManager.Users
       .IgnoreQueryFilters()
       .Where(u => u.TenantId == tenantId);
 
     if (!string.IsNullOrWhiteSpace(search)) {
-      query = query.Where(u => 
-        (u.Email != null && u.Email.Contains(search)) || 
-        (u.FirstName != null && u.FirstName.Contains(search)) || 
-        (u.LastName != null && u.LastName.Contains(search)) || 
+      query = query.Where(u =>
+        (u.Email != null && u.Email.Contains(search)) ||
+        (u.FirstName != null && u.FirstName.Contains(search)) ||
+        (u.LastName != null && u.LastName.Contains(search)) ||
         (u.UserName != null && u.UserName.Contains(search)));
     }
 
@@ -94,10 +94,10 @@ public class IdentityService : IIdentityService {
       .Where(u => u.TenantId == tenantId);
 
     if (!string.IsNullOrWhiteSpace(search)) {
-      query = query.Where(u => 
-        (u.Email != null && u.Email.Contains(search)) || 
-        (u.FirstName != null && u.FirstName.Contains(search)) || 
-        (u.LastName != null && u.LastName.Contains(search)) || 
+      query = query.Where(u =>
+        (u.Email != null && u.Email.Contains(search)) ||
+        (u.FirstName != null && u.FirstName.Contains(search)) ||
+        (u.LastName != null && u.LastName.Contains(search)) ||
         (u.UserName != null && u.UserName.Contains(search)));
     }
 
