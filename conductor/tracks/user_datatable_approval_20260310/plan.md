@@ -73,3 +73,6 @@
 - [x] Task: Approval Workflow E2E
     - [x] Write Playwright test validating the complete approval flow (click Approve -> modal -> confirm -> API verify -> UI update).
 - [x] Task: Conductor - User Manual Verification 'E2E Playwright Testing' (Protocol in workflow.md)
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions 0fb68eb
