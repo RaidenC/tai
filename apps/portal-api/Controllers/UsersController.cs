@@ -61,7 +61,7 @@ public class UsersController : ControllerBase {
         return NotFound();
       }
       return NoContent();
-    } catch (Exception ex) when (ex.Message.Contains("Concurrency conflict")) {
+    } catch (Tai.Portal.Core.Domain.Exceptions.ConcurrencyException ex) {
       return Conflict(new { message = ex.Message });
     }
   }
@@ -82,7 +82,7 @@ public class UsersController : ControllerBase {
         return NotFound();
       }
       return NoContent();
-    } catch (Exception ex) when (ex.Message.Contains("Concurrency conflict")) {
+    } catch (Tai.Portal.Core.Domain.Exceptions.ConcurrencyException ex) {
       return Conflict(new { message = ex.Message });
     }
   }
