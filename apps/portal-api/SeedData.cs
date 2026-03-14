@@ -81,11 +81,27 @@ public static class SeedData {
               Id = taiAdminId,
               Email = taiAdminEmail,
               EmailConfirmed = true,
+              FirstName = "TAI",
+              LastName = "Admin"
             };
             try {
               userManager.CreateAsync(user, "Password123!").GetAwaiter().GetResult();
               userManager.AddToRoleAsync(user, "Admin").GetAwaiter().GetResult();
             } catch (DbUpdateException) { /* Already exists */ }
+          }
+
+          // Seed additional TAI users for pagination
+          for (int i = 1; i <= 15; i++) {
+            var email = $"user{i}@tai.com";
+            if (userManager.Users.IgnoreQueryFilters().FirstOrDefault(u => u.Email == email) is null) {
+              var user = new ApplicationUser(email, taiTenantId) {
+                Email = email,
+                EmailConfirmed = true,
+                FirstName = "TAI",
+                LastName = $"User {i}"
+              };
+              userManager.CreateAsync(user, "Password123!").GetAwaiter().GetResult();
+            }
           }
 
           var acmeAdminId = "00000000-0000-0000-0000-000000000020";
@@ -96,11 +112,27 @@ public static class SeedData {
               Id = acmeAdminId,
               Email = acmeAdminEmail,
               EmailConfirmed = true,
+              FirstName = "ACME",
+              LastName = "Admin"
             };
             try {
               userManager.CreateAsync(user, "Password123!").GetAwaiter().GetResult();
               userManager.AddToRoleAsync(user, "Admin").GetAwaiter().GetResult();
             } catch (DbUpdateException) { /* Already exists */ }
+          }
+
+          // Seed additional ACME users for pagination
+          for (int i = 1; i <= 15; i++) {
+            var email = $"user{i}@acme.com";
+            if (userManager.Users.IgnoreQueryFilters().FirstOrDefault(u => u.Email == email) is null) {
+              var user = new ApplicationUser(email, acmeTenantId) {
+                Email = email,
+                EmailConfirmed = true,
+                FirstName = "ACME",
+                LastName = $"User {i}"
+              };
+              userManager.CreateAsync(user, "Password123!").GetAwaiter().GetResult();
+            }
           }
 
           var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
