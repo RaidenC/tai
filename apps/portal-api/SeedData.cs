@@ -91,7 +91,7 @@ public static class SeedData {
           }
 
           // Seed additional TAI users for pagination
-          for (int i = 1; i <= 15; i++) {
+          for (int i = 1; i <= 25; i++) {
             var email = $"user{i}@tai.com";
             if (userManager.Users.IgnoreQueryFilters().FirstOrDefault(u => u.Email == email) is null) {
               var user = new ApplicationUser(email, taiTenantId) {
@@ -122,7 +122,7 @@ public static class SeedData {
           }
 
           // Seed additional ACME users for pagination
-          for (int i = 1; i <= 15; i++) {
+          for (int i = 1; i <= 25; i++) {
             var email = $"user{i}@acme.com";
             if (userManager.Users.IgnoreQueryFilters().FirstOrDefault(u => u.Email == email) is null) {
               var user = new ApplicationUser(email, acmeTenantId) {

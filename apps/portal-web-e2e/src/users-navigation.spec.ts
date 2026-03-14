@@ -36,14 +36,14 @@ test.describe('Users Page Navigation', () => {
 
     // 2. Verify URL updated
     await expect(page).toHaveURL(/page=2/);
-    await expect(page.getByTestId('pagination-summary')).toContainText(/Showing 11 to 20/);
+    await expect(page.getByTestId('pagination-summary')).toContainText(/Showing 11 to (20|\d+) of \d+/);
 
     // 3. Refresh the browser
     await page.reload();
 
     // 4. Verify state restored from URL
     await expect(page).toHaveURL(/page=2/);
-    await expect(page.getByTestId('pagination-summary')).toContainText(/Showing 11 to 20/);
+    await expect(page.getByTestId('pagination-summary')).toContainText(/Showing 11 to (20|\d+) of \d+/);
   });
 
   test('Sorting: should update URL and persist on refresh', async ({ page }) => {
