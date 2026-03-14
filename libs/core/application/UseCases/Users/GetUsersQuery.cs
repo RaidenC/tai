@@ -15,11 +15,11 @@ public record UserDto(string Id, string Email, string FirstName, string LastName
 public record PaginatedList<T>(List<T> Items, int TotalCount, int PageNumber, int PageSize);
 
 public record GetUsersQuery(
-    Guid TenantId, 
-    int PageNumber = 1, 
-    int PageSize = 10, 
-    string? SortColumn = null, 
-    string? SortDirection = null, 
+    Guid TenantId,
+    int PageNumber = 1,
+    int PageSize = 10,
+    string? SortColumn = null,
+    string? SortDirection = null,
     string? Search = null) : IRequest<PaginatedList<UserDto>>;
 
 public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, PaginatedList<UserDto>> {
