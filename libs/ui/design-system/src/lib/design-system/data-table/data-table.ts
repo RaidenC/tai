@@ -133,7 +133,9 @@ export class DataTableComponent<T> {
     }
 
     this.sortState.set(newState);
-    this.sortChanged.emit(newState!);
+    if (newState) {
+      this.sortChanged.emit(newState);
+    }
   }
 
   /**

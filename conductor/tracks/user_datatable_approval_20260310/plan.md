@@ -66,9 +66,10 @@
     - [x] Dispatched update API call with `If-Match` header and handled optimistic concurrency.
 - [x] Task: Conductor - User Manual Verification 'Frontend User Detail Feature' (Protocol in workflow.md)
 
-## Phase 6: E2E Playwright Testing [checkpoint: 7299a01]
+## Phase 6: E2E Playwright Testing [checkpoint: d4792dc]
 - [x] Task: URL State and Navigation E2E
     - [x] Write Playwright test in `apps/portal-web-e2e` for navigating pages, filtering, and refreshing the browser to ensure state restoration.
+    - [x] **FIX:** Implemented sorting and searching logic in Backend (`UsersController`, `GetUsersQuery`, `IdentityService`) to satisfy E2E requirements.
 - [x] Task: Approval Workflow E2E
     - [x] Write Playwright test validating the complete approval flow (click Approve -> modal -> confirm -> API verify -> UI update).
 - [x] Task: Conductor - User Manual Verification 'E2E Playwright Testing' (Protocol in workflow.md)

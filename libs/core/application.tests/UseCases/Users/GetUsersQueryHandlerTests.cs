@@ -38,11 +38,11 @@ public class GetUsersQueryHandlerTests {
     var users = new List<ApplicationUser> { user1, user2 };
 
     _mockIdentityService
-      .Setup(s => s.GetUsersByTenantAsync(It.IsAny<TenantId>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+      .Setup(s => s.GetUsersByTenantAsync(It.IsAny<TenantId>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
       .ReturnsAsync(users);
 
     _mockIdentityService
-      .Setup(s => s.CountUsersByTenantAsync(It.IsAny<TenantId>(), It.IsAny<CancellationToken>()))
+      .Setup(s => s.CountUsersByTenantAsync(It.IsAny<TenantId>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
       .ReturnsAsync(2);
 
     // Act
@@ -66,6 +66,9 @@ public class GetUsersQueryHandlerTests {
       It.Is<TenantId>(t => t.Value == tenantId),
       0,
       10,
+      null,
+      null,
+      null,
       It.IsAny<CancellationToken>()), Times.Once);
   }
 
@@ -75,11 +78,11 @@ public class GetUsersQueryHandlerTests {
     var tenantId = Guid.NewGuid();
     var query = new GetUsersQuery(tenantId, PageNumber: 3, PageSize: 5);
     _mockIdentityService
-      .Setup(s => s.GetUsersByTenantAsync(It.IsAny<TenantId>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+      .Setup(s => s.GetUsersByTenantAsync(It.IsAny<TenantId>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
       .ReturnsAsync(new List<ApplicationUser>());
 
     _mockIdentityService
-      .Setup(s => s.CountUsersByTenantAsync(It.IsAny<TenantId>(), It.IsAny<CancellationToken>()))
+      .Setup(s => s.CountUsersByTenantAsync(It.IsAny<TenantId>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
       .ReturnsAsync(0);
 
     // Act
@@ -90,6 +93,9 @@ public class GetUsersQueryHandlerTests {
       It.IsAny<TenantId>(),
       10,
       5,
+      null,
+      null,
+      null,
       It.IsAny<CancellationToken>()), Times.Once);
   }
 }

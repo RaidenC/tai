@@ -14,7 +14,13 @@ public record UserDto(string Id, string Email, string FirstName, string LastName
 
 public record PaginatedList<T>(List<T> Items, int TotalCount, int PageNumber, int PageSize);
 
-public record GetUsersQuery(Guid TenantId, int PageNumber = 1, int PageSize = 10) : IRequest<PaginatedList<UserDto>>;
+public record GetUsersQuery(
+    Guid TenantId,
+    int PageNumber = 1,
+    int PageSize = 10,
+    string? SortColumn = null,
+    string? SortDirection = null,
+    string? Search = null) : IRequest<PaginatedList<UserDto>>;
 
 public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, PaginatedList<UserDto>> {
   private readonly IIdentityService _identityService;
@@ -31,9 +37,12 @@ public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, PaginatedList
       tenantId,
       skip,
       request.PageSize,
+      request.SortColumn,
+      request.SortDirection,
+      request.Search,
       cancellationToken);
 
-    var totalCount = await _identityService.CountUsersByTenantAsync(tenantId, cancellationToken);
+    var totalCount = await _identityService.CountUsersByTenantAsync(tenantId, request.Search, cancellationToken);
 
     var items = users
       .Select(u => {

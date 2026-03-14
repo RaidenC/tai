@@ -73,7 +73,8 @@ describe('DataTableComponent', () => {
   });
 
   it('should correctly determine action visibility based on row data', () => {
-    const approveAction = actions.find(a => a.id === 'approve')!;
+    const approveAction = actions.find(a => a.id === 'approve');
+    if (!approveAction) throw new Error('approve action not found');
     
     expect(component.isActionVisible(approveAction, data[0])).toBe(false); // Active
     expect(component.isActionVisible(approveAction, data[1])).toBe(true);  // Pending
