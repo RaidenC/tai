@@ -139,14 +139,14 @@ public class PrivilegePersistenceTests : IAsyncLifetime {
 
     using (var context = new PortalDbContext(options, tenantServiceMock.Object, serviceProviderMock.Object)) {
       await context.Database.EnsureCreatedAsync();
-      
+
       var privilege = new Privilege("Event.Test", "Description", "System", RiskLevel.Low, new JitSettings());
       context.Privileges.Add(privilege);
       await context.SaveChangesAsync();
 
       // Act
       privilege.SetRiskLevel(RiskLevel.High);
-      
+
       // We need to setup the IPublisher to actually call our handler since we are bypassing MediatR in this test
       var handler = new PrivilegeModifiedEventHandler(context, messageBusMock.Object, currentUserServiceMock.Object);
       var publisherMock = new Mock<IPublisher>();
@@ -167,4 +167,5 @@ public class PrivilegePersistenceTests : IAsyncLifetime {
 
       messageBusMock.Verify(m => m.PublishAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Once);
     }
-  }}
+  }
+}
