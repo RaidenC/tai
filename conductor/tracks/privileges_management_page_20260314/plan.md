@@ -1,6 +1,6 @@
 # Implementation Plan: Privileges Management Page
 
-## Phase 1: Database and Core Domain
+## Phase 1: Database and Core Domain [checkpoint: 05a8110]
 - [x] Task: Define the `Privilege` Entity and Value Objects 189f278
     - [x] Write Unit Tests for Domain invariants (e.g., hierarchical name validation, immutability).
     - [x] Implement `Privilege` domain model, incorporating Optimistic Concurrency tokens (`RowVersion`).
@@ -9,7 +9,7 @@
     - [x] Implement EF Core configurations: Map `JIT Settings` to `JSONB` and define Composite Indexes for filtering columns.
     - [x] Generate Migrations and implement Backend Seeding in `SeedData.cs`.
     - [x] Implement Service Bus publisher for `PrivilegeModified` immutable audit events.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Database and Core Domain' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Database and Core Domain' (Protocol in workflow.md)
 
 ## Phase 2: API, Gateway & Enforcement Mechanisms
 - [ ] Task: Privilege Catalog Endpoints & Cache
