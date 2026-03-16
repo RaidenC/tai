@@ -1,9 +1,9 @@
 # Implementation Plan: Privileges Management Page
 
 ## Phase 1: Database and Core Domain
-- [ ] Task: Define the `Privilege` Entity and Value Objects
-    - [ ] Write Unit Tests for Domain invariants (e.g., hierarchical name validation, immutability).
-    - [ ] Implement `Privilege` domain model, incorporating Optimistic Concurrency tokens (`RowVersion`).
+- [x] Task: Define the `Privilege` Entity and Value Objects 189f278
+    - [x] Write Unit Tests for Domain invariants (e.g., hierarchical name validation, immutability).
+    - [x] Implement `Privilege` domain model, incorporating Optimistic Concurrency tokens (`RowVersion`).
 - [ ] Task: Persistence Layer & Event Sourcing
     - [ ] Write Integration Tests verifying concurrent update failures (Lost Update prevention).
     - [ ] Implement EF Core configurations: Map `JIT Settings` to `JSONB` and define Composite Indexes for filtering columns.
