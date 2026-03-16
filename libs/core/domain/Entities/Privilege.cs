@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Tai.Portal.Core.Domain.ValueObjects;
 using Tai.Portal.Core.Domain.Interfaces;
 using Tai.Portal.Core.Domain.Enums;
+using Tai.Portal.Core.Domain.Events;
 
 namespace Tai.Portal.Core.Domain.Entities;
 
@@ -10,7 +11,7 @@ namespace Tai.Portal.Core.Domain.Entities;
 /// Represents a system-wide permission or privilege in the TAI Portal.
 /// Privileges are organized hierarchically using dot notation (e.g., Portal.Users.Read).
 /// </summary>
-public class Privilege : IAuditableEntity {
+public class Privilege : IAuditableEntity, IHasDomainEvents {
   /// <summary>
   /// The unique surrogate primary key.
   /// </summary>
@@ -64,6 +65,9 @@ public class Privilege : IAuditableEntity {
   /// </summary>
   public uint RowVersion { get; private set; }
 
+  private readonly List<IDomainEvent> _domainEvents = new();
+  public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+
   // Parameterless constructor for EF Core materialization.
   protected Privilege() {
     Id = default!;
@@ -105,30 +109,47 @@ public class Privilege : IAuditableEntity {
   }
 
   public void SetRiskLevel(RiskLevel newRiskLevel) {
-    RiskLevel = newRiskLevel;
+    if (RiskLevel != newRiskLevel) {
+      RiskLevel = newRiskLevel;
+      _domainEvents.Add(new PrivilegeModifiedEvent(Id, Name));
+    }
   }
 
   public void Deactivate() {
-    IsActive = false;
+    if (IsActive) {
+      IsActive = false;
+      _domainEvents.Add(new PrivilegeModifiedEvent(Id, Name));
+    }
   }
 
   public void Activate() {
-    IsActive = true;
+    if (!IsActive) {
+      IsActive = true;
+      _domainEvents.Add(new PrivilegeModifiedEvent(Id, Name));
+    }
   }
 
   public void AddSupportedScope(PrivilegeScope scope) {
     if (!SupportedScopes.Contains(scope)) {
       SupportedScopes.Add(scope);
+      _domainEvents.Add(new PrivilegeModifiedEvent(Id, Name));
     }
   }
 
   public void RemoveSupportedScope(PrivilegeScope scope) {
-    SupportedScopes.Remove(scope);
+    if (SupportedScopes.Remove(scope)) {
+      _domainEvents.Add(new PrivilegeModifiedEvent(Id, Name));
+    }
   }
 
   public void UpdateMetadata(string description, JitSettings jitSettings) {
     if (string.IsNullOrWhiteSpace(description)) throw new ArgumentException("Description cannot be empty.", nameof(description));
     Description = description.Trim();
     JitSettings = jitSettings;
+    _domainEvents.Add(new PrivilegeModifiedEvent(Id, Name));
+  }
+
+  public void ClearDomainEvents() {
+    _domainEvents.Clear();
   }
 }

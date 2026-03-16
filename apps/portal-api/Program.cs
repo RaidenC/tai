@@ -43,6 +43,7 @@ builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
+builder.Services.AddScoped<IMessageBus, LoggingMessageBus>();
 
 builder.Services.AddValidatorsFromAssembly(typeof(RegisterCustomerCommand).Assembly);
 
