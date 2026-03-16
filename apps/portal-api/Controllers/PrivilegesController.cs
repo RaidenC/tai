@@ -21,19 +21,11 @@ public class PrivilegesController : ControllerBase {
       [FromQuery] int pageNumber = 1,
       [FromQuery] int pageSize = 10,
       [FromQuery] string? search = null) {
-    if (Request.Headers["X-Gateway-Secret"] != "portal-poc-secret-2026") {
-      return Unauthorized();
-    }
-
     return await _mediator.Send(new GetPrivilegesQuery(pageNumber, pageSize, search));
   }
 
   [HttpPost]
   public async Task<ActionResult<PrivilegeDto>> CreatePrivilege(CreatePrivilegeCommand command) {
-    if (Request.Headers["X-Gateway-Secret"] != "portal-poc-secret-2026") {
-      return Unauthorized();
-    }
-
     // TODO: Add strict [Authorize(Roles = "SystemAdmin")] once security is fully wired up.
 
     var result = await _mediator.Send(command);
@@ -42,10 +34,6 @@ public class PrivilegesController : ControllerBase {
 
   [HttpPut("{id}")]
   public async Task<ActionResult<PrivilegeDto>> UpdatePrivilege(Guid id, UpdatePrivilegeCommand command) {
-    if (Request.Headers["X-Gateway-Secret"] != "portal-poc-secret-2026") {
-      return Unauthorized();
-    }
-
     if (id != command.Id) {
       return BadRequest("ID mismatch");
     }
@@ -57,5 +45,4 @@ public class PrivilegesController : ControllerBase {
     } catch (DbUpdateConcurrencyException) {
       return Conflict("Concurrency conflict detected.");
     }
-  }
-}
+  }}
