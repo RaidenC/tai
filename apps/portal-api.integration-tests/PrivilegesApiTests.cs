@@ -24,7 +24,7 @@ public class PrivilegesApiTests : IClassFixture<WebApplicationFactory<Program>> 
 
   public PrivilegesApiTests(WebApplicationFactory<Program> factory) {
     _factory = factory;
-    
+
     // Read the secret from the same configuration the API uses
     var config = _factory.Services.GetRequiredService<IConfiguration>();
     var secret = config["GATEWAY_SECRET"];
