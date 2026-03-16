@@ -5,6 +5,7 @@ using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.ValueObjects;
 using Tai.Portal.Core.Infrastructure.Persistence;
 using Tai.Portal.Core.Application.Interfaces;
+using Tai.Portal.Core.Domain.Enums;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 using System.Data;
 
@@ -71,6 +72,47 @@ public static class SeedData {
               context.SaveChanges();
             } catch (DbUpdateException) { /* Already exists */ }
           }
+
+          // Seed Privileges (System Catalog)
+          var systemPrivileges = new List<Privilege> {
+            // 1. Standard CRUD
+            new Privilege("Portal.Users.Read", "View user accounts and profiles", "Portal", RiskLevel.Low, new JitSettings()),
+            new Privilege("Portal.Users.Create", "Onboard new users to the institution", "Portal", RiskLevel.Medium, new JitSettings()),
+            new Privilege("Portal.Users.Update", "Modify existing user account details", "Portal", RiskLevel.Medium, new JitSettings()),
+            new Privilege("Portal.Users.Delete", "Permanently remove user accounts", "Portal", RiskLevel.High, new JitSettings()),
+
+            // 2. Module/Tenant Boundary Testing
+            new Privilege("DocViewer.Fax.Send", "Send outbound faxes through the DocViewer app", "DocViewer", RiskLevel.Medium, new JitSettings()),
+            new Privilege("LoanOrigination.Application.Approve", "Final approval for loan applications", "LoanOrigination", RiskLevel.High, new JitSettings(TimeSpan.FromHours(2), true, true)),
+
+            // 3. Just-In-Time (JIT) & High-Risk Security Testing
+            new Privilege("Wires.Transfer.Approve", "Authorized approval for high-value wire transfers", "Wires", RiskLevel.High, new JitSettings(TimeSpan.FromMinutes(15), false, true)),
+            new Privilege("System.Settings.Modify", "Modify global platform configuration settings", "System", RiskLevel.Critical, new JitSettings(TimeSpan.FromHours(1), true, true)),
+
+            // 4. Edge Cases
+            new Privilege("Portal.Users.ReallyLongNameThatMightBreakTheUILayout", "Test UI truncation logic", "Portal", RiskLevel.Low, new JitSettings()),
+            new Privilege("A.B.C.D.E.F.G.H.I.J.K", "Test extreme hierarchical depth support", "System", RiskLevel.Low, new JitSettings()),
+            new Privilege("LegacyApp.OldFeature.Read", "Deprecated feature privilege for testing inactive state", "LegacyApp", RiskLevel.Low, new JitSettings())
+          };
+
+          // Set Supported Scopes for seed data
+          foreach (var p in systemPrivileges) {
+            p.AddSupportedScope(PrivilegeScope.Global);
+            p.AddSupportedScope(PrivilegeScope.Tenant);
+            if (p.Name.StartsWith("Portal.Users")) p.AddSupportedScope(PrivilegeScope.Self);
+          }
+
+          // Deactivate the Legacy privilege
+          systemPrivileges.First(p => p.Name == "LegacyApp.OldFeature.Read").Deactivate();
+
+          foreach (var privilege in systemPrivileges) {
+            if (!context.Privileges.IgnoreQueryFilters().Any(p => p.Name == privilege.Name)) {
+              try {
+                context.Privileges.Add(privilege);
+              } catch (DbUpdateException) { /* Already exists */ }
+            }
+          }
+          context.SaveChanges();
 
           // Seed Users
           var taiAdminId = "00000000-0000-0000-0000-000000000010";

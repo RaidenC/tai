@@ -25,6 +25,7 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
 
   public DbSet<Tenant> Tenants { get; set; }
   public DbSet<AuditEntry> AuditLogs { get; set; }
+  public DbSet<Privilege> Privileges { get; set; }
 
   public PortalDbContext(
       DbContextOptions<PortalDbContext> options,
@@ -164,6 +165,33 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
       // Since they are for compliance, they must be immutable.
       // Global query filtering ensures a tenant can only see their own logs.
       b.HasQueryFilter(a => _tenantService.IsGlobalAccess || a.TenantId == _tenantService.TenantId);
+    });
+
+    // Configure Privilege
+    builder.Entity<Privilege>(b => {
+      b.HasKey(p => p.Id);
+      b.Property(p => p.Id).HasConversion(
+          id => id.Value,
+          value => new PrivilegeId(value));
+
+      b.Property(p => p.Name).IsRequired().HasMaxLength(256);
+      b.HasIndex(p => p.Name).IsUnique();
+
+      b.Property(p => p.Module).IsRequired().HasMaxLength(128);
+      b.HasIndex(p => p.Module); // Index for fast filtering by App/Module
+
+      b.Property(p => p.RiskLevel).HasConversion<int>();
+
+      // PostgreSQL JSONB support for complex types
+      b.Property(p => p.JitSettings).HasColumnType("jsonb");
+      b.Property(p => p.SupportedScopes).HasColumnType("jsonb");
+
+      b.Property(p => p.RowVersion)
+        .IsRowVersion()
+        .HasColumnName("xmin")
+        .HasColumnType("xid");
+
+      // No Global Query Filter for Privilege as it is a global catalog.
     });
   }
 }

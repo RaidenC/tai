@@ -1,0 +1,8 @@
+{
+  "track_id": "privileges_management_page_20260314",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-03-14T00:00:00Z",
+  "updated_at": "2026-03-14T00:00:00Z",
+  "description": "Like Users page, create Privileges Page, on the privileges page, it will have the datatable showing all the privileges."
+}
