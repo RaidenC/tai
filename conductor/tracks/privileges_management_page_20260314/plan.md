@@ -4,11 +4,11 @@
 - [x] Task: Define the `Privilege` Entity and Value Objects 189f278
     - [x] Write Unit Tests for Domain invariants (e.g., hierarchical name validation, immutability).
     - [x] Implement `Privilege` domain model, incorporating Optimistic Concurrency tokens (`RowVersion`).
-- [ ] Task: Persistence Layer & Event Sourcing
-    - [ ] Write Integration Tests verifying concurrent update failures (Lost Update prevention).
-    - [ ] Implement EF Core configurations: Map `JIT Settings` to `JSONB` and define Composite Indexes for filtering columns.
-    - [ ] Generate Migrations and implement Backend Seeding in `SeedData.cs`.
-    - [ ] Implement Service Bus publisher for `PrivilegeModified` immutable audit events.
+- [x] Task: Persistence Layer & Event Sourcing 1e3b21d
+    - [x] Write Integration Tests verifying concurrent update failures (Lost Update prevention).
+    - [x] Implement EF Core configurations: Map `JIT Settings` to `JSONB` and define Composite Indexes for filtering columns.
+    - [x] Generate Migrations and implement Backend Seeding in `SeedData.cs`.
+    - [x] Implement Service Bus publisher for `PrivilegeModified` immutable audit events.
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Database and Core Domain' (Protocol in workflow.md)
 
 ## Phase 2: API, Gateway & Enforcement Mechanisms
