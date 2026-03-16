@@ -38,7 +38,11 @@ public class DatabaseFixture : IAsyncLifetime {
         }
 
         services.AddDbContext<PortalDbContext>(options => {
-          options.UseNpgsql(_dbContainer.GetConnectionString());
+          var connectionString = _dbContainer.GetConnectionString();
+          var npgsqlBuilder = new NpgsqlDataSourceBuilder(connectionString);
+          npgsqlBuilder.EnableDynamicJson();
+          var dataSource = npgsqlBuilder.Build();
+          options.UseNpgsql(dataSource);
         });
       });
     });

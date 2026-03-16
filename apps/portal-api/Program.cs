@@ -52,9 +52,15 @@ builder.Services.AddMediatR(cfg => {
   cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationPipelineBehavior<,>));
 });
 
+// Configure Npgsql DataSource with dynamic JSON support for JSONB columns
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var npgsqlBuilder = new Npgsql.NpgsqlDataSourceBuilder(connectionString);
+npgsqlBuilder.EnableDynamicJson();
+var dataSource = npgsqlBuilder.Build();
+
 builder.Services.AddDbContext<PortalDbContext>(options => {
-  // Configure the context to use PostgreSQL.
-  options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
+  // Configure the context to use PostgreSQL with the custom DataSource.
+  options.UseNpgsql(dataSource,
       o => o.MigrationsAssembly("Tai.Portal.Core.Infrastructure"));
   // Register the entity sets needed by OpenIddict.
   options.UseOpenIddict();
