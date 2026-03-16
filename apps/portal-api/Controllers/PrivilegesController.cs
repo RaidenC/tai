@@ -45,4 +45,5 @@ public class PrivilegesController : ControllerBase {
     } catch (DbUpdateConcurrencyException) {
       return Conflict("Concurrency conflict detected.");
     }
-  }}
+  }
+}
