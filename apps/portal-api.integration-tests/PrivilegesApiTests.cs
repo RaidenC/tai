@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Application.Models;
 using Tai.Portal.Core.Application.UseCases.Privileges;
@@ -17,10 +19,19 @@ namespace Tai.Portal.Api.IntegrationTests;
 
 public class PrivilegesApiTests : IClassFixture<WebApplicationFactory<Program>> {
   private readonly WebApplicationFactory<Program> _factory;
+  private readonly string _gatewaySecret;
   private const string AdminUserId = "00000000-0000-0000-0000-000000000010";
 
   public PrivilegesApiTests(WebApplicationFactory<Program> factory) {
     _factory = factory;
+    
+    // Read the secret from the same configuration the API uses
+    var config = _factory.Services.GetRequiredService<IConfiguration>();
+    var secret = config["GATEWAY_SECRET"];
+    if (string.IsNullOrWhiteSpace(secret)) {
+      secret = config["Gateway:Secret"];
+    }
+    _gatewaySecret = secret ?? "portal-poc-secret-2026";
   }
 
   private WebApplicationFactory<Program> CreateFactoryWithMockAuth(string userId) {
@@ -51,7 +62,7 @@ public class PrivilegesApiTests : IClassFixture<WebApplicationFactory<Program>> 
     // Arrange
     var factory = CreateFactoryWithMockAuth(AdminUserId);
     var client = factory.CreateClient();
-    client.DefaultRequestHeaders.Add("X-Gateway-Secret", "portal-poc-secret-2026");
+    client.DefaultRequestHeaders.Add("X-Gateway-Secret", _gatewaySecret);
 
     // Act
     var response = await client.GetAsync("/api/Privileges?pageNumber=1&pageSize=10");
@@ -68,7 +79,7 @@ public class PrivilegesApiTests : IClassFixture<WebApplicationFactory<Program>> 
     // Arrange
     var factory = CreateFactoryWithMockAuth(AdminUserId);
     var client = factory.CreateClient();
-    client.DefaultRequestHeaders.Add("X-Gateway-Secret", "portal-poc-secret-2026");
+    client.DefaultRequestHeaders.Add("X-Gateway-Secret", _gatewaySecret);
 
     var uniqueName = $"Test.Feature.{Guid.NewGuid()}";
     var command = new CreatePrivilegeCommand(
@@ -94,7 +105,7 @@ public class PrivilegesApiTests : IClassFixture<WebApplicationFactory<Program>> 
     // Arrange
     var factory = CreateFactoryWithMockAuth(AdminUserId);
     var client = factory.CreateClient();
-    client.DefaultRequestHeaders.Add("X-Gateway-Secret", "portal-poc-secret-2026");
+    client.DefaultRequestHeaders.Add("X-Gateway-Secret", _gatewaySecret);
 
     // 1. Create a privilege
     var uniqueName = $"Conflict.Test.{Guid.NewGuid()}";
