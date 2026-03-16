@@ -5,14 +5,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using MediatR;
 using Tai.Portal.Core.Application.Interfaces;
+using Tai.Portal.Core.Application.Models;
 using Tai.Portal.Core.Domain.Enums;
 using Tai.Portal.Core.Domain.ValueObjects;
 
 namespace Tai.Portal.Core.Application.UseCases.Users;
 
 public record UserDto(string Id, string Email, string FirstName, string LastName, string Status, uint RowVersion);
-
-public record PaginatedList<T>(List<T> Items, int TotalCount, int PageNumber, int PageSize);
 
 public record GetUsersQuery(
     Guid TenantId,

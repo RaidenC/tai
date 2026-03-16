@@ -11,12 +11,12 @@
     - [x] Implement Service Bus publisher for `PrivilegeModified` immutable audit events.
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Database and Core Domain' (Protocol in workflow.md)
 
-## Phase 2: API, Gateway & Enforcement Mechanisms
-- [ ] Task: Privilege Catalog Endpoints & Cache
+## Phase 2: API, Gateway & Enforcement Mechanisms [checkpoint: 382f6e9]
+- [x] Task: Privilege Catalog Endpoints & Cache
     - [ ] Write Integration Tests for server-side pagination, filtering, and distributed cache invalidation.
     - [ ] Implement standard `GET`, `POST`, and `PUT` endpoints handling `DbUpdateConcurrencyException` gracefully.
     - [ ] Implement distributed cache clearing mechanism when a privilege is modified.
-- [ ] Task: Security Enforcement and Test Data Management (TDM)
+- [~] Task: Security Enforcement and Test Data Management (TDM)
     - [ ] Write Integration Tests verifying `403 Forbidden` responses and DPoP header validation at YARP.
     - [ ] Implement the non-production "Backdoor API" with a `POST /reset-state` endpoint for isolated parallel testing.
     - [ ] Integrate Risk Level checks to trigger Step-Up Authentication workflows via BFF.

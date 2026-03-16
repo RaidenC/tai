@@ -15,6 +15,7 @@ using Tai.Portal.Core.Application.UseCases.Onboarding;
 using Tai.Portal.Core.Infrastructure.Identity;
 using Tai.Portal.Core.Infrastructure.Middleware;
 using Tai.Portal.Core.Infrastructure.Services;
+using Tai.Portal.Core.Infrastructure.Persistence.Services;
 
 using Tai.Portal.Core.Application.Behaviors;
 using FluentValidation;
@@ -42,6 +43,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
+builder.Services.AddScoped<IPrivilegeService, PrivilegeService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IMessageBus, LoggingMessageBus>();
 
