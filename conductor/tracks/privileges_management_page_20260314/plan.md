@@ -1,6 +1,6 @@
 # Implementation Plan: Privileges Management Page
 
-## Phase 1: Database and Core Domain [checkpoint: 57724af]
+## Phase 1: Database and Core Domain [checkpoint: 241d745]
 - [x] Task: Define the `Privilege` Entity and Value Objects 189f278
     - [x] Write Unit Tests for Domain invariants (e.g., hierarchical name validation, immutability).
     - [x] Implement `Privilege` domain model, incorporating Optimistic Concurrency tokens (`RowVersion`).
