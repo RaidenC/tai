@@ -15,11 +15,11 @@ public static class SeedData {
   private static readonly object _lock = new object();
   private static bool _seeded = false;
 
-  public static void Initialize(IServiceProvider services) {
-    if (_seeded) return;
+  public static void Initialize(IServiceProvider services, bool force = false) {
+    if (_seeded && !force) return;
 
     lock (_lock) {
-      if (_seeded) return;
+      if (_seeded && !force) return;
 
       using (var scope = services.CreateScope()) {
         var context = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
