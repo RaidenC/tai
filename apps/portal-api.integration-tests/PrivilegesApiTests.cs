@@ -31,6 +31,9 @@ public class PrivilegesApiTests : IClassFixture<WebApplicationFactory<Program>> 
       secret = config["Gateway:Secret"];
     }
     _gatewaySecret = secret ?? "portal-poc-secret-2026";
+    
+    // Trigger initialization on startup
+    _ = _factory.Server;
   }
 
   private WebApplicationFactory<Program> CreateFactoryWithMockAuth(string userId) {
@@ -120,6 +123,7 @@ public class PrivilegesApiTests : IClassFixture<WebApplicationFactory<Program>> 
       RiskLevel.Low,
       new JitSettings(null, false, false)
     );
+    
     var createResponse = await client.PostAsJsonAsync("/api/Privileges", createCommand);
     var privilege = await createResponse.Content.ReadFromJsonAsync<PrivilegeDto>();
     Assert.NotNull(privilege);
@@ -145,7 +149,7 @@ public class PrivilegesApiTests : IClassFixture<WebApplicationFactory<Program>> 
       RiskLevel.High,
       true,
       privilege.JitSettings,
-      privilege.RowVersion // Using the same version as the first update (now stale)
+      privilege.RowVersion // Still using the version from the initial create (now stale)
     );
     var updateResponse2 = await client.PutAsJsonAsync($"/api/Privileges/{privilege.Id}", updateCommand2);
 

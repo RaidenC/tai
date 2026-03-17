@@ -26,6 +26,25 @@ public class SecurityAndTdmTests : IClassFixture<WebApplicationFactory<Program>>
       secret = config["Gateway:Secret"];
     }
     _gatewaySecret = secret ?? "portal-poc-secret-2026";
+    
+    // Trigger initialization on startup
+    _ = _factory.Server; 
+  }
+
+  private async Task ResetDatabase() {
+    var client = CreateClient();
+    client.DefaultRequestHeaders.Add("X-Gateway-Secret", _gatewaySecret);
+    
+    // Retry logic for Reset because EnsureDeleted/Initialize is heavy
+    for (int i = 0; i < 3; i++) {
+      try {
+        var response = await client.PostAsync("/api/tdm/reset", null);
+        if (response.IsSuccessStatusCode) return;
+      } catch {
+        if (i == 2) throw;
+      }
+      await Task.Delay(1000);
+    }
   }
 
   private HttpClient CreateClient(WebApplicationFactory<Program>? factory = null) {

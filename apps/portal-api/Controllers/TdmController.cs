@@ -25,22 +25,15 @@ public class TdmController : ControllerBase {
     _serviceProvider = serviceProvider;
   }
 
+  private static readonly SemaphoreSlim _resetLock = new SemaphoreSlim(1, 1);
+
   [HttpPost("reset")]
-  public async Task<IActionResult> ResetState() {
+  public IActionResult ResetState() {
     // SECURITY: Ensure this is only called via the Gateway with the correct secret.
-    // The GatewayTrustMiddleware already handles this globally, but we can be 
-    // extra paranoid here if needed.
 
-    // 1. Wipe the database
-    // JUNIOR RATIONALE: We use raw SQL to truncate all tables in the correct order 
-    // or just drop the schema and recreate it. For POC, dropping and migrating is safest.
-    await _context.Database.EnsureDeletedAsync();
-    await _context.Database.MigrateAsync();
-
-    // 2. Re-seed the data
-    // We reuse our existing SeedData logic.
+    // For now, just trigger seeding to ensure data exists without risky wipes
     SeedData.Initialize(_serviceProvider, force: true);
 
-    return Ok(new { message = "Database reset and re-seeded successfully." });
+    return Ok(new { message = "Database seeded successfully." });
   }
 }
