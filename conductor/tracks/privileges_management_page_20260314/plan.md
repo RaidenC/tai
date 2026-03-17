@@ -11,7 +11,7 @@
     - [x] Implement Service Bus publisher for `PrivilegeModified` immutable audit events.
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Database and Core Domain' (Protocol in workflow.md)
 
-## Phase 2: API, Gateway & Enforcement Mechanisms [checkpoint: 2c594c9]
+## Phase 2: API, Gateway & Enforcement Mechanisms [checkpoint: fcb4b25]
 - [x] Task: Privilege Catalog Endpoints & Cache aa7d506
     - [x] Write Integration Tests for server-side pagination, filtering, and distributed cache invalidation.
     - [x] Implement standard `GET`, `POST`, and `PUT` endpoints handling `DbUpdateConcurrencyException` gracefully.

@@ -27,6 +27,7 @@ export class App implements OnInit {
         { label: 'Reports', link: '/reports', icon: '📊' },
         { label: 'Settings', link: '/settings', icon: '⚙️' },
         { label: 'Users', link: '/users', icon: '👥' },
+        { label: 'Privileges', link: '/admin/privileges', icon: '🛡️' },
         { label: 'Approvals', link: '/admin/approvals', icon: '✅' },
     ];
 
