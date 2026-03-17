@@ -1,1 +1,15 @@
-{ "/api": { "target": "http://localhost:5217", "secure": false }, "/identity": { "target": "http://localhost:5217", "secure": false } }
+{
+  "/api": {
+    "target": "http://localhost:5217",
+    "secure": false
+  },
+  "/identity": {
+    "target": "http://localhost:5217",
+    "secure": false
+  },
+  "/hubs": {
+    "target": "http://localhost:5217",
+    "secure": false,
+    "ws": true
+  }
+}
