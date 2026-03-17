@@ -7,6 +7,8 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAuth, LogLevel, authInterceptor } from 'angular-auth-oidc-client';
 import { appRoutes } from './app.routes';
 import { dpopInterceptor } from './dpop.interceptor';
+import { AuthService } from './auth.service';
+import { TAI_AUTH_SERVICE } from '@tai/ui-design-system';
 
 const SYSTEM_CONFIG = {
     gatewayPort: 5217,
@@ -15,6 +17,7 @@ const SYSTEM_CONFIG = {
 
 export const appConfig: ApplicationConfig = {
     providers: [
+        { provide: TAI_AUTH_SERVICE, useExisting: AuthService },
         provideZoneChangeDetection({ eventCoalescing: true }),
         provideRouter(appRoutes),
         // provideHttpClient is how we configure Angular's HttpClient.

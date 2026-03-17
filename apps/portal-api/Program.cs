@@ -44,6 +44,7 @@ builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddScoped<IPrivilegeService, PrivilegeService>();
+builder.Services.AddScoped<IPrivilegeNotificationService, Tai.Portal.Api.Services.PrivilegeNotificationService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IMessageBus, LoggingMessageBus>();
 
@@ -140,6 +141,7 @@ builder.Services.AddAuthentication(options => {
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 
 builder.Services.AddCors(options => {
   options.AddDefaultPolicy(policy => {
@@ -223,6 +225,7 @@ app.UseMiddleware<TenantResolutionMiddleware>();
 app.MapGet("/", () => "Portal API is running");
 
 app.MapControllers();
+app.MapHub<Tai.Portal.Api.Hubs.PrivilegeHub>("/hubs/privileges");
 
 app.Run();
 public partial class Program { }

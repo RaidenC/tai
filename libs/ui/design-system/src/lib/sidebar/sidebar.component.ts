@@ -2,11 +2,13 @@ import { Component, input, ChangeDetectionStrategy, booleanAttribute } from '@an
 import { CommonModule } from '@angular/common';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { RouterModule } from '@angular/router';
+import { HasPrivilegeDirective } from '../directives/has-privilege.directive';
 
 export interface MenuItem {
   label: string;
   link: string;
   icon?: string;
+  privilege?: string;
 }
 
 /**
@@ -26,7 +28,7 @@ export interface MenuItem {
 @Component({
   selector: 'tai-sidebar',
   standalone: true,
-  imports: [CommonModule, CdkMenuModule, RouterModule],
+  imports: [CommonModule, CdkMenuModule, RouterModule, HasPrivilegeDirective],
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

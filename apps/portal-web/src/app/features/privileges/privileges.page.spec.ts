@@ -4,6 +4,8 @@ import { PrivilegesStore } from './privileges.store';
 import { RouterTestingModule } from '@angular/router/testing';
 import { DialogModule } from '@angular/cdk/dialog';
 import { signal } from '@angular/core';
+import { TAI_AUTH_SERVICE } from '@tai/ui-design-system';
+import { of } from 'rxjs';
 
 describe('PrivilegesPage', () => {
   let component: PrivilegesPage;
@@ -27,7 +29,8 @@ describe('PrivilegesPage', () => {
     await TestBed.configureTestingModule({
       imports: [PrivilegesPage, RouterTestingModule, DialogModule],
       providers: [
-        { provide: PrivilegesStore, useValue: storeMock }
+        { provide: PrivilegesStore, useValue: storeMock },
+        { provide: TAI_AUTH_SERVICE, useValue: { hasPrivilege: () => of(true) } }
       ]
     }).compileComponents();
 

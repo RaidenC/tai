@@ -12,11 +12,13 @@ namespace Tai.Portal.Core.Infrastructure.Persistence.Services;
 public class PrivilegeService : IPrivilegeService {
   private readonly PortalDbContext _context;
   private readonly IMemoryCache _cache;
+  private readonly IPrivilegeNotificationService _notificationService;
   private const string PrivilegesCacheKey = "Privileges_All";
 
-  public PrivilegeService(PortalDbContext context, IMemoryCache cache) {
+  public PrivilegeService(PortalDbContext context, IMemoryCache cache, IPrivilegeNotificationService notificationService) {
     _context = context;
     _cache = cache;
+    _notificationService = notificationService;
   }
 
   public async Task<IEnumerable<PrivilegeDto>> GetPrivilegesAsync(
@@ -107,6 +109,7 @@ public class PrivilegeService : IPrivilegeService {
     await _context.SaveChangesAsync(cancellationToken);
 
     InvalidateCache(privilege.Id.Value);
+    await _notificationService.NotifyPrivilegeChangedAsync(privilege.Id.Value, privilege.Name, cancellationToken);
 
     return new PrivilegeDto(
         privilege.Id.Value,
@@ -143,6 +146,7 @@ public class PrivilegeService : IPrivilegeService {
     await _context.SaveChangesAsync(cancellationToken);
 
     InvalidateCache(id);
+    await _notificationService.NotifyPrivilegeChangedAsync(id, privilege.Name, cancellationToken);
 
     return new PrivilegeDto(
         privilege.Id.Value,

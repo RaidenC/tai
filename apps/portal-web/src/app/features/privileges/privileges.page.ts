@@ -163,7 +163,9 @@ export class PrivilegesPage implements OnInit {
   }
 
   protected onAction(event: { actionId: string; row: Privilege }): void {
-    if (event.actionId === 'toggle') {
+    if (event.actionId === 'edit') {
+      this.router.navigate(['/admin/privileges', event.row.id]);
+    } else if (event.actionId === 'toggle') {
       this.pendingUpdate = { 
         id: event.row.id, 
         data: { ...event.row, isActive: !event.row.isActive } 

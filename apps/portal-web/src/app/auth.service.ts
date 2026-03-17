@@ -97,4 +97,14 @@ export class AuthService {
     const roles = data.role || data.roles || [];
     return Array.isArray(roles) ? roles : [roles];
   }
+
+  /**
+   * Checks if the current user has a specific privilege (role).
+   * For the POC, we map privileges directly to OIDC roles.
+   */
+  public hasPrivilege(privilege: string): Observable<boolean> {
+    return this.user$.pipe(
+      map(user => !!user && user.roles.includes(privilege))
+    );
+  }
 }
