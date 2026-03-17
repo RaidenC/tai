@@ -1,5 +1,7 @@
 <Solution>
-  <Folder Name="/apps/" />
+  <Folder Name="/apps/">
+    <Project Path="apps/portal-api.integration-tests/portal-api.integration-tests.csproj" />
+  </Folder>
   <Folder Name="/apps/portal-gateway.integration-tests/">
     <Project Path="apps/portal-gateway.integration-tests/Tai.Portal.Gateway.IntegrationTests.csproj" />
   </Folder>

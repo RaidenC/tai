@@ -31,6 +31,9 @@ public class PrivilegesApiTests : IClassFixture<WebApplicationFactory<Program>> 
       secret = config["Gateway:Secret"];
     }
     _gatewaySecret = secret ?? "portal-poc-secret-2026";
+
+    // Trigger initialization on startup
+    _ = _factory.Server;
   }
 
   private WebApplicationFactory<Program> CreateFactoryWithMockAuth(string userId) {
@@ -56,12 +59,19 @@ public class PrivilegesApiTests : IClassFixture<WebApplicationFactory<Program>> 
     });
   }
 
+  private HttpClient CreateClient(WebApplicationFactory<Program>? factory = null) {
+    var client = (factory ?? _factory).CreateClient();
+    client.DefaultRequestHeaders.Add("X-Gateway-Secret", _gatewaySecret);
+    client.DefaultRequestHeaders.Add("X-Step-Up-Verified", "true");
+    client.DefaultRequestHeaders.Add("Host", "localhost");
+    return client;
+  }
+
   [Fact]
   public async Task GetPrivileges_ReturnsPaginatedList() {
     // Arrange
     var factory = CreateFactoryWithMockAuth(AdminUserId);
-    var client = factory.CreateClient();
-    client.DefaultRequestHeaders.Add("X-Gateway-Secret", _gatewaySecret);
+    var client = CreateClient(factory);
 
     // Act
     var response = await client.GetAsync("/api/Privileges?pageNumber=1&pageSize=10");
@@ -77,8 +87,7 @@ public class PrivilegesApiTests : IClassFixture<WebApplicationFactory<Program>> 
   public async Task CreatePrivilege_AsAdmin_Succeeds() {
     // Arrange
     var factory = CreateFactoryWithMockAuth(AdminUserId);
-    var client = factory.CreateClient();
-    client.DefaultRequestHeaders.Add("X-Gateway-Secret", _gatewaySecret);
+    var client = CreateClient(factory);
 
     var uniqueName = $"Test.Feature.{Guid.NewGuid()}";
     var command = new CreatePrivilegeCommand(
@@ -103,8 +112,7 @@ public class PrivilegesApiTests : IClassFixture<WebApplicationFactory<Program>> 
   public async Task UpdatePrivilege_WithConflict_Returns409() {
     // Arrange
     var factory = CreateFactoryWithMockAuth(AdminUserId);
-    var client = factory.CreateClient();
-    client.DefaultRequestHeaders.Add("X-Gateway-Secret", _gatewaySecret);
+    var client = CreateClient(factory);
 
     // 1. Create a privilege
     var uniqueName = $"Conflict.Test.{Guid.NewGuid()}";
@@ -115,6 +123,7 @@ public class PrivilegesApiTests : IClassFixture<WebApplicationFactory<Program>> 
       RiskLevel.Low,
       new JitSettings(null, false, false)
     );
+
     var createResponse = await client.PostAsJsonAsync("/api/Privileges", createCommand);
     var privilege = await createResponse.Content.ReadFromJsonAsync<PrivilegeDto>();
     Assert.NotNull(privilege);
@@ -130,6 +139,8 @@ public class PrivilegesApiTests : IClassFixture<WebApplicationFactory<Program>> 
     );
     var updateResponse1 = await client.PutAsJsonAsync($"/api/Privileges/{privilege.Id}", updateCommand1);
     Assert.Equal(HttpStatusCode.OK, updateResponse1.StatusCode);
+    var updatedPrivilege1 = await updateResponse1.Content.ReadFromJsonAsync<PrivilegeDto>();
+    Assert.NotNull(updatedPrivilege1);
 
     // 3. Update it again with the OLD RowVersion (should conflict)
     var updateCommand2 = new UpdatePrivilegeCommand(
@@ -138,7 +149,7 @@ public class PrivilegesApiTests : IClassFixture<WebApplicationFactory<Program>> 
       RiskLevel.High,
       true,
       privilege.JitSettings,
-      privilege.RowVersion // Using the same version as the first update
+      privilege.RowVersion // Still using the version from the initial create (now stale)
     );
     var updateResponse2 = await client.PutAsJsonAsync($"/api/Privileges/{privilege.Id}", updateCommand2);
 

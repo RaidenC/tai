@@ -15,18 +15,22 @@ public static class SeedData {
   private static readonly object _lock = new object();
   private static bool _seeded = false;
 
-  public static void Initialize(IServiceProvider services) {
-    if (_seeded) return;
+  public static void Initialize(IServiceProvider services, bool force = false) {
+    if (_seeded && !force) return;
 
     lock (_lock) {
-      if (_seeded) return;
+      if (_seeded && !force) return;
 
       using (var scope = services.CreateScope()) {
         var context = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
 
+        // CRITICAL: Ensure DB exists before we try to open a connection for the lock.
+        // EF Core will connect to the server's default database to create this one if needed.
+        context.Database.EnsureCreated();
+
         // JUNIOR RATIONALE: We use a PostgreSQL "Advisory Lock" to ensure that 
-        // even if multiple processes (like parallel tests) try to seed the 
-        // same database at the same time, only one actually does it. 
+        // if multiple instances of the API start at the same time, only ONE 
+        // handles the seeding. The others wait.
         // This is like a "Global Mutex" for the database.
         var connection = context.Database.GetDbConnection();
         var wasOpen = connection.State == ConnectionState.Open;
@@ -41,7 +45,19 @@ public static class SeedData {
           var tenantService = scope.ServiceProvider.GetRequiredService<ITenantService>();
           tenantService.SetTenant(new TenantId(Guid.Empty), isGlobalAccess: true);
 
-          context.Database.Migrate();
+          // JUNIOR RATIONALE: Even with the lock, we should check if we actually
+          // NEED to migrate. If another process just finished migrating, 
+          // GetPendingMigrations() will be empty.
+          try {
+            var pending = context.Database.GetPendingMigrations();
+            if (pending.Any()) {
+              context.Database.Migrate();
+            }
+          } catch (Npgsql.PostgresException ex) when (ex.SqlState == "42P07") {
+            // Already exists - ignore. This can happen if another process 
+            // is migrating at the exact same time despite the lock.
+          }
+
 
           var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
           var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();

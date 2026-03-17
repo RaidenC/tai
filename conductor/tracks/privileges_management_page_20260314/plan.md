@@ -11,15 +11,16 @@
     - [x] Implement Service Bus publisher for `PrivilegeModified` immutable audit events.
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Database and Core Domain' (Protocol in workflow.md)
 
-## Phase 2: API, Gateway & Enforcement Mechanisms [checkpoint: 382f6e9]
-- [x] Task: Privilege Catalog Endpoints & Cache
-    - [ ] Write Integration Tests for server-side pagination, filtering, and distributed cache invalidation.
-    - [ ] Implement standard `GET`, `POST`, and `PUT` endpoints handling `DbUpdateConcurrencyException` gracefully.
-    - [ ] Implement distributed cache clearing mechanism when a privilege is modified.
-- [~] Task: Security Enforcement and Test Data Management (TDM)
-    - [ ] Write Integration Tests verifying `403 Forbidden` responses and DPoP header validation at YARP.
-    - [ ] Implement the non-production "Backdoor API" with a `POST /reset-state` endpoint for isolated parallel testing.
-    - [ ] Integrate Risk Level checks to trigger Step-Up Authentication workflows via BFF.
+## Phase 2: API, Gateway & Enforcement Mechanisms [checkpoint: 2c594c9]
+- [x] Task: Privilege Catalog Endpoints & Cache aa7d506
+    - [x] Write Integration Tests for server-side pagination, filtering, and distributed cache invalidation.
+    - [x] Implement standard `GET`, `POST`, and `PUT` endpoints handling `DbUpdateConcurrencyException` gracefully.
+    - [x] Implement distributed cache clearing mechanism when a privilege is modified.
+- [x] Task: Security Enforcement and Test Data Management (TDM) 2c594c9
+    - [x] Write Integration Tests verifying `403 Forbidden` responses and DPoP header validation at YARP.
+    - [x] Implement the non-production "Backdoor API" with a `POST /api/tdm/reset` endpoint for isolated parallel testing.
+    - [x] Integrate Risk Level checks to trigger Step-Up Authentication workflows via BFF.
+    - [x] Enable DPoP support in OpenIddict.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: API, Gateway & Enforcement Mechanisms' (Protocol in workflow.md)
 
 ## Phase 3: Angular UI & Component Development
