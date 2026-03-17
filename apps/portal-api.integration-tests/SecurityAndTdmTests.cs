@@ -26,15 +26,15 @@ public class SecurityAndTdmTests : IClassFixture<WebApplicationFactory<Program>>
       secret = config["Gateway:Secret"];
     }
     _gatewaySecret = secret ?? "portal-poc-secret-2026";
-    
+
     // Trigger initialization on startup
-    _ = _factory.Server; 
+    _ = _factory.Server;
   }
 
   private async Task ResetDatabase() {
     var client = CreateClient();
     client.DefaultRequestHeaders.Add("X-Gateway-Secret", _gatewaySecret);
-    
+
     // Retry logic for Reset because EnsureDeleted/Initialize is heavy
     for (int i = 0; i < 3; i++) {
       try {
@@ -59,7 +59,7 @@ public class SecurityAndTdmTests : IClassFixture<WebApplicationFactory<Program>>
         services.AddSingleton(new TestUserContext { UserId = userId });
         services.AddAuthentication("IntegrationTestAuth")
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("IntegrationTestAuth", null);
-        
+
         services.AddAuthorization(options => {
           options.DefaultPolicy = new AuthorizationPolicyBuilder("IntegrationTestAuth")
               .RequireAuthenticatedUser()
