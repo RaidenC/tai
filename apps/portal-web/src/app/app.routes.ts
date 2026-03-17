@@ -20,6 +20,11 @@ export const appRoutes: Route[] = [
         canActivate: [authGuard]
     },
     { 
+        path: 'admin/privileges', 
+        loadComponent: () => import('./features/privileges/privileges.page').then(m => m.PrivilegesPage),
+        canActivate: [authGuard]
+    },
+    { 
         path: 'users', 
         loadComponent: () => import('./features/users/users.page').then(m => m.UsersPage),
         canActivate: [authGuard]
