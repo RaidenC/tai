@@ -1,6 +1,5 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { PrivilegesService, Privilege, PaginatedList } from './privileges.service';
-import { finalize } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 
 export type PrivilegesStatus = 'Idle' | 'Loading' | 'Success' | 'Error' | 'StepUpRequired';
@@ -36,10 +35,32 @@ export class PrivilegesStore {
   public readonly status = this._status.asReadonly();
   public readonly errorMessage = this._errorMessage.asReadonly();
 
+  // --- Mocked Licensed Modules (UI-Side Prototype) ---
+  // In a real system, this would come from a 'TenantConfigurationService' or OIDC claims.
+  private readonly _licensedModules = signal<string[]>(['Portal', 'LoanOrigination', 'Wires', 'System']);
+
   // --- Derived State ---
   public readonly isLoading = computed(() => this._status() === 'Loading');
   public readonly isError = computed(() => this._status() === 'Error');
   public readonly isStepUpRequired = computed(() => this._status() === 'StepUpRequired');
+
+  /**
+   * Filtered Privileges
+   * 
+   * Requirement: Automatically filter out privileges belonging to Apps/Modules ("Tiles") 
+   * that are not enabled in the current Tenant's Configuration.
+   * 
+   * JUNIOR RATIONALE: We use a computed signal here to handle the filtering reactively.
+   * If the list of privileges or the list of licensed modules changes, this 
+   * automatically recalculates without us needing to manually call a function.
+   */
+  public readonly filteredPrivileges = computed(() => {
+    const allPrivileges = this._privileges();
+    const licensed = this._licensedModules();
+    
+    // For this POC, we assume if 'DocViewer' isn't in the list, its privileges are hidden.
+    return allPrivileges.filter(p => licensed.includes(p.module));
+  });
 
   /**
    * Loads the list of privileges.
