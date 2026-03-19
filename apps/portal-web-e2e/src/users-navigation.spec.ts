@@ -14,10 +14,10 @@ test.describe('Users Page Navigation', () => {
   test.beforeEach(async ({ page }) => {
     // 1. Login as TAI Admin
     await page.goto(TAI_URL);
-    await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click({ force: true });
+    await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click();
     await page.getByLabel(/Corporate Email/i).fill('admin@tai.com');
     await page.getByLabel(/Password/i).fill('Password123!');
-    await page.getByRole('button', { name: /Sign In to Portal/i }).click({ force: true });
+    await page.getByRole('button', { name: /Sign In to Portal/i }).click();
 
     // 2. Navigate to Users
     await expect(page.locator('tai-sidebar')).toBeVisible({ timeout: 15000 });
