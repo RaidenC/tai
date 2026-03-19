@@ -17,7 +17,7 @@ test.describe('Real-World Multi-Tenant Handshake', () => {
     await page.goto(TAI_URL);
     
     // 2. Trigger Login
-    await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click({ force: true });
+    await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click();
     
     // 3. Verify we are on the Identity UI and OIDC params
     await expect(page).toHaveURL(/.*:4300\/login.*/);
@@ -27,7 +27,7 @@ test.describe('Real-World Multi-Tenant Handshake', () => {
     // 4. Perform Login
     await page.getByLabel(/Corporate Email/i).fill('admin@tai.com');
     await page.getByLabel(/Password/i).fill('Password123!');
-    await page.getByRole('button', { name: /Sign In to Portal/i }).click({ force: true });
+    await page.getByRole('button', { name: /Sign In to Portal/i }).click();
 
     // 5. Verify redirect back to Portal
     await expect(page).toHaveURL(TAI_URL + '/', { timeout: 15000 });
@@ -45,7 +45,7 @@ test.describe('Real-World Multi-Tenant Handshake', () => {
     await page.goto(ACME_URL);
     
     // 2. Trigger Login
-    await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click({ force: true });
+    await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click();
     
     // 3. Verify Identity UI preserves the 'acme.localhost' host
     await expect(page).toHaveURL(/.*acme\.localhost:4300\/login.*/);
@@ -54,7 +54,7 @@ test.describe('Real-World Multi-Tenant Handshake', () => {
     // 4. Perform Login (using ACME admin)
     await page.getByLabel(/Corporate Email/i).fill('admin@acme.com');
     await page.getByLabel(/Password/i).fill('Password123!');
-    await page.getByRole('button', { name: /Sign In to Portal/i }).click({ force: true });
+    await page.getByRole('button', { name: /Sign In to Portal/i }).click();
 
     // 5. Verify redirect back to ACME Portal
     await expect(page).toHaveURL(ACME_URL + '/', { timeout: 15000 });
@@ -77,7 +77,7 @@ test.describe('Real-World Multi-Tenant Handshake', () => {
     await page.goto(ACME_URL);
     
     // 2. Trigger Login
-    await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click({ force: true });
+    await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click();
     
     // 3. Verify Identity UI
     await expect(page).toHaveURL(/.*acme\.localhost:4300\/login.*/);
@@ -85,7 +85,7 @@ test.describe('Real-World Multi-Tenant Handshake', () => {
     // 4. Perform Login with TAI Admin credentials on ACME portal
     await page.getByLabel(/Corporate Email/i).fill('admin@tai.com');
     await page.getByLabel(/Password/i).fill('Password123!');
-    await page.getByRole('button', { name: /Sign In to Portal/i }).click({ force: true });
+    await page.getByRole('button', { name: /Sign In to Portal/i }).click();
 
     // 5. Verify that we STAY on the login page and an error message is displayed
     // In our POC, the API redirects back with ?error=invalid_credentials

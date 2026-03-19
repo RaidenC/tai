@@ -18,7 +18,7 @@ test.describe('User Onboarding Flows', () => {
     await page.goto(TAI_URL);
     
     // 2. Click "Create New Account" directly on the Portal home page
-    await page.getByRole('button', { name: /Create New Account/i }).click({ force: true });
+    await page.getByRole('button', { name: /Create New Account/i }).click();
     await expect(page).toHaveURL(/\/register/);
 
     // 3. Fill Registration Form
@@ -66,7 +66,7 @@ test.describe('User Onboarding Flows', () => {
 
     // 1. Register as Staff at ACME Subdomain
     await page.goto(ACME_URL);
-    await page.getByRole('button', { name: /Create New Account/i }).click({ force: true });
+    await page.getByRole('button', { name: /Create New Account/i }).click();
     await expect(page).toHaveURL(/\/register/);
     
     await page.getByLabel(/First Name/i).fill('E2E');
@@ -85,10 +85,10 @@ test.describe('User Onboarding Flows', () => {
     // 3. Admin Login (ACME Tenant)
     const adminPage = await page.context().newPage();
     await adminPage.goto(ACME_URL);
-    await adminPage.getByRole('button', { name: /Sign In with TAI Identity/i }).click({ force: true });
+    await adminPage.getByRole('button', { name: /Sign In with TAI Identity/i }).click();
     await adminPage.getByLabel(/Corporate Email/i).fill('admin@acme.com');
     await adminPage.getByLabel(/Password/i).fill('Password123!');
-    await adminPage.getByRole('button', { name: /Sign In to Portal/i }).click({ force: true });
+    await adminPage.getByRole('button', { name: /Sign In to Portal/i }).click();
 
     // 4. Navigate to Approvals
     await expect(adminPage.locator('tai-sidebar')).toBeVisible({ timeout: 15000 });
@@ -145,7 +145,7 @@ test.describe('User Onboarding Flows', () => {
   test('User Directory: Should enforce tenant isolation', async ({ page }) => {
     // 1. Login as TAI Admin
     await page.goto(TAI_URL);
-    await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click({ force: true });
+    await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click();
     await page.getByLabel(/Corporate Email/i).fill('admin@tai.com');
     await page.getByLabel(/Password/i).fill('Password123!');
     await page.getByRole('button', { name: /Sign In to Portal/i }).click();
