@@ -23,20 +23,54 @@
     - [x] Enable DPoP support in OpenIddict.
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: API, Gateway & Enforcement Mechanisms' (Protocol in workflow.md)
 
-## Phase 3: Angular UI & Component Development
-- [ ] Task: Privileges Datatable implementation
+## Phase 3: Angular UI - Privileges Datatable
+- [ ] Task: Privileges Datatable logic & tests
     - [ ] Write Storybook/Vitest logic for the server-side paginated datatable.
+    - [ ] Write a Playwright E2E Smoke Test verifying datatable loads and paginates without errors.
+- [ ] Task: Privileges Datatable UI implementation
     - [ ] Implement the Datatable UI, filtering out un-licensed Tiles for Tenant Admins.
+- [ ] Task: Accessibility and Navigation Validation
     - [ ] Execute Axe-core accessibility checks and verify keyboard navigation.
-- [ ] Task: Privilege Detail and Edit Pages
-    - [ ] Write component tests verifying the rendering of JIT settings and immutable fields.
-    - [ ] Implement the Create/Edit forms, including conflict resolution UI for concurrency errors.
-- [ ] Task: UI Security & Real-Time Directives
-    - [ ] Write tests for the `*hasPrivilege` structural directive and Route Guards.
-    - [ ] Implement SignalR listener to handle `PrivilegesChanged` events for immediate UI degradation.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Angular UI & Component Development' (Protocol in workflow.md)
+- [ ] Task: Regression Testing & CI Validation
+    - [ ] Run `nx affected --target=test,e2e,lint` to ensure no existing tests or lint rules are broken.
+    - [ ] Run `dotnet format` on backend to ensure strict formatting rules pass.
+- [ ] Task: Conductor - User Manual Verification 'Phase 3: Angular UI - Privileges Datatable' (Protocol in workflow.md)
 
-## Phase 4: E2E Validation & Mock Test App
+## Phase 4: Angular UI - Detail & Edit Forms
+- [ ] Task: Privilege Detail and Edit Pages logic & tests
+    - [ ] Write component tests verifying the rendering of JIT settings and immutable fields.
+    - [ ] Write Playwright E2E Smoke Tests for the Form logic (Create/Edit state loading and saving).
+- [ ] Task: Privilege Detail and Edit Pages implementation
+    - [ ] Implement the Create/Edit forms, including conflict resolution UI for concurrency errors.
+- [ ] Task: Accessibility and Navigation Validation
+    - [ ] Execute Axe-core accessibility checks on the form inputs and validation states.
+- [ ] Task: Regression Testing & CI Validation
+    - [ ] Run `nx affected --target=test,e2e,lint` to ensure no existing tests or lint rules are broken.
+    - [ ] Run `dotnet format` on backend to ensure strict formatting rules pass.
+- [ ] Task: Conductor - User Manual Verification 'Phase 4: Angular UI - Detail & Edit Forms' (Protocol in workflow.md)
+
+## Phase 5: Spike - SignalR & Authentication Compatibility
+- [ ] Task: Research and Prototype
+    - [ ] Research and prototype the correct SignalR authentication approach ensuring compatibility with BFF cookies and DPoP.
+- [ ] Task: Flow and Regression Testing
+    - [ ] Write an integration test verifying that initializing the SignalR connection does not break or disrupt existing REST API auth flows.
+    - [ ] Run the complete E2E test suite to ensure the introduction of SignalR components does not cause existing authentication or application flow failures.
+- [ ] Task: Regression Testing & CI Validation
+    - [ ] Run `nx affected --target=test,e2e,lint` to ensure no existing tests or lint rules are broken.
+    - [ ] Run `dotnet format` on backend to ensure strict formatting rules pass.
+- [ ] Task: Conductor - User Manual Verification 'Phase 5: Spike - SignalR & Authentication Compatibility' (Protocol in workflow.md)
+
+## Phase 6: Angular UI - Security & Real-Time Directives
+- [ ] Task: UI Security structural directives
+    - [ ] Write tests for the `*hasPrivilege` structural directive and Route Guards.
+- [ ] Task: Real-Time UI updates
+    - [ ] Implement SignalR listener to handle `PrivilegesChanged` events for immediate UI degradation using the architecture proven in Phase 5.
+- [ ] Task: Regression Testing & CI Validation
+    - [ ] Run `nx affected --target=test,e2e,lint` to ensure no existing tests or lint rules are broken.
+    - [ ] Run `dotnet format` on backend to ensure strict formatting rules pass.
+- [ ] Task: Conductor - User Manual Verification 'Phase 6: Angular UI - Security & Real-Time Directives' (Protocol in workflow.md)
+
+## Phase 7: E2E Validation & Mock Test App
 - [ ] Task: "DocViewer" Mock App setup
     - [ ] Implement a lightweight Dummy App in the QA environment to test cross-module federation.
 - [ ] Task: Comprehensive Playwright Suite & Penetration Tests
@@ -44,4 +78,4 @@
     - [ ] Implement Negative Security Tests (e.g., API fuzzing, IDOR attempts via API bypassing UI).
     - [ ] Implement Visual Regression Snapshots for layout edge cases.
     - [ ] Implement E2E tests validating the Service Bus audit trail using Correlation IDs.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: E2E Validation & Mock Test App' (Protocol in workflow.md)
+- [ ] Task: Conductor - User Manual Verification 'Phase 7: E2E Validation & Mock Test App' (Protocol in workflow.md)
