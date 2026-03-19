@@ -17,3 +17,9 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 - [ ] **Track: Custom Transfer list for assigning privileges**
 *Link: [./tracks/custom_transfer_list_20260318/](./tracks/custom_transfer_list_20260318/)*
+
+---
+
+- [ ] **Track: E2E Test Suite Stabilization**
+*Link: [./tracks/e2e_stabilization_20260319/](./tracks/e2e_stabilization_20260319/)*
+

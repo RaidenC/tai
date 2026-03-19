@@ -16,6 +16,8 @@ const baseURL = process.env['BASE_URL'] || 'http://localhost:4200';
  */
 export default defineConfig({
     ...nxE2EPreset(__filename, { testDir: './src' }),
+    workers: process.env['CI'] ? 1 : '50%',
+    retries: process.env['CI'] ? 2 : 0,
     /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
     use: {
         baseURL,
@@ -31,38 +33,15 @@ export default defineConfig({
     },
     projects: [
         {
+            name: 'setup',
+            testMatch: /.*\.setup\.ts/,
+        },
+        {
             name: 'chromium',
-            use: { ...devices['Desktop Chrome'] },
-        },
-
-        {
-            name: 'firefox',
-            use: { ...devices['Desktop Firefox'] },
-        },
-
-        {
-            name: 'webkit',
-            use: { ...devices['Desktop Safari'] },
-        },
-
-        // Uncomment for mobile browsers support
-        /* {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
-    }, */
-
-        // Uncomment for branded browsers
-        /* {
-      name: 'Microsoft Edge',
-      use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    },
-    {
-      name: 'Google Chrome',
-      use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    } */
+            use: {
+                ...devices['Desktop Chrome'],
+            },
+            dependencies: ['setup'],
+        }
     ],
 });
