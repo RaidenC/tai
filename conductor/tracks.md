@@ -12,3 +12,8 @@ This file tracks all major tracks for the project. Each track has its own detail
 ---
 
 - [ ] **Track: Align Users API with the high-concurrency and caching patterns established in the Privileges API.**
+
+---
+
+- [ ] **Track: Custom Transfer list for assigning privileges**
+*Link: [./tracks/custom_transfer_list_20260318/](./tracks/custom_transfer_list_20260318/)*
