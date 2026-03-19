@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import * as path from 'path';
+import { injectAuthSession } from './test-utils';
 
 /**
  * Users Navigation & URL State E2E Tests
@@ -10,16 +12,16 @@ import { test, expect } from '@playwright/test';
  */
 test.describe('Users Page Navigation', () => {
   const TAI_URL = 'http://localhost:4200';
+  const authFile = path.join(__dirname, '../.auth/user.json');
+
+  test.use({ storageState: authFile });
 
   test.beforeEach(async ({ page }) => {
-    // 1. Login as TAI Admin
-    await page.goto(TAI_URL);
-    await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click();
-    await page.getByLabel(/Corporate Email/i).fill('admin@tai.com');
-    await page.getByLabel(/Password/i).fill('Password123!');
-    await page.getByRole('button', { name: /Sign In to Portal/i }).click();
+    // 1. Inject global auth state (SessionStorage)
+    await injectAuthSession(page);
 
-    // 2. Navigate to Users
+    // 2. Navigate directly to Users
+    await page.goto(TAI_URL);
     await expect(page.locator('tai-sidebar')).toBeVisible({ timeout: 15000 });
     await page.getByRole('menuitem', { name: /Users/i }).click();
     await expect(page).toHaveURL(/\/users/);
