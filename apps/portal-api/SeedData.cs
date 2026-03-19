@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using OpenIddict.Abstractions;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.ValueObjects;
@@ -24,9 +26,17 @@ public static class SeedData {
       using (var scope = services.CreateScope()) {
         var context = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
 
-        // CRITICAL: Ensure DB exists before we try to open a connection for the lock.
-        // EF Core will connect to the server's default database to create this one if needed.
-        context.Database.EnsureCreated();
+        // JUNIOR RATIONALE: We use the RelationalDatabaseCreator to ensure the 
+        // database exists, but we DO NOT call EnsureCreated() because that 
+        // would create the schema without recording it in the migration history.
+        // If we did that, the subsequent Migrate() call would fail when it 
+        // tries to create tables that already exist.
+        var databaseCreator = context.Database.GetService<IDatabaseCreator>() as IRelationalDatabaseCreator;
+        if (databaseCreator != null) {
+          if (!databaseCreator.Exists()) {
+            databaseCreator.Create();
+          }
+        }
 
         // JUNIOR RATIONALE: We use a PostgreSQL "Advisory Lock" to ensure that 
         // if multiple instances of the API start at the same time, only ONE 
