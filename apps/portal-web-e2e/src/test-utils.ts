@@ -41,8 +41,11 @@ export interface SeedUserRequest {
  */
 export async function seedTestUser(request: APIRequestContext, user: SeedUserRequest) {
   // Call the API directly (5031) to avoid Gateway (5217) header conflicts.
-  const API_URL = 'http://localhost:5031';
-  const GATEWAY_SECRET = 'portal-poc-secret-2026';
+  // In CI, we use 127.0.0.1 to avoid IPv6/IPv4 resolution issues.
+  const API_URL = process.env['CI'] ? 'http://127.0.0.1:5031' : 'http://localhost:5031';
+  
+  // Use the secret from environment if available (set in CI), otherwise use default.
+  const GATEWAY_SECRET = process.env['GATEWAY_SECRET'] || 'portal-poc-secret-2026';
 
   const response = await request.post(`${API_URL}/api/tdm/seed-user`, {
     data: user,
