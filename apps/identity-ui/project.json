@@ -9,7 +9,7 @@
         "build-tailwind": {
           "executor": "nx:run-commands",
           "options": {
-            "command": "npx @tailwindcss/cli -i apps/identity-ui/src/styles.scss -o apps/identity-ui/src/styles.css --content \"apps/identity-ui/src/**/*.{html,ts},libs/ui/design-system/src/**/*.{html,ts}\""
+            "command": "tailwindcss -i apps/identity-ui/src/styles.scss -o apps/identity-ui/src/styles.css --content \"apps/identity-ui/src/**/*.{html,ts},libs/ui/design-system/src/**/*.{html,ts}\""
           }
         },
         "build": {

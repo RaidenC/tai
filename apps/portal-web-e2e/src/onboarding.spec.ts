@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import * as path from 'path';
+import { injectAuthSession } from './test-utils';
 
 /**
  * Onboarding "Steel Thread" E2E Tests
@@ -142,21 +144,22 @@ test.describe('User Onboarding Flows', () => {
     await expect(page).toHaveURL(/\/create-passkey/, { timeout: 10000 });
   });
 
-  test('User Directory: Should enforce tenant isolation', async ({ page }) => {
-    // 1. Login as TAI Admin
-    await page.goto(TAI_URL);
-    await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click();
-    await page.getByLabel(/Corporate Email/i).fill('admin@tai.com');
-    await page.getByLabel(/Password/i).fill('Password123!');
-    await page.getByRole('button', { name: /Sign In to Portal/i }).click();
+  test.describe('Authenticated Tests (TAI Admin)', () => {
+    test.use({ storageState: path.join(__dirname, '../.auth/user.json') });
 
-    // 2. Navigate to Users
-    await expect(page.locator('tai-sidebar')).toBeVisible({ timeout: 15000 });
-    await page.getByRole('menuitem', { name: /Users/i }).click();
-    await expect(page).toHaveURL(/\/users/);
+    test('User Directory: Should enforce tenant isolation', async ({ page }) => {
+      // 1. Inject global auth state (SessionStorage)
+      await injectAuthSession(page);
 
-    // 3. Verify visibility
-    await expect(page.locator('tbody')).toContainText('admin@tai.com');
-    await expect(page.locator('tbody')).not.toContainText('admin@acme.com');
+      // 2. Navigate directly to Users
+      await page.goto(TAI_URL);
+      await expect(page.locator('tai-sidebar')).toBeVisible({ timeout: 15000 });
+      await page.getByRole('menuitem', { name: /Users/i }).click();
+      await expect(page).toHaveURL(/\/users/);
+
+      // 3. Verify visibility
+      await expect(page.locator('tbody')).toContainText('admin@tai.com');
+      await expect(page.locator('tbody')).not.toContainText('admin@acme.com');
+    });
   });
 });

@@ -9,7 +9,7 @@
         "build-tailwind": {
           "executor": "nx:run-commands",
           "options": {
-            "command": "npx @tailwindcss/cli -i apps/portal-web/src/styles.scss -o apps/portal-web/src/styles.css --content \"apps/portal-web/src/**/*.{html,ts},libs/ui/design-system/src/**/*.{html,ts}\""
+            "command": "tailwindcss -i apps/portal-web/src/styles.scss -o apps/portal-web/src/styles.css --content \"apps/portal-web/src/**/*.{html,ts},libs/ui/design-system/src/**/*.{html,ts}\""
           }
         },
         "build": {
