@@ -151,9 +151,9 @@ jobs:
           npx nx run identity-ui:serve &
           
           # Wait for services to be ready
-          # portal-api (5031), portal-gateway (5217), portal-web (4200), identity-ui (4300)
-          npx wait-on http-get://localhost:5031/identity/ http-get://localhost:5217/identity/ http-get://localhost:4200/ http-get://localhost:4300/ --timeout 180000
-        continue-on-error: true
+          # portal-api (5031/diag/headers), portal-gateway (5217/identity/diag/headers), portal-web (4200), identity-ui (4300)
+          # Note: portal-api root is '/' or '/diag/headers'. Gateway prefix is '/identity/'.
+          npx wait-on http-get://localhost:5031/diag/headers http-get://localhost:5217/identity/diag/headers http-get://localhost:4200/ http-get://localhost:4300/ --timeout 180000
 
       - name: Run E2E Affected
         run: npx nx affected -t e2e
