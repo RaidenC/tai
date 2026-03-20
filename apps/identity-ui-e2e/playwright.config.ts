@@ -25,12 +25,20 @@ export default defineConfig({
         trace: 'on-first-retry',
     },
     /* Run your local dev server before starting the tests */
-    webServer: {
-        command: 'npx nx run identity-ui:serve',
-        url: 'http://localhost:4300',
-        reuseExistingServer: true,
-        cwd: workspaceRoot,
-    },
+    webServer: [
+        {
+            command: 'npx nx serve portal-api',
+            url: 'http://localhost:5031/diag/headers',
+            reuseExistingServer: true,
+            timeout: 60000,
+        },
+        {
+            command: 'npx nx serve identity-ui',
+            url: 'http://localhost:4300',
+            reuseExistingServer: true,
+            timeout: 60000,
+        }
+    ],
     projects: [
         {
             name: 'chromium',
