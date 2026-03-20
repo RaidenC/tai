@@ -19,24 +19,17 @@ public static class SeedData {
 
   public static void Initialize(IServiceProvider services, bool force = false) {
     try {
-      Console.WriteLine($" [SEED] Initialize called. Force: {force}, Already seeded: {_seeded}");
-      if (_seeded && !force) {
-        Console.WriteLine(" [SEED] Skipping: already seeded and force is false.");
-        return;
-      }
+      if (_seeded && !force) return;
 
       lock (_lock) {
         if (_seeded && !force) return;
-        Console.WriteLine(" [SEED] Starting seeding process...");
 
         using (var scope = services.CreateScope()) {
           var context = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
-          Console.WriteLine($" [SEED] Using context: {context.ContextId}");
 
           var databaseCreator = context.Database.GetService<IDatabaseCreator>() as IRelationalDatabaseCreator;
           if (databaseCreator != null) {
             if (!databaseCreator.Exists()) {
-              Console.WriteLine(" [SEED] Database does not exist. Creating...");
               databaseCreator.Create();
             }
           }
@@ -49,7 +42,6 @@ public static class SeedData {
             using (var command = connection.CreateCommand()) {
               command.CommandText = "SELECT pg_advisory_lock(424242);";
               command.ExecuteNonQuery();
-              Console.WriteLine(" [SEED] Acquired advisory lock.");
             }
 
             var tenantService = scope.ServiceProvider.GetRequiredService<ITenantService>();
@@ -58,11 +50,10 @@ public static class SeedData {
             try {
               var pending = context.Database.GetPendingMigrations();
               if (pending.Any()) {
-                Console.WriteLine($" [SEED] Applying {pending.Count()} migrations...");
                 context.Database.Migrate();
               }
             } catch (Npgsql.PostgresException ex) when (ex.SqlState == "42P07") {
-              Console.WriteLine(" [SEED] Table already exists during migration (42P07). Ignoring.");
+              // Ignore table already exists
             }
 
             var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -134,8 +125,7 @@ public static class SeedData {
                 } catch (DbUpdateException) { /* Already exists */ }
               }
             }
-            var saved = context.SaveChanges();
-            Console.WriteLine($" [SEED] Saved {saved} changes (Privileges).");
+            context.SaveChanges();
 
             // Seed Users
             var taiAdminId = "00000000-0000-0000-0000-000000000010";

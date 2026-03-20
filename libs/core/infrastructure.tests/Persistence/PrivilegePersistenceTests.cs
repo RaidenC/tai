@@ -120,19 +120,14 @@ public class PrivilegePersistenceTests : IAsyncLifetime {
 
       // Ensure schema exists
       await context.Database.EnsureCreatedAsync();
-      _output.WriteLine(" [TEST] DB Schema created.");
 
       // Act
-      _output.WriteLine(" [TEST] Calling SeedData.Initialize(force: true)...");
       Tai.Portal.Api.SeedData.Initialize(serviceProviderMock.Object, force: true);
-      _output.WriteLine(" [TEST] SeedData.Initialize completed.");
     }
 
     // Assert
-    _output.WriteLine(" [TEST] Verifying results in fresh context...");
     using (var context = new PortalDbContext(options, tenantServiceMock.Object, serviceProviderMock.Object)) {
       var count = await context.Privileges.CountAsync();
-      _output.WriteLine($" [TEST] Found {count} privileges.");
       count.Should().BeGreaterOrEqualTo(11, "Should have seeded at least 11 privileges.");
 
       var inactive = await context.Privileges.IgnoreQueryFilters().FirstAsync(p => p.Name == "LegacyApp.OldFeature.Read");
