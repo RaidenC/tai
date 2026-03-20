@@ -25,7 +25,7 @@ export default defineConfig({
         trace: 'on-first-retry',
     },
     /* Run your local dev server before starting the tests */
-    webServer: [
+    webServer: process.env['CI'] ? [] : [
         {
             command: 'npx nx serve portal-api',
             url: 'http://localhost:5031/diag/headers',
