@@ -154,7 +154,7 @@ jobs:
           npx nx run identity-ui:serve --host=0.0.0.0 &
           
           # 5. Wait for services to be ready via TCP
-          npx wait-on tcp:localhost:5031 tcp:localhost:5217 tcp:localhost:4200 tcp:localhost:4300 --timeout 180000
+          npx wait-on tcp:127.0.0.1:5031 tcp:127.0.0.1:5217 tcp:127.0.0.1:4200 tcp:127.0.0.1:4300 --timeout 180000
 
       - name: Run E2E Affected
         run: npx nx affected -t e2e
