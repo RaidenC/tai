@@ -105,6 +105,9 @@ public class PrivilegePersistenceTests : IAsyncLifetime {
       var seededField = typeof(Tai.Portal.Api.SeedData).GetField("_seeded", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
       seededField?.SetValue(null, false);
 
+      // PRE-FIX: Ensure schema exists before seeding
+      await context.Database.EnsureCreatedAsync();
+
       // Act
       Tai.Portal.Api.SeedData.Initialize(serviceProviderMock.Object);
     }
