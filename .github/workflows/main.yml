@@ -144,16 +144,15 @@ jobs:
           npx nx run portal-api:serve --launchProfile=http &
           npx nx run portal-gateway:serve &
           
-          # Start Portal Web
-          npx nx run portal-web:serve --port=4200 &
+          # Start Portal Web (Bind to 0.0.0.0 for CI reachability)
+          npx nx run portal-web:serve --port=4200 --host=0.0.0.0 &
           
           # Start Identity UI (needed for redirects)
-          npx nx run identity-ui:serve &
+          npx nx run identity-ui:serve --host=0.0.0.0 &
           
-          # Wait for services to be ready
-          # portal-gateway (5217/identity/diag/headers), portal-web (4200), identity-ui (4300)
-          # Note: We don't check 5031 directly because it returns 403 without the Gateway secret.
-          npx wait-on http-get://127.0.0.1:5217/identity/diag/headers http-get://127.0.0.1:4200/ http-get://127.0.0.1:4300/ --timeout 180000
+          # Wait for services to be ready via TCP (most resilient CI check)
+          # portal-api (5031), gateway (5217), portal-web (4200), identity-ui (4300)
+          npx wait-on tcp:localhost:5031 tcp:localhost:5217 tcp:localhost:4200 tcp:localhost:4300 --timeout 180000
 
       - name: Run E2E Affected
         run: npx nx affected -t e2e
