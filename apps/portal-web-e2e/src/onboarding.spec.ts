@@ -62,25 +62,31 @@ test.describe('User Onboarding Flows', () => {
     await expect(page.locator('h2')).toContainText(/Create Your Passkey/i);
   });
 
-  test('Staff Approval: Should require admin approval before OTP verification', async ({ page, request }) => {
+  test('Staff Approval: Should require admin approval before OTP verification', async ({ page, request, browser }) => {
     const email = `staff_${Date.now()}@acme.com`;
 
-    // 1. ARRANGE: Seed a Staff user awaiting approval via TDM
-    // This bypasses the UI registration step entirely.
-    await seedTestUser(request, {
-      email,
-      firstName: 'E2E',
-      lastName: 'Staff',
-      tenantHost: 'acme.localhost',
-      status: 1 // PendingApproval
-    });
-
-    // 2. ARRANGE: Navigate to Verify page as the new staff member
-    await page.goto(`${ACME_URL}/verify`);
+    // 1. ARRANGE: Register as Staff at ACME Subdomain
+    await page.goto(ACME_URL);
+    await page.getByRole('button', { name: /Create New Account/i }).click();
+    await expect(page).toHaveURL(/\/register/);
     
-    // 3. ACT: Admin Approval (Bypassing UI login with injectAuthSession)
-    const adminPage = await page.context().newPage();
-    await injectAuthSession(adminPage);
+    await page.getByLabel(/First Name/i).fill('E2E');
+    await page.getByLabel(/Last Name/i).fill('Staff');
+    await page.getByLabel(/Email Address/i).fill(email);
+    await page.getByLabel(/Password/i).fill('Password123!');
+    
+    const registerResponsePromise = page.waitForResponse(r => r.url().includes('/api/onboarding/register') && r.request().method() === 'POST');
+    await page.getByRole('button', { name: /Register Account/i }).click();
+    const registerResponse = await registerResponsePromise;
+    expect(registerResponse.ok()).toBeTruthy();
+
+    // 2. ASSERT: Should be redirected to /verify
+    await expect(page).toHaveURL(/\/verify/);
+    
+    // 3. ACT: Admin Approval (Bypassing UI login with ACME Admin session)
+    const adminContext = await browser.newContext({ storageState: path.join(__dirname, '../.auth/acme-admin.json') });
+    const adminPage = await adminContext.newPage();
+    await injectAuthSession(adminPage, 'acme-session.json');
     await adminPage.goto(ACME_URL);
     
     // 4. Navigate to Approvals
@@ -93,7 +99,9 @@ test.describe('User Onboarding Flows', () => {
     await adminPage.reload();
     await initialPendingPromise;
     
-    const row = adminPage.locator('tr', { hasText: email });
+    // Use a locator that specifically targets the table body to avoid matching headers/footers
+    const table = adminPage.locator('table');
+    const row = table.locator('tr').filter({ hasText: email });
     await expect(row).toBeVisible({ timeout: 15000 });
     
     const approveResponsePromise = adminPage.waitForResponse(r => r.url().includes('/api/onboarding/approve') && r.request().method() === 'POST');

@@ -1,6 +1,8 @@
+#if DEBUG
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.Enums;
 using Tai.Portal.Core.Infrastructure.Persistence;
@@ -8,6 +10,7 @@ using Tai.Portal.Core.Infrastructure.Persistence;
 namespace Tai.Portal.Api.Controllers;
 
 public class SeedUserRequest {
+
   public string Email { get; set; } = string.Empty;
   public string FirstName { get; set; } = string.Empty;
   public string LastName { get; set; } = string.Empty;
@@ -34,16 +37,19 @@ public class TdmController : ControllerBase {
   private readonly IServiceProvider _serviceProvider;
   private readonly UserManager<ApplicationUser> _userManager;
   private readonly RoleManager<IdentityRole> _roleManager;
+  private readonly ITenantService _tenantService;
 
   public TdmController(
     PortalDbContext context,
     IServiceProvider serviceProvider,
     UserManager<ApplicationUser> userManager,
-    RoleManager<IdentityRole> roleManager) {
+    RoleManager<IdentityRole> roleManager,
+    ITenantService tenantService) {
     _context = context;
     _serviceProvider = serviceProvider;
     _userManager = userManager;
     _roleManager = roleManager;
+    _tenantService = tenantService;
   }
 
   private static readonly SemaphoreSlim _resetLock = new SemaphoreSlim(1, 1);
@@ -80,8 +86,14 @@ public class TdmController : ControllerBase {
       return Ok(new { message = "User already exists.", userId = existingUser.Id });
     }
 
+    // Explicitly set the tenant context for the current request scope
+    // JUNIOR RATIONALE: The Identity UserManager needs to know which tenant 
+    // it's currently working for.
+    _tenantService.SetTenant(tenant.Id, isGlobalAccess: true);
+
     // 3. Create User
     var user = new ApplicationUser(request.Email, tenant.Id) {
+      TenantId = tenant.Id,
       Email = request.Email,
       FirstName = request.FirstName,
       LastName = request.LastName,
@@ -117,3 +129,4 @@ public class TdmController : ControllerBase {
     return Ok(new { message = "User seeded successfully.", userId = user.Id });
   }
 }
+#endif

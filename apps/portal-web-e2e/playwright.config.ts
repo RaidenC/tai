@@ -1,6 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
 import { nxE2EPreset } from '@nx/playwright/preset';
-import { workspaceRoot } from '@nx/devkit';
 
 // For CI, you may want to set BASE_URL to the deployed application.
 const baseURL = process.env['BASE_URL'] || 'http://localhost:4200';
@@ -25,7 +24,7 @@ export default defineConfig({
         trace: 'on-first-retry',
     },
     /* Run your local dev server before starting the tests */
-    webServer: process.env['CI'] ? [] : [
+    /* webServer: process.env['CI'] ? [] : [
         {
             command: 'npx nx serve portal-api',
             url: 'http://localhost:5031/diag/headers',
@@ -44,7 +43,7 @@ export default defineConfig({
             reuseExistingServer: true,
             timeout: 60000,
         }
-    ],
+    ], */
     projects: [
         {
             name: 'setup',

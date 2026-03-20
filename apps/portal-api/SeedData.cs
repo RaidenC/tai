@@ -24,12 +24,16 @@ public static class SeedData {
       lock (_lock) {
         if (_seeded && !force) return;
 
+        Console.WriteLine(" [SEED] Starting initialization...");
+        var totalSw = System.Diagnostics.Stopwatch.StartNew();
+
         using (var scope = services.CreateScope()) {
           var context = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
 
           var databaseCreator = context.Database.GetService<IDatabaseCreator>() as IRelationalDatabaseCreator;
           if (databaseCreator != null) {
             if (!databaseCreator.Exists()) {
+              Console.WriteLine(" [SEED] Database does not exist. Creating...");
               databaseCreator.Create();
             }
           }
@@ -42,6 +46,7 @@ public static class SeedData {
             using (var command = connection.CreateCommand()) {
               command.CommandText = "SELECT pg_advisory_lock(424242);";
               command.ExecuteNonQuery();
+              Console.WriteLine(" [SEED] Advisory lock acquired.");
             }
 
             var tenantService = scope.ServiceProvider.GetRequiredService<ITenantService>();
@@ -50,16 +55,22 @@ public static class SeedData {
             try {
               var pending = context.Database.GetPendingMigrations();
               if (pending.Any()) {
+                Console.WriteLine($" [SEED] Applying {pending.Count()} migrations...");
+                var sw = System.Diagnostics.Stopwatch.StartNew();
                 context.Database.Migrate();
+                Console.WriteLine($" [SEED] Migrations applied in {sw.ElapsedMilliseconds}ms");
               }
-            } catch (Npgsql.PostgresException ex) when (ex.SqlState == "42P07") {
-              // Ignore table already exists
+            } catch (Npgsql.PostgresException ex) when (ex.SqlState == "42P07" || ex.SqlState == "42701") {
+              // Ignore table/column already exists
+              Console.WriteLine($" [SEED] Ignoring Postgres error: {ex.Message} (State: {ex.SqlState})");
             }
 
             var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
             // Seed Roles
+            Console.WriteLine(" [SEED] Seeding roles...");
+            var rolesSw = System.Diagnostics.Stopwatch.StartNew();
             string[] roleNames = { "Admin", "User" };
             foreach (var roleName in roleNames) {
               if (!roleManager.RoleExistsAsync(roleName).GetAwaiter().GetResult()) {
@@ -68,8 +79,11 @@ public static class SeedData {
                 } catch (DbUpdateException) { /* Already exists */ }
               }
             }
+            Console.WriteLine($" [SEED] Roles checked/seeded in {rolesSw.ElapsedMilliseconds}ms");
 
             // Seed Tenants
+            Console.WriteLine(" [SEED] Seeding tenants...");
+            var tenantsSw = System.Diagnostics.Stopwatch.StartNew();
             var taiTenantId = new TenantId(Guid.Parse("00000000-0000-0000-0000-000000000001"));
             if (context.Set<Tenant>().IgnoreQueryFilters().FirstOrDefault(t => t.Id == taiTenantId) is null) {
               try {
@@ -85,8 +99,11 @@ public static class SeedData {
                 context.SaveChanges();
               } catch (DbUpdateException) { /* Already exists */ }
             }
+            Console.WriteLine($" [SEED] Tenants checked/seeded in {tenantsSw.ElapsedMilliseconds}ms");
 
             // Seed Privileges (System Catalog)
+            Console.WriteLine(" [SEED] Seeding privileges...");
+            var privsSw = System.Diagnostics.Stopwatch.StartNew();
             var systemPrivileges = new List<Privilege> {
               // 1. Standard CRUD
               new Privilege("Portal.Users.Read", "View user accounts and profiles", "Portal", RiskLevel.Low, new JitSettings()),
@@ -126,11 +143,18 @@ public static class SeedData {
               }
             }
             context.SaveChanges();
+            Console.WriteLine($" [SEED] Privileges checked/seeded in {privsSw.ElapsedMilliseconds}ms");
 
             // Seed Users
+            Console.WriteLine(" [SEED] Seeding users...");
+            var usersSw = System.Diagnostics.Stopwatch.StartNew();
+
+            // Set TAI context for TAI users
+            tenantService.SetTenant(taiTenantId, isGlobalAccess: true);
+
             var taiAdminId = "00000000-0000-0000-0000-000000000010";
             var taiAdminEmail = "admin@tai.com";
-            var existingTaiUser = userManager.Users.IgnoreQueryFilters().FirstOrDefault(u => u.Id == taiAdminId || u.Email == taiAdminEmail);
+            var existingTaiUser = userManager.Users!.IgnoreQueryFilters().FirstOrDefault(u => u.Id == taiAdminId || u.Email == taiAdminEmail);
             if (existingTaiUser is null) {
               var user = new ApplicationUser(taiAdminEmail, taiTenantId) {
                 Id = taiAdminId,
@@ -145,23 +169,31 @@ public static class SeedData {
               } catch (DbUpdateException) { /* Already exists */ }
             }
 
-            // Seed additional TAI users for pagination
-            for (int i = 1; i <= 25; i++) {
-              var email = $"user{i}@tai.com";
-              if (userManager.Users.IgnoreQueryFilters().FirstOrDefault(u => u.Email == email) is null) {
-                var user = new ApplicationUser(email, taiTenantId) {
-                  Email = email,
-                  EmailConfirmed = true,
-                  FirstName = "TAI",
-                  LastName = $"User {i}"
-                };
-                userManager.CreateAsync(user, "Password123!").GetAwaiter().GetResult();
+            // Seed additional TAI users for pagination (Optimized: check count first)
+            var taiUserCount = userManager.Users!.IgnoreQueryFilters().Count(u => u.TenantId == taiTenantId && u.Email.EndsWith("@tai.com") && u.Email != taiAdminEmail);
+            if (taiUserCount < 25) {
+              Console.WriteLine($" [SEED] Seeding {25 - taiUserCount} more TAI users...");
+              for (int i = 1; i <= 25; i++) {
+                var email = $"user{i}@tai.com";
+                if (userManager.Users!.IgnoreQueryFilters().FirstOrDefault(u => u.Email == email) is null) {
+                  var user = new ApplicationUser(email, taiTenantId) {
+                    Email = email,
+                    EmailConfirmed = true,
+                    FirstName = "TAI",
+                    LastName = $"User {i}"
+                  };
+                  userManager.CreateAsync(user, "Password123!").GetAwaiter().GetResult();
+                }
               }
             }
 
             var acmeAdminId = "00000000-0000-0000-0000-000000000020";
             var acmeAdminEmail = "admin@acme.com";
-            var existingAcmeUser = userManager.Users.IgnoreQueryFilters().FirstOrDefault(u => u.Id == acmeAdminId || u.Email == acmeAdminEmail);
+
+            // Set ACME context for ACME users
+            tenantService.SetTenant(acmeTenantId, isGlobalAccess: true);
+
+            var existingAcmeUser = userManager.Users!.IgnoreQueryFilters().FirstOrDefault(u => u.Id == acmeAdminId || u.Email == acmeAdminEmail);
             if (existingAcmeUser is null) {
               var user = new ApplicationUser(acmeAdminEmail, acmeTenantId) {
                 Id = acmeAdminId,
@@ -176,20 +208,27 @@ public static class SeedData {
               } catch (DbUpdateException) { /* Already exists */ }
             }
 
-            // Seed additional ACME users for pagination
-            for (int i = 1; i <= 25; i++) {
-              var email = $"user{i}@acme.com";
-              if (userManager.Users.IgnoreQueryFilters().FirstOrDefault(u => u.Email == email) is null) {
-                var user = new ApplicationUser(email, acmeTenantId) {
-                  Email = email,
-                  EmailConfirmed = true,
-                  FirstName = "ACME",
-                  LastName = $"User {i}"
-                };
-                userManager.CreateAsync(user, "Password123!").GetAwaiter().GetResult();
+            // Seed additional ACME users for pagination (Optimized: check count first)
+            var acmeUserCount = userManager.Users!.IgnoreQueryFilters().Count(u => u.TenantId == acmeTenantId && u.Email.EndsWith("@acme.com") && u.Email != acmeAdminEmail);
+            if (acmeUserCount < 25) {
+              Console.WriteLine($" [SEED] Seeding {25 - acmeUserCount} more ACME users...");
+              for (int i = 1; i <= 25; i++) {
+                var email = $"user{i}@acme.com";
+                if (userManager.Users!.IgnoreQueryFilters().FirstOrDefault(u => u.Email == email) is null) {
+                  var user = new ApplicationUser(email, acmeTenantId) {
+                    Email = email,
+                    EmailConfirmed = true,
+                    FirstName = "ACME",
+                    LastName = $"User {i}"
+                  };
+                  userManager.CreateAsync(user, "Password123!").GetAwaiter().GetResult();
+                }
               }
             }
+            Console.WriteLine($" [SEED] Users checked/seeded in {usersSw.ElapsedMilliseconds}ms");
 
+            Console.WriteLine(" [SEED] Seeding OpenIddict...");
+            var oidcSw = System.Diagnostics.Stopwatch.StartNew();
             var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
 
             var client = manager.FindByClientIdAsync("portal-web").GetAwaiter().GetResult();
@@ -235,6 +274,7 @@ public static class SeedData {
             } catch (OpenIddictExceptions.ConcurrencyException) {
               // Concurrency is fine
             }
+            Console.WriteLine($" [SEED] OpenIddict checked/updated in {oidcSw.ElapsedMilliseconds}ms");
 
             using (var command = connection.CreateCommand()) {
               command.CommandText = "SELECT pg_advisory_unlock(424242);";
@@ -247,7 +287,7 @@ public static class SeedData {
         }
 
         _seeded = true;
-        Console.WriteLine(" [SEED] Seeding completed successfully.");
+        Console.WriteLine($" [SEED] Seeding completed successfully in {totalSw.ElapsedMilliseconds}ms");
       }
     } catch (Exception ex) {
       Console.WriteLine($" [SEED] FATAL ERROR during seeding: {ex.Message}");

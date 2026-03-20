@@ -1,4 +1,4 @@
-import { Page, APIRequestContext, expect } from '@playwright/test';
+import { Page, APIRequestContext } from '@playwright/test';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -6,12 +6,12 @@ import * as fs from 'fs';
  * Reusable utility to inject global authentication state (Cookies & SessionStorage) 
  * into the current Playwright page.
  */
-export async function injectAuthSession(page: Page) {
-  const sessionFile = path.join(__dirname, '../.auth/session.json');
+export async function injectAuthSession(page: Page, fileName = 'session.json') {
+  const sessionFile = path.join(__dirname, '../.auth/', fileName);
 
   // Read the session storage snapshot from the auth.setup.ts
   if (!fs.existsSync(sessionFile)) {
-    throw new Error('Auth session file not found. Ensure auth.setup.ts ran correctly.');
+    throw new Error(`Auth session file not found: ${sessionFile}. Ensure auth.setup.ts ran correctly.`);
   }
   
   const sessionData = fs.readFileSync(sessionFile, 'utf-8');
