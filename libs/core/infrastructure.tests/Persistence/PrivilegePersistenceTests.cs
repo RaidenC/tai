@@ -83,16 +83,19 @@ public class PrivilegePersistenceTests : IAsyncLifetime {
 
     using (var context = new PortalDbContext(options, tenantServiceMock.Object, serviceProviderMock.Object)) {
       var serviceScopeMock = new Mock<IServiceScope>();
+
+      // Ensure the scope's service provider returns our mocks and context
       serviceScopeMock.Setup(s => s.ServiceProvider).Returns(serviceProviderMock.Object);
 
       var serviceScopeFactoryMock = new Mock<IServiceScopeFactory>();
       serviceScopeFactoryMock.Setup(s => s.CreateScope()).Returns(serviceScopeMock.Object);
 
+      // Setup ServiceProvider to handle both GetService and GetRequiredService (via GetService)
       serviceProviderMock.Setup(s => s.GetService(typeof(IServiceScopeFactory))).Returns(serviceScopeFactoryMock.Object);
       serviceProviderMock.Setup(s => s.GetService(typeof(PortalDbContext))).Returns(context);
       serviceProviderMock.Setup(s => s.GetService(typeof(ITenantService))).Returns(tenantServiceMock.Object);
 
-      // We need these for the User/Role/App managers even if we don't use them in this specific check
+      // We need these for the User/Role/App managers
       var userManagerMock = new Mock<UserManager<ApplicationUser>>(Mock.Of<IUserStore<ApplicationUser>>(), null, null, null, null, null, null, null, null);
       var roleManagerMock = new Mock<RoleManager<IdentityRole>>(Mock.Of<IRoleStore<IdentityRole>>(), null, null, null, null);
       var appManagerMock = new Mock<OpenIddict.Abstractions.IOpenIddictApplicationManager>();
@@ -101,11 +104,15 @@ public class PrivilegePersistenceTests : IAsyncLifetime {
       serviceProviderMock.Setup(s => s.GetService(typeof(RoleManager<IdentityRole>))).Returns(roleManagerMock.Object);
       serviceProviderMock.Setup(s => s.GetService(typeof(OpenIddict.Abstractions.IOpenIddictApplicationManager))).Returns(appManagerMock.Object);
 
-      // Reset the static _seeded field to allow multiple runs in the same process with fresh DBs
+      // Mock RoleExistsAsync to return false so it tries to create them
+      roleManagerMock.Setup(m => m.RoleExistsAsync(It.IsAny<string>())).ReturnsAsync(false);
+      roleManagerMock.Setup(m => m.CreateAsync(It.IsAny<IdentityRole>())).ReturnsAsync(IdentityResult.Success);
+
+      // Reset the static _seeded field
       var seededField = typeof(Tai.Portal.Api.SeedData).GetField("_seeded", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
       seededField?.SetValue(null, false);
 
-      // PRE-FIX: Ensure schema exists before seeding
+      // Ensure schema exists
       await context.Database.EnsureCreatedAsync();
 
       // Act
