@@ -46,4 +46,4 @@
 - **Backend Integration:** WebApplicationFactory + Respawn / TestContainers (API & Persistence).
 - **Frontend Logic:** Vitest (Services, Signal logic, Reducers).
 - **Component Verification:** Storybook Interaction Tests (Play functions) + Axe-core (Accessibility).
-- **End-to-End (E2E):** Playwright for critical "Steel Thread" workflows.
+- **End-to-End (E2E):** Playwright for critical "Steel Thread" workflows, utilizing Global Auth state and TDM API seeding for setup efficiency.

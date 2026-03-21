@@ -44,7 +44,7 @@ The portal uses a dynamic "Tiles" architecture where dashboard components are re
   - **Unit Testing:** xUnit and FluentAssertions for validating domain invariants and pure business logic.
   - **Integration Testing:** WebApplicationFactory combined with Respawn or TestContainers to verify the OpenIddict handshake and EF Core filters.
   - **Frontend Verification:** Vitest for logic (targeting >90% coverage) and Storybook interaction tests for component-level security and A11y verification (Axe-core).
-  - **End-to-End (E2E):** Playwright for "Steel Thread" verification of critical workflows.
+  - **End-to-End (E2E):** Playwright for "Steel Thread" verification of critical workflows, using Global Auth and TDM API seeding for high reliability.
 
 ## Architectural Integration
 The portal adheres to a Privacy-First, Zero-Trust architectural model:
