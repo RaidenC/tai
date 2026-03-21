@@ -46,6 +46,24 @@ describe('PrivilegesStore', () => {
     expect(store.status()).toBe('Success');
   });
 
+  it('should filter out privileges from un-licensed modules', () => {
+    const privileges = [
+      { ...mockPrivilege, id: '1', module: 'Portal' },
+      { ...mockPrivilege, id: '2', module: 'DocViewer' }
+    ];
+
+    serviceMock.getPrivileges.mockReturnValue(of({
+      items: privileges,
+      totalCount: 2
+    }));
+
+    store.loadPrivileges();
+
+    // Default mock in store only licenses ['Portal', 'LoanOrigination', 'Wires', 'System']
+    expect(store.filteredPrivileges().length).toBe(1);
+    expect(store.filteredPrivileges()[0].id).toBe('1');
+  });
+
   it('should handle Step-Up requirement error', () => {
     const errorResponse = new HttpErrorResponse({
       status: 403,

@@ -21,20 +21,20 @@
     - [x] Implement the non-production "Backdoor API" with a `POST /api/tdm/reset` endpoint for isolated parallel testing.
     - [x] Integrate Risk Level checks to trigger Step-Up Authentication workflows via BFF.
     - [x] Enable DPoP support in OpenIddict.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: API, Gateway & Enforcement Mechanisms' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: API, Gateway & Enforcement Mechanisms' (Protocol in workflow.md)
 
-## Phase 3: Angular UI - Privileges Datatable
-- [ ] Task: Privileges Datatable logic & tests
-    - [ ] Write Storybook/Vitest logic for the server-side paginated datatable.
-    - [ ] Write a Playwright E2E Smoke Test verifying datatable loads and paginates without errors.
-- [ ] Task: Privileges Datatable UI implementation
-    - [ ] Implement the Datatable UI, filtering out un-licensed Tiles for Tenant Admins.
-- [ ] Task: Accessibility and Navigation Validation
-    - [ ] Execute Axe-core accessibility checks and verify keyboard navigation.
-- [ ] Task: Regression Testing & CI Validation
-    - [ ] Run `nx affected --target=test,e2e,lint` to ensure no existing tests or lint rules are broken.
-    - [ ] Run `dotnet format` on backend to ensure strict formatting rules pass.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Angular UI - Privileges Datatable' (Protocol in workflow.md)
+## Phase 3: Angular UI - Privileges Datatable [checkpoint: 8fce4c5]
+- [x] Task: Privileges Datatable logic & tests
+    - [x] Write Storybook/Vitest logic for the server-side paginated datatable.
+    - [x] Write a Playwright E2E Smoke Test verifying datatable loads and paginates without errors.
+- [x] Task: Privileges Datatable UI implementation
+    - [x] Implement the Datatable UI, filtering out un-licensed Tiles for Tenant Admins.
+- [x] Task: Accessibility and Navigation Validation
+    - [x] Execute Axe-core accessibility checks and verify keyboard navigation.
+- [x] Task: Regression Testing & CI Validation
+    - [x] Run `nx affected --target=test,e2e,lint` to ensure no existing tests or lint rules are broken.
+    - [x] Run `dotnet format` on backend to ensure strict formatting rules pass.
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Angular UI - Privileges Datatable' (Protocol in workflow.md)
 
 ## Phase 4: Angular UI - Detail & Edit Forms
 - [ ] Task: Privilege Detail and Edit Pages logic & tests
