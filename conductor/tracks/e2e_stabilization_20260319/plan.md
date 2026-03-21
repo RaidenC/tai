@@ -43,10 +43,10 @@
 
 ## Phase 7: Shift-Left Migration
 **Goal: Move non-critical UI interaction tests to Vitest/Storybook safely.**
-1. [ ] **Identify Candidates:** Flag tests in Playwright that are purely validating component state (e.g., "does the search box filter the table?").
-2. [ ] **Write Lower-Level Tests:** Implement the equivalent test in Vitest (for Signal logic) or Storybook Interaction Tests.
-3. [ ] **Verification:** Ensure the Vitest/Storybook tests pass and adequately cover the functionality.
-4. [ ] **Prune E2E Suite:** *Only after the lower-level test is merged and passing*, remove the expensive E2E test from Playwright.
+1. [x] **Identify Candidates:** Flag tests in Playwright that are purely validating component state (e.g., "does the search box filter the table?"). <f6042c0>
+2. [x] **Write Lower-Level Tests:** Implement the equivalent test in Vitest (for Signal logic) or Storybook Interaction Tests. <f6042c0>
+3. [x] **Verification:** Ensure the Vitest/Storybook tests pass and adequately cover the functionality. <f6042c0>
+4. [x] **Prune E2E Suite:** *Only after the lower-level test is merged and passing*, remove the expensive E2E test from Playwright. <f6042c0>
 
 ## History
 - **2026-03-20:** Completed Phases 3-6. Implemented multi-tenant auth in `auth.setup.ts`, created `seedTestUser` TDM utility, refactored `onboarding.spec.ts` and `login-flow.spec.ts`. Resolved `BrowserContext` isolation issues for multi-persona tests. [f6042c0]
