@@ -280,6 +280,13 @@ export class PrivilegeDetailPage implements OnInit {
         }, { emitEvent: false });
       }
     });
+
+    // Handle transition out of edit mode on success
+    effect(() => {
+      if (this.store.status() === 'Success' && this.isEditing()) {
+        this.isEditing.set(false);
+      }
+    });
   }
 
   ngOnInit(): void {
@@ -328,7 +335,7 @@ export class PrivilegeDetailPage implements OnInit {
         id: privilege.id,
         rowVersion: privilege.rowVersion
       });
-      this.isEditing.set(false);
+      // Synchronous exit removed to allow effect to handle it after Success status
     }
   }
 

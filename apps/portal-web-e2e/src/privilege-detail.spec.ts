@@ -24,13 +24,18 @@ test.describe('Privilege Detail & Edit Page E2E', () => {
     await searchInput.fill('Portal.Users.Read');
     await expect(page).toHaveURL(/search=Portal.Users.Read/);
     
+    // Wait for the table loading overlay to be hidden
+    await expect(page.getByTestId('table-loading')).toBeHidden();
+    
     // 5. Open Action Menu and click Edit
     const firstActionTrigger = page.locator('[data-testid^="action-menu-trigger-"]').first();
-    // We add a small delay and use force to ensure menu opens despite animations
-    await firstActionTrigger.click({ delay: 500, force: true });
+    // Ensure the trigger is visible and stable before clicking
+    await firstActionTrigger.waitFor({ state: 'visible' });
+    await firstActionTrigger.click({ force: true });
     
     const editAction = page.getByTestId('action-edit');
-    await expect(editAction).toBeVisible({ timeout: 10000 });
+    // Ensure the menu item is visible before clicking
+    await editAction.waitFor({ state: 'visible' });
     await editAction.click();
 
     // 6. Verify we are on the detail page
@@ -71,23 +76,28 @@ test.describe('Privilege Detail & Edit Page E2E', () => {
     await page.getByTestId('input-description').fill(newDescription);
     await page.getByTestId('input-riskLevel').selectOption({ label: 'High' });
 
-    // 4. Save Changes and wait for network
-    const savePromise = page.waitForResponse(response => 
-      response.url().includes('/api/privileges/') && response.request().method() === 'PUT'
-    );
-    // After PUT, the store refreshes the list, and we want to ensure the single privilege signal is also stable
-    const getPromise = page.waitForResponse(response => 
-      response.url().includes('/api/privileges/') && response.request().method() === 'GET'
-    );
+    // 4. Save Changes and wait for network synchronization
+    // Use regex to be resilient to trailing slashes and different hosts (proxy)
+    const savePromise = page.waitForResponse(response => {
+      return response.request().method() === 'PUT' && 
+             /\/api\/privileges\/[0-9a-f-]{8}/i.test(response.url());
+    });
+    
+    const refreshPromise = page.waitForResponse(response => {
+      const url = new URL(response.url());
+      // Matches /api/privileges or /api/privileges/ exactly, ignoring query params
+      return response.request().method() === 'GET' && 
+             /\/api\/privileges\/?$/.test(url.pathname);
+    });
 
-    await page.getByTestId('save-button').click({ delay: 200 });
+    await page.getByTestId('save-button').click();
     
     await savePromise;
-    await getPromise;
+    await refreshPromise;
 
     // 5. Verify return to read-only mode and updated data
     await expect(page.getByTestId('read-only-view')).toBeVisible();
-    // Increase timeout for text check to account for signal propagation
+    // Use higher timeout for text check to ensure signal has propagated to UI
     await expect(page.getByTestId('display-description')).toHaveText(newDescription, { timeout: 10000 });
     await expect(page.getByTestId('display-riskLevel')).toHaveText('High');
   });

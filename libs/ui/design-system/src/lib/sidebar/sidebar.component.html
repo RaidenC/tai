@@ -5,6 +5,7 @@
   navigation. Semantic buttons ensure consistent behavior across screen readers. 
 -->
 <nav class="sidebar flex flex-col bg-gray-800 text-gray-100 h-screen shadow-lg transition-all duration-300"
+     aria-label="Main Navigation"
      [class.collapsed]="collapsed()"
      [class.w-[250px]]="!collapsed()"
      [class.w-[64px]]="collapsed()">
