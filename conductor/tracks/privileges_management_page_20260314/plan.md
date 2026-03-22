@@ -36,18 +36,18 @@
     - [x] Run `dotnet format` on backend to ensure strict formatting rules pass.
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Angular UI - Privileges Datatable' (Protocol in workflow.md)
 
-## Phase 4: Angular UI - Detail & Edit Forms
-- [ ] Task: Privilege Detail and Edit Pages logic & tests
-    - [ ] Write component tests verifying the rendering of JIT settings and immutable fields.
-    - [ ] Write Playwright E2E Smoke Tests for the Form logic (Create/Edit state loading and saving).
-- [ ] Task: Privilege Detail and Edit Pages implementation
-    - [ ] Implement the Create/Edit forms, including conflict resolution UI for concurrency errors.
-- [ ] Task: Accessibility and Navigation Validation
-    - [ ] Execute Axe-core accessibility checks on the form inputs and validation states.
-- [ ] Task: Regression Testing & CI Validation
-    - [ ] Run `nx affected --target=test,e2e,lint` to ensure no existing tests or lint rules are broken.
-    - [ ] Run `dotnet format` on backend to ensure strict formatting rules pass.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Angular UI - Detail & Edit Forms' (Protocol in workflow.md)
+## Phase 4: Angular UI - Detail & Edit Forms [checkpoint: 101f39b]
+- [x] Task: Privilege Detail and Edit Pages logic & tests
+    - [x] Write component tests verifying the rendering of JIT settings and immutable fields.
+    - [x] Write Playwright E2E Smoke Tests for the Form logic (Create/Edit state loading and saving).
+- [x] Task: Privilege Detail and Edit Pages implementation
+    - [x] Implement the Create/Edit forms, including conflict resolution UI for concurrency errors.
+- [x] Task: Accessibility and Navigation Validation
+    - [x] Execute Axe-core accessibility checks on the form inputs and validation states.
+- [x] Task: Regression Testing & CI Validation
+    - [x] Run `nx affected --target=test,e2e,lint` to ensure no existing tests or lint rules are broken.
+    - [x] Run `dotnet format` on backend to ensure strict formatting rules pass.
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Angular UI - Detail & Edit Forms' (Protocol in workflow.md)
 
 ## Phase 5: Spike - SignalR & Authentication Compatibility
 - [ ] Task: Research and Prototype

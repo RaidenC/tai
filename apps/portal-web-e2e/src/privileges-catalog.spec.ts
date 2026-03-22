@@ -1,22 +1,22 @@
 import { test, expect } from '@playwright/test';
 import { injectAxe, checkA11y } from 'axe-playwright';
+import { injectAuthSession } from './test-utils';
 
 test.describe('Privileges Catalog E2E', () => {
   const BASE_URL = 'http://localhost:4200';
 
+  // Use the TAI Admin storage state from the setup project
+  test.use({ storageState: '.auth/user.json' });
+
   test.beforeEach(async ({ page }) => {
-    // 1. Login as TAI Admin
-    await page.goto(BASE_URL);
-    await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click({ force: true });
-    await page.getByLabel(/Corporate Email/i).fill('admin@tai.com');
-    await page.getByLabel(/Password/i).fill('Password123!');
-    await page.getByRole('button', { name: /Sign In to Portal/i }).click({ force: true });
+    // 1. Inject session storage (OIDC state etc)
+    await injectAuthSession(page, 'session.json');
 
     // 2. Navigate to Privileges
-    await expect(page.locator('tai-sidebar')).toBeVisible({ timeout: 30000 });
-    await page.getByRole('menuitem', { name: /Privileges/i }).click();
+    await page.goto(`${BASE_URL}/admin/privileges`);
     
     // 3. Verify page loaded
+    await expect(page.locator('tai-sidebar')).toBeVisible({ timeout: 30000 });
     await expect(page).toHaveURL(/\/admin\/privileges/);
     await expect(page.locator('h1')).toContainText('Privilege Catalog');
     
@@ -80,29 +80,14 @@ test.describe('Privileges Catalog E2E', () => {
     await expect(firstActionTrigger).toBeFocused({ timeout: 10000 });
     
     // 4. Open menu with Enter
-    console.log('[DEBUG] Opening action menu with Enter...');
     await page.keyboard.press('Enter');
     const firstMenuItem = page.getByTestId('action-edit');
     await expect(firstMenuItem).toBeVisible({ timeout: 15000 });
     
     // CDK Menu often focuses the first item automatically when opened via keyboard
-    // We'll give it ample time to settle
-    console.log('[DEBUG] Waiting for focus to settle on action-edit...');
     await expect(async () => {
-      const activeElement = await page.evaluate(() => {
-        const el = document.activeElement;
-        return {
-          tagName: el?.tagName,
-          id: el?.getAttribute('id'),
-          testid: el?.getAttribute('data-testid'),
-          text: (el as HTMLElement)?.innerText
-        };
-      });
-      console.log(`[DEBUG] Current focus: ${activeElement.tagName} [testid: ${activeElement.testid}]`);
-
       const isFocused = await firstMenuItem.evaluate(el => document.activeElement === el);
       if (!isFocused) {
-        console.log('[DEBUG] Not focused, pressing ArrowDown...');
         await page.keyboard.press('ArrowDown');
       }
       await expect(firstMenuItem).toBeFocused();

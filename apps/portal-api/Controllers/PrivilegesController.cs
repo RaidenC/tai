@@ -25,6 +25,15 @@ public class PrivilegesController : ControllerBase {
     return await _mediator.Send(new GetPrivilegesQuery(pageNumber, pageSize, search));
   }
 
+  [HttpGet("{id}")]
+  public async Task<ActionResult<PrivilegeDto>> GetPrivilege(Guid id) {
+    var result = await _mediator.Send(new GetPrivilegeByIdQuery(id));
+    if (result == null) {
+      return NotFound();
+    }
+    return result;
+  }
+
   [HttpPost]
   public async Task<ActionResult<PrivilegeDto>> CreatePrivilege(CreatePrivilegeCommand command) {
     // TODO: Add strict [Authorize(Roles = "SystemAdmin")] once security is fully wired up.
