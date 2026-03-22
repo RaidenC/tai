@@ -136,8 +136,10 @@ describe('PrivilegeDetailPage', () => {
     expect(mockStore.updatePrivilege).toHaveBeenCalledWith(
       'priv-123',
       expect.objectContaining({
+        id: 'priv-123',
         description: 'Updated description',
-        riskLevel: RiskLevel.High
+        riskLevel: RiskLevel.High,
+        rowVersion: 'AAAAAAA='
       })
     );
 

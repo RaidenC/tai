@@ -323,7 +323,11 @@ export class PrivilegeDetailPage implements OnInit {
   protected onSave(): void {
     const privilege = this.store.selectedPrivilege();
     if (privilege && this.editForm.valid) {
-      this.store.updatePrivilege(privilege.id, this.editForm.value as Partial<Privilege>);
+      this.store.updatePrivilege(privilege.id, {
+        ...this.editForm.value as Partial<Privilege>,
+        id: privilege.id,
+        rowVersion: privilege.rowVersion
+      });
       this.isEditing.set(false);
     }
   }
