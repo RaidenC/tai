@@ -71,12 +71,24 @@ test.describe('Privilege Detail & Edit Page E2E', () => {
     await page.getByTestId('input-description').fill(newDescription);
     await page.getByTestId('input-riskLevel').selectOption({ label: 'High' });
 
-    // 4. Save Changes
-    await page.getByTestId('save-button').click();
+    // 4. Save Changes and wait for network
+    const savePromise = page.waitForResponse(response => 
+      response.url().includes('/api/privileges/') && response.request().method() === 'PUT'
+    );
+    // After PUT, the store refreshes the list, and we want to ensure the single privilege signal is also stable
+    const getPromise = page.waitForResponse(response => 
+      response.url().includes('/api/privileges/') && response.request().method() === 'GET'
+    );
+
+    await page.getByTestId('save-button').click({ delay: 200 });
+    
+    await savePromise;
+    await getPromise;
 
     // 5. Verify return to read-only mode and updated data
     await expect(page.getByTestId('read-only-view')).toBeVisible();
-    await expect(page.getByTestId('display-description')).toHaveText(newDescription);
+    // Increase timeout for text check to account for signal propagation
+    await expect(page.getByTestId('display-description')).toHaveText(newDescription, { timeout: 10000 });
     await expect(page.getByTestId('display-riskLevel')).toHaveText('High');
   });
 

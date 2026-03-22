@@ -77,4 +77,15 @@ describe('PrivilegesStore', () => {
     expect(store.status()).toBe('StepUpRequired');
     expect(store.isStepUpRequired()).toBe(true);
   });
+
+  it('should update selectedPrivilege after successful update', () => {
+    const updatedPrivilege = { ...mockPrivilege, description: 'Updated' };
+    serviceMock.updatePrivilege.mockReturnValue(of(updatedPrivilege));
+    serviceMock.getPrivileges.mockReturnValue(of({ items: [], totalCount: 0 }));
+
+    store.updatePrivilege('1', { description: 'Updated' });
+
+    expect(store.selectedPrivilege()).toEqual(updatedPrivilege);
+    expect(store.status()).toBe('Success');
+  });
 });

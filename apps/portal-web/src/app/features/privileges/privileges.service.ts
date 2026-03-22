@@ -10,9 +10,9 @@ export enum RiskLevel {
 }
 
 export interface JitSettings {
-  expiry: string | null;
-  allowGuest: boolean;
-  requireMfa: boolean;
+  maxElevationDuration: string | null;
+  requiresApproval: boolean;
+  requiresJustification: boolean;
 }
 
 export interface Privilege {

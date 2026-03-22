@@ -23,9 +23,9 @@ describe('PrivilegeDetailPage', () => {
     isActive: true,
     rowVersion: 'AAAAAAA=',
     jitSettings: {
-      expiry: '01:00:00',
-      allowGuest: false,
-      requireMfa: true
+      maxElevationDuration: '01:00:00',
+      requiresApproval: false,
+      requiresJustification: true
     }
   };
 
@@ -84,7 +84,7 @@ describe('PrivilegeDetailPage', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="display-name"]').textContent).toContain(mockPrivilege.name);
     expect(fixture.nativeElement.querySelector('[data-testid="display-module"]').textContent).toBe(mockPrivilege.module);
     expect(fixture.nativeElement.querySelector('[data-testid="display-riskLevel"]').textContent).toBe('Low');
-    expect(fixture.nativeElement.querySelector('[data-testid="display-jit-expiry"]').textContent).toBe('01:00:00');
+    expect(fixture.nativeElement.querySelector('[data-testid="display-jit-duration"]').textContent).toBe('01:00:00');
   });
 
   it('should toggle edit mode and patch form', () => {
@@ -99,9 +99,9 @@ describe('PrivilegeDetailPage', () => {
       riskLevel: mockPrivilege.riskLevel,
       isActive: mockPrivilege.isActive,
       jitSettings: {
-        expiry: mockPrivilege.jitSettings.expiry,
-        allowGuest: mockPrivilege.jitSettings.allowGuest,
-        requireMfa: mockPrivilege.jitSettings.requireMfa
+        maxElevationDuration: mockPrivilege.jitSettings.maxElevationDuration,
+        requiresApproval: mockPrivilege.jitSettings.requiresApproval,
+        requiresJustification: mockPrivilege.jitSettings.requiresJustification
       }
     });
   });
@@ -114,13 +114,8 @@ describe('PrivilegeDetailPage', () => {
     const nameInput = fixture.nativeElement.querySelector('[data-testid="input-name"]');
     const moduleInput = fixture.nativeElement.querySelector('[data-testid="input-module"]');
 
-    // These should either be disabled or not inputs at all (just text)
-    if (nameInput) {
-      expect(nameInput.disabled).toBe(true);
-    }
-    if (moduleInput) {
-      expect(moduleInput.disabled).toBe(true);
-    }
+    if (nameInput) expect(nameInput.disabled).toBe(true);
+    if (moduleInput) expect(moduleInput.disabled).toBe(true);
   });
 
   it('should call store.updatePrivilege on save', () => {

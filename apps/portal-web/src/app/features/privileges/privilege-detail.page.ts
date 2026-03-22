@@ -100,15 +100,15 @@ import { Privilege, RiskLevel } from './privileges.service';
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                       <span class="block text-xs font-bold text-gray-500 mb-1">Max Duration</span>
-                      <p class="font-mono font-bold text-slate-700" data-testid="display-jit-expiry">{{ privilege.jitSettings.expiry || 'No Limit' }}</p>
+                      <p class="font-mono font-bold text-slate-700" data-testid="display-jit-duration">{{ privilege.jitSettings.maxElevationDuration || 'No Limit' }}</p>
                     </div>
                     <div>
-                      <span class="block text-xs font-bold text-gray-500 mb-1">Allow Guest</span>
-                      <p class="font-bold text-slate-700">{{ privilege.jitSettings.allowGuest ? 'Yes' : 'No' }}</p>
+                      <span class="block text-xs font-bold text-gray-500 mb-1">Requires Approval</span>
+                      <p class="font-bold text-slate-700" data-testid="display-jit-approval">{{ privilege.jitSettings.requiresApproval ? 'Yes' : 'No' }}</p>
                     </div>
                     <div>
-                      <span class="block text-xs font-bold text-gray-500 mb-1">Require MFA</span>
-                      <p class="font-bold text-slate-700">{{ privilege.jitSettings.requireMfa ? 'Yes' : 'No' }}</p>
+                      <span class="block text-xs font-bold text-gray-500 mb-1">Requires Justification</span>
+                      <p class="font-bold text-slate-700" data-testid="display-jit-justification">{{ privilege.jitSettings.requiresJustification ? 'Yes' : 'No' }}</p>
                     </div>
                   </div>
                 </div>
@@ -178,22 +178,22 @@ import { Privilege, RiskLevel } from './privileges.service';
                   <h3 class="text-sm font-bold text-slate-600 uppercase tracking-widest">JIT Configuration</h3>
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="space-y-1">
-                      <label for="expiry" class="block text-xs font-bold text-gray-500">Max Expiry (HH:mm:ss)</label>
+                      <label for="maxElevationDuration" class="block text-xs font-bold text-gray-500">Max Duration (HH:mm:ss)</label>
                       <input 
-                        id="expiry"
+                        id="maxElevationDuration"
                         type="text" 
-                        formControlName="expiry"
+                        formControlName="maxElevationDuration"
                         placeholder="01:00:00"
                         class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-indigo-500 outline-none font-mono"
-                        data-testid="input-jit-expiry">
+                        data-testid="input-jit-duration">
                     </div>
                     <div class="flex items-center gap-2">
-                      <input type="checkbox" id="allowGuest" formControlName="allowGuest" class="w-4 h-4 text-indigo-600 rounded" aria-label="Allow Guest Access">
-                      <label for="allowGuest" class="text-sm font-bold text-gray-600">Allow Guest</label>
+                      <input type="checkbox" id="requiresApproval" formControlName="requiresApproval" class="w-4 h-4 text-indigo-600 rounded" aria-label="Requires Approval">
+                      <label for="requiresApproval" class="text-sm font-bold text-gray-600">Requires Approval</label>
                     </div>
                     <div class="flex items-center gap-2">
-                      <input type="checkbox" id="requireMfa" formControlName="requireMfa" class="w-4 h-4 text-indigo-600 rounded" aria-label="Require MFA">
-                      <label for="requireMfa" class="text-sm font-bold text-gray-600">Require MFA</label>
+                      <input type="checkbox" id="requiresJustification" formControlName="requiresJustification" class="w-4 h-4 text-indigo-600 rounded" aria-label="Requires Justification">
+                      <label for="requiresJustification" class="text-sm font-bold text-gray-600">Requires Justification</label>
                     </div>
                   </div>
                 </div>
@@ -258,9 +258,9 @@ export class PrivilegeDetailPage implements OnInit {
     riskLevel: [0, [Validators.required]],
     isActive: [true],
     jitSettings: this.fb.group({
-      expiry: ['', [Validators.pattern(/^\d{2}:\d{2}:\d{2}$/)]],
-      allowGuest: [false],
-      requireMfa: [true]
+      maxElevationDuration: ['', [Validators.pattern(/^\d{2}:\d{2}:\d{2}$/)]],
+      requiresApproval: [false],
+      requiresJustification: [true]
     })
   });
 
@@ -273,9 +273,9 @@ export class PrivilegeDetailPage implements OnInit {
           riskLevel: privilege.riskLevel,
           isActive: privilege.isActive,
           jitSettings: {
-            expiry: privilege.jitSettings.expiry,
-            allowGuest: privilege.jitSettings.allowGuest,
-            requireMfa: privilege.jitSettings.requireMfa
+            maxElevationDuration: privilege.jitSettings.maxElevationDuration,
+            requiresApproval: privilege.jitSettings.requiresApproval,
+            requiresJustification: privilege.jitSettings.requiresJustification
           }
         }, { emitEvent: false });
       }
@@ -310,9 +310,9 @@ export class PrivilegeDetailPage implements OnInit {
           riskLevel: privilege.riskLevel,
           isActive: privilege.isActive,
           jitSettings: {
-            expiry: privilege.jitSettings.expiry,
-            allowGuest: privilege.jitSettings.allowGuest,
-            requireMfa: privilege.jitSettings.requireMfa
+            maxElevationDuration: privilege.jitSettings.maxElevationDuration,
+            requiresApproval: privilege.jitSettings.requiresApproval,
+            requiresJustification: privilege.jitSettings.requiresJustification
           }
         });
       }
