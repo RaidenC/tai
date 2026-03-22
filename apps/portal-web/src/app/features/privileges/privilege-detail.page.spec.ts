@@ -34,6 +34,7 @@ describe('PrivilegeDetailPage', () => {
       selectedPrivilege: signal<Privilege | null>(null),
       isLoading: signal(false),
       isError: signal(false),
+      status: signal('Idle'),
       errorMessage: signal(null),
       loadPrivilege: vi.fn(),
       updatePrivilege: vi.fn(),
@@ -139,6 +140,10 @@ describe('PrivilegeDetailPage', () => {
         riskLevel: RiskLevel.High
       })
     );
+
+    // Simulate store Success status after async update
+    mockStore.status.set('Success');
+    fixture.detectChanges();
     expect(component['isEditing']()).toBe(false);
   });
 

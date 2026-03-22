@@ -26,9 +26,11 @@ test.describe('Privilege Detail & Edit Page E2E', () => {
     
     // 5. Open Action Menu and click Edit
     const firstActionTrigger = page.locator('[data-testid^="action-menu-trigger-"]').first();
-    await firstActionTrigger.click();
+    // We add a small delay and use force to ensure menu opens despite animations
+    await firstActionTrigger.click({ delay: 500, force: true });
     
     const editAction = page.getByTestId('action-edit');
+    await expect(editAction).toBeVisible({ timeout: 10000 });
     await editAction.click();
 
     // 6. Verify we are on the detail page

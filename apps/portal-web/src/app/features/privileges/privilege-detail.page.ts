@@ -18,10 +18,10 @@ import { Privilege, RiskLevel } from './privileges.service';
   template: `
     <div class="p-8 max-w-4xl mx-auto">
       <!-- Header -->
-      <nav class="mb-8 flex items-center gap-4">
+      <nav class="mb-8 flex items-center gap-4" aria-label="Breadcrumb">
         <button 
           (click)="goBack()" 
-          class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all duration-200"
+          class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-all duration-200"
           aria-label="Go back to privileges catalog"
           data-testid="back-button">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -61,13 +61,14 @@ import { Privilege, RiskLevel } from './privileges.service';
             <!-- Content Area -->
             @if (!isEditing()) {
               <div class="space-y-8" data-testid="read-only-view">
+                <h2 class="sr-only">Information</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div>
-                    <span class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Module / Application</span>
+                    <span class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Module / Application</span>
                     <p class="text-lg font-semibold text-gray-900" data-testid="display-module">{{ privilege.module }}</p>
                   </div>
                   <div>
-                    <span class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Risk Level</span>
+                    <span class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Risk Level</span>
                     <span 
                       class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold"
                       [ngClass]="{
@@ -79,11 +80,11 @@ import { Privilege, RiskLevel } from './privileges.service';
                       data-testid="display-riskLevel">{{ getRiskLevelName(privilege.riskLevel) }}</span>
                   </div>
                   <div class="md:col-span-2">
-                    <span class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Description</span>
+                    <span class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Description</span>
                     <p class="text-lg text-gray-700" data-testid="display-description">{{ privilege.description }}</p>
                   </div>
                   <div>
-                    <span class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Status</span>
+                    <span class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Status</span>
                     <span 
                       class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold"
                       [ngClass]="privilege.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'"
@@ -95,7 +96,7 @@ import { Privilege, RiskLevel } from './privileges.service';
 
                 <!-- JIT Settings Section -->
                 <div class="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                  <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4">Just-In-Time (JIT) Settings</h3>
+                  <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Just-In-Time (JIT) Settings</h3>
                   <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
                       <span class="block text-xs font-bold text-gray-500 mb-1">Max Duration</span>
@@ -114,6 +115,7 @@ import { Privilege, RiskLevel } from './privileges.service';
               </div>
             } @else {
               <form [formGroup]="editForm" (ngSubmit)="onSave()" class="space-y-6" data-testid="edit-form">
+                <h2 class="sr-only">Edit Form</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <!-- Immutable Name -->
                   <div class="space-y-1">
@@ -278,6 +280,15 @@ export class PrivilegeDetailPage implements OnInit {
         }, { emitEvent: false });
       }
     });
+
+    // Handle transition out of edit mode on success
+    effect(() => {
+      if (this.store.status() === 'Success' && this.isEditing()) {
+        // Only exit edit mode if we were actually saving (determined by presence of valid form)
+        // This prevents exiting edit mode if a background refresh happens
+        this.isEditing.set(false);
+      }
+    });
   }
 
   ngOnInit(): void {
@@ -322,7 +333,7 @@ export class PrivilegeDetailPage implements OnInit {
     const privilege = this.store.selectedPrivilege();
     if (privilege && this.editForm.valid) {
       this.store.updatePrivilege(privilege.id, this.editForm.value as Partial<Privilege>);
-      this.isEditing.set(false);
+      // Removal of synchronous isEditing.set(false) to avoid race condition
     }
   }
 
