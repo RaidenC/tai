@@ -25,6 +25,7 @@ import { Privilege, RiskLevel } from './privileges.service';
           aria-label="Go back to privileges catalog"
           data-testid="back-button">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <title>Go Back</title>
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
         </button>
@@ -122,7 +123,7 @@ import { Privilege, RiskLevel } from './privileges.service';
                       type="text" 
                       [value]="privilege.name" 
                       disabled
-                      class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed outline-none"
+                      class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50 text-gray-600 cursor-not-allowed outline-none"
                       data-testid="input-name">
                   </div>
                   <!-- Immutable Module -->
@@ -133,7 +134,7 @@ import { Privilege, RiskLevel } from './privileges.service';
                       type="text" 
                       [value]="privilege.module" 
                       disabled
-                      class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed outline-none"
+                      class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50 text-gray-600 cursor-not-allowed outline-none"
                       data-testid="input-module">
                   </div>
 
@@ -162,8 +163,8 @@ import { Privilege, RiskLevel } from './privileges.service';
                   </div>
 
                   <div class="flex items-center pt-8">
-                    <label class="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" formControlName="isActive" class="sr-only peer">
+                    <label for="isActive" class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" id="isActive" formControlName="isActive" class="sr-only peer">
                       <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                       <span class="ml-3 text-sm font-bold text-gray-700">Active Status</span>
                     </label>
@@ -185,11 +186,11 @@ import { Privilege, RiskLevel } from './privileges.service';
                         data-testid="input-jit-expiry">
                     </div>
                     <div class="flex items-center gap-2">
-                      <input type="checkbox" id="allowGuest" formControlName="allowGuest" class="w-4 h-4 text-indigo-600 rounded">
+                      <input type="checkbox" id="allowGuest" formControlName="allowGuest" class="w-4 h-4 text-indigo-600 rounded" aria-label="Allow Guest Access">
                       <label for="allowGuest" class="text-sm font-bold text-gray-600">Allow Guest</label>
                     </div>
                     <div class="flex items-center gap-2">
-                      <input type="checkbox" id="requireMfa" formControlName="requireMfa" class="w-4 h-4 text-indigo-600 rounded">
+                      <input type="checkbox" id="requireMfa" formControlName="requireMfa" class="w-4 h-4 text-indigo-600 rounded" aria-label="Require MFA">
                       <label for="requireMfa" class="text-sm font-bold text-gray-600">Require MFA</label>
                     </div>
                   </div>

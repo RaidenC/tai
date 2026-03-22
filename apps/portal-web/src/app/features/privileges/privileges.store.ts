@@ -116,7 +116,8 @@ export class PrivilegesStore {
 
     this.privilegesService.updatePrivilege(id, data, isStepUpVerified)
       .subscribe({
-        next: () => {
+        next: (updatedPrivilege) => {
+          this._selectedPrivilege.set(updatedPrivilege);
           this._status.set('Success');
           this.loadPrivileges(); // Refresh list
         },
