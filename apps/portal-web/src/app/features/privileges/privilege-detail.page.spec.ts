@@ -141,9 +141,6 @@ describe('PrivilegeDetailPage', () => {
       })
     );
 
-    // Simulate store Success status after async update
-    mockStore.status.set('Success');
-    fixture.detectChanges();
     expect(component['isEditing']()).toBe(false);
   });
 

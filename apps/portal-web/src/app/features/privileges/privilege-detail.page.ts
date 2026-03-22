@@ -280,15 +280,6 @@ export class PrivilegeDetailPage implements OnInit {
         }, { emitEvent: false });
       }
     });
-
-    // Handle transition out of edit mode on success
-    effect(() => {
-      if (this.store.status() === 'Success' && this.isEditing()) {
-        // Only exit edit mode if we were actually saving (determined by presence of valid form)
-        // This prevents exiting edit mode if a background refresh happens
-        this.isEditing.set(false);
-      }
-    });
   }
 
   ngOnInit(): void {
@@ -333,7 +324,7 @@ export class PrivilegeDetailPage implements OnInit {
     const privilege = this.store.selectedPrivilege();
     if (privilege && this.editForm.valid) {
       this.store.updatePrivilege(privilege.id, this.editForm.value as Partial<Privilege>);
-      // Removal of synchronous isEditing.set(false) to avoid race condition
+      this.isEditing.set(false);
     }
   }
 
