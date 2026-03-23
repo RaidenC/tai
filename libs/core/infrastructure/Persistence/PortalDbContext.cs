@@ -189,7 +189,8 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
       b.Property(p => p.RowVersion)
         .IsRowVersion()
         .HasColumnName("xmin")
-        .HasColumnType("xid");
+        .HasColumnType("xid")
+        .ValueGeneratedOnAddOrUpdate();
 
       // No Global Query Filter for Privilege as it is a global catalog.
     });

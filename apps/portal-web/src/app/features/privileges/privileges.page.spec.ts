@@ -62,10 +62,18 @@ describe('PrivilegesPage', () => {
     expect(compiled.textContent).toContain('Step-up authentication required');
   });
 
-  it('should navigate to edit page on edit action', () => {
+  it('should navigate to detail page on view action', () => {
+    const navigateSpy = vi.spyOn(router, 'navigate');
+    component['onAction']({ actionId: 'view', row: mockPrivileges[0] as any });
+    expect(navigateSpy).toHaveBeenCalledWith(['/admin/privileges', '1']);
+  });
+
+  it('should navigate to edit page on edit action with query params', () => {
     const navigateSpy = vi.spyOn(router, 'navigate');
     component['onAction']({ actionId: 'edit', row: mockPrivileges[0] as any });
-    expect(navigateSpy).toHaveBeenCalledWith(['/admin/privileges', '1']);
+    expect(navigateSpy).toHaveBeenCalledWith(['/admin/privileges', '1'], { 
+      queryParams: { edit: 'true' } 
+    });
   });
 
   it('should call store.updatePrivilege on toggle action', () => {

@@ -126,6 +126,11 @@ export class PrivilegesPage implements OnInit {
 
   protected readonly actions: TableActionDef<Privilege>[] = [
     {
+      id: 'view',
+      label: 'View Details',
+      class: 'text-gray-600 hover:text-gray-900'
+    },
+    {
       id: 'edit',
       label: 'Edit',
       class: 'text-indigo-600 hover:text-indigo-900'
@@ -172,8 +177,12 @@ export class PrivilegesPage implements OnInit {
   }
 
   protected onAction(event: { actionId: string; row: Privilege }): void {
-    if (event.actionId === 'edit') {
+    if (event.actionId === 'view') {
       this.router.navigate(['/admin/privileges', event.row.id]);
+    } else if (event.actionId === 'edit') {
+      this.router.navigate(['/admin/privileges', event.row.id], { 
+        queryParams: { edit: 'true' } 
+      });
     } else if (event.actionId === 'toggle') {
       this.pendingUpdate = { 
         id: event.row.id, 

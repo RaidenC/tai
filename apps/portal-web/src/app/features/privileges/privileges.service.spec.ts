@@ -14,7 +14,7 @@ describe('PrivilegesService', () => {
     riskLevel: RiskLevel.Medium,
     isActive: true,
     rowVersion: 'AAAA',
-    jitSettings: { expiry: null, allowGuest: false, requireMfa: false }
+    jitSettings: { maxElevationDuration: null, requiresApproval: false, requiresJustification: false }
   };
 
   beforeEach(() => {
