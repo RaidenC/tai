@@ -20,9 +20,9 @@ CI=true npx nx run-many -t test e2e --projects=portal-web,portal-web-e2e --watch
 ```
 
 ### Targeted E2E Debugging
-To save time and context, run only the specific test failing. Use the `--grep` flag to match test names:
+To save time and context, run only the specific test failing. Use the `--grep` flag to match test names or describe blocks:
 ```bash
-CI=true npx nx e2e portal-web-e2e --playwright-config=apps/portal-web-e2e/playwright.config.ts --grep "should display privilege details"
+CI=true npx nx e2e portal-web-e2e --playwright-config=apps/portal-web-e2e/playwright.config.ts --grep "your test name here"
 ```
 
 ## Engineering & Debugging Mandates (Lessons Learned)
