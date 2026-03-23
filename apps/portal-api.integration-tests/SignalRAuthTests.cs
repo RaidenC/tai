@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Xunit;
 
 namespace Tai.Portal.Api.IntegrationTests;
@@ -19,6 +20,7 @@ namespace Tai.Portal.Api.IntegrationTests;
 public class SignalRAuthTests : IClassFixture<WebApplicationFactory<Program>> {
   private readonly WebApplicationFactory<Program> _factory;
   private const string TestUserId = "signalr-test-user-001";
+  private const string TestGatewaySecret = "signalr-test-secret";
 
   public SignalRAuthTests(WebApplicationFactory<Program> factory) {
     _factory = factory;
@@ -30,6 +32,15 @@ public class SignalRAuthTests : IClassFixture<WebApplicationFactory<Program>> {
    */
   private WebApplicationFactory<Program> CreateAuthenticatedFactory() {
     return _factory.WithWebHostBuilder(builder => {
+      builder.ConfigureAppConfiguration((context, configBuilder) => {
+        // JUNIOR RATIONALE: We override the Gateway Secret in the test 
+        // environment to ensure our tests ALWAYS match, regardless of 
+        // CI environment variables (GATEWAY_SECRET).
+        configBuilder.AddInMemoryCollection(new Dictionary<string, string?> {
+          ["GATEWAY_SECRET"] = "signalr-test-secret"
+        });
+      });
+
       builder.ConfigureTestServices(services => {
         services.AddSingleton(new TestUserContext { UserId = TestUserId });
         services.AddAuthentication("TestAuth")
@@ -57,7 +68,7 @@ public class SignalRAuthTests : IClassFixture<WebApplicationFactory<Program>> {
           options.HttpMessageHandlerFactory = _ => server.CreateHandler();
           // JUNIOR RATIONALE: We must provide the Gateway Secret for ALL calls 
           // to the backend, including the SignalR handshake.
-          options.Headers.Add("X-Gateway-Secret", "portal-poc-secret-2026");
+          options.Headers.Add("X-Gateway-Secret", TestGatewaySecret);
           // Simulate an auth header.
           options.Headers.Add("Authorization", "Bearer test-token");
           // JUNIOR RATIONALE: Even though SignalR browser clients can't easily 
@@ -87,7 +98,7 @@ public class SignalRAuthTests : IClassFixture<WebApplicationFactory<Program>> {
     var connection = new HubConnectionBuilder()
         .WithUrl("http://localhost/hubs/notifications", options => {
           options.HttpMessageHandlerFactory = _ => server.CreateHandler();
-          options.Headers.Add("X-Gateway-Secret", "portal-poc-secret-2026");
+          options.Headers.Add("X-Gateway-Secret", TestGatewaySecret);
 
           // JUNIOR RATIONALE: This is the true BFF pattern. The browser 
           // doesn't have a token; it has a cookie. We simulate the cookie 
@@ -107,15 +118,39 @@ public class SignalRAuthTests : IClassFixture<WebApplicationFactory<Program>> {
     }
   }
 
+  private WebApplicationFactory<Program> CreateUnauthenticatedFactory() {
+    return _factory.WithWebHostBuilder(builder => {
+      builder.ConfigureAppConfiguration((context, configBuilder) => {
+        configBuilder.AddInMemoryCollection(new Dictionary<string, string?> {
+          ["GATEWAY_SECRET"] = TestGatewaySecret
+        });
+      });
+
+      builder.ConfigureTestServices(services => {
+        // Empty context causes TestAuthHandler to fail
+        services.AddSingleton(new TestUserContext { UserId = "" });
+        services.AddAuthentication("TestAuth")
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("TestAuth", null);
+
+        services.AddAuthorization(options => {
+          options.DefaultPolicy = new AuthorizationPolicyBuilder("TestAuth")
+              .RequireAuthenticatedUser()
+              .Build();
+        });
+      });
+    });
+  }
+
   [Fact]
   public async Task ConnectToHub_ShouldFail_WhenUnauthenticated() {
     // 1. Arrange
-    var server = _factory.Server;
+    var factory = CreateUnauthenticatedFactory();
+    var server = factory.Server;
 
     var connection = new HubConnectionBuilder()
         .WithUrl("http://localhost/hubs/notifications", options => {
           options.HttpMessageHandlerFactory = _ => server.CreateHandler();
-          options.Headers.Add("X-Gateway-Secret", "portal-poc-secret-2026");
+          options.Headers.Add("X-Gateway-Secret", TestGatewaySecret);
           // No auth headers here.
         })
         .Build();
