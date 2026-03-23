@@ -26,6 +26,10 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
   }
 
   protected override Task<AuthenticateResult> HandleAuthenticateAsync() {
+    if (string.IsNullOrEmpty(_userContext.UserId)) {
+      return Task.FromResult(AuthenticateResult.Fail("No user context provided."));
+    }
+
     var claims = new[] {
         new Claim(ClaimTypes.NameIdentifier, _userContext.UserId),
         new Claim(ClaimTypes.Name, "Test User"),
