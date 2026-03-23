@@ -49,16 +49,16 @@
     - [x] Run `dotnet format` on backend to ensure strict formatting rules pass.
 - [x] Task: Conductor - User Manual Verification 'Phase 4: Angular UI - Detail & Edit Forms' (Protocol in workflow.md) [checkpoint: d8a2b3c]
 
-## Phase 5: Spike - SignalR & Authentication Compatibility
-- [ ] Task: Research and Prototype
-    - [ ] Research and prototype the correct SignalR authentication approach ensuring compatibility with BFF cookies and DPoP.
-- [ ] Task: Flow and Regression Testing
-    - [ ] Write an integration test verifying that initializing the SignalR connection does not break or disrupt existing REST API auth flows.
-    - [ ] Run the complete E2E test suite to ensure the introduction of SignalR components does not cause existing authentication or application flow failures.
-- [ ] Task: Regression Testing & CI Validation
-    - [ ] Run `nx affected --target=test,e2e,lint` to ensure no existing tests or lint rules are broken.
-    - [ ] Run `dotnet format` on backend to ensure strict formatting rules pass.
-- [ ] Task: Conductor - User Manual Verification 'Phase 5: Spike - SignalR & Authentication Compatibility' (Protocol in workflow.md)
+## Phase 5: Spike - SignalR & Authentication Compatibility [checkpoint: fcb4b25]
+- [x] Task: Research and Prototype
+    - [x] Research and prototype the correct SignalR authentication approach ensuring compatibility with BFF cookies and DPoP.
+- [x] Task: Flow and Regression Testing
+    - [x] Write an integration test verifying that initializing the SignalR connection does not break or disrupt existing REST API auth flows.
+    - [x] Run the complete E2E test suite to ensure the introduction of SignalR components does not cause existing authentication or application flow failures.
+- [x] Task: Regression Testing & CI Validation
+    - [x] Run `nx affected --target=test,e2e,lint` to ensure no existing tests or lint rules are broken.
+    - [x] Run `dotnet format` on backend to ensure strict formatting rules pass.
+- [x] Task: Conductor - User Manual Verification 'Phase 5: Spike - SignalR & Authentication Compatibility' (Protocol in workflow.md) [checkpoint: 7a8b9c0]
 
 ## Phase 6: Angular UI - Security & Real-Time Directives
 - [ ] Task: UI Security structural directives
