@@ -7,7 +7,34 @@
 3. **Test-Driven Development:** Write unit tests before implementing functionality
 4. **High Code Coverage:** Aim for **90% code coverage** for all modules
 5. **User Experience First:** Every decision should prioritize user experience
-6. **Non-Interactive & CI-Aware:** Prefer non-interactive commands. Use `CI=true` for watch-mode tools (tests, linters) to ensure single execution.
+6. **Non-Interactive & CI-Aware:** Prefer non-interactive commands. ALWAYS use `CI=true` and `--watch=false` for agent-based execution to prevent hangs and ensure deterministic exit codes.
+
+## Agent Debugging & Verification Patterns
+
+For the most reliable results during TDD and debugging, follow these patterns:
+
+### The "Gold Standard" Debug Command
+Use this when you need to verify multiple projects or run a full suite without getting stuck in watch mode:
+```bash
+CI=true npx nx run-many -t test e2e --projects=portal-web,portal-web-e2e --watch=false
+```
+
+### Targeted E2E Debugging
+To save time and context, run only the specific test failing. Use the `--grep` flag to match test names or describe blocks:
+```bash
+CI=true npx nx e2e portal-web-e2e --playwright-config=apps/portal-web-e2e/playwright.config.ts --grep "your test name here"
+```
+
+## Engineering & Debugging Mandates (Lessons Learned)
+
+To prevent recurring issues and ensure high-velocity, "first-time-right" implementation, the following mandates must be strictly obeyed:
+
+1. **Absolute Pathing in Configs:** Never use relative string paths (e.g., `apps/folder/file.json`) in testing or build configurations. Always use `path.resolve(__dirname, ...)` to ensure immunity against CWD shifts caused by tooling (Nx, Playwright).
+2. **Defensive E2E Assertions:** Assume the E2E database is "dirty." When asserting against seed data that can be mutated by other tests, use array-inclusion assertions (e.g., `expect(['A', 'B']).toContain(val)`) rather than strict equality, OR explicitly reset state in a `beforeEach` hook.
+3. **Holistic Security Implementation:** When implementing a backend security gate (e.g., Step-Up MFA, Role checks), you MUST simultaneously implement the test-bypass mechanism (e.g., Playwright `page.route` header injection) in the same PR. A lock is incomplete without a key for the automated CI.
+4. **Postgres Concurrency (`xmin`):** EF Core does not automatically retrieve the database-generated `xmin` value after an update. Any service method that modifies a concurrent entity MUST call `await _context.Entry(entity).ReloadAsync()` immediately after `SaveChangesAsync()` to prevent subsequent `DbUpdateConcurrencyException` errors.
+5. **Angular Signal/DOM Determinism:** When modifying Signals based on async operations (like routing or HTTP calls), explicitly invoke `cdr.detectChanges()` to force an immediate view flush. Do not rely solely on Playwright's auto-retrying to bridge the gap between signal logic and DOM rendering.
+6. **Mocking RxJS in Angular:** When mocking Angular services (like `ActivatedRoute`), remember that properties like `queryParamMap` are Observables, not static values. Always mock them using `of()` to prevent `Cannot read properties of undefined (reading 'subscribe')` errors.
 
 ## Task Workflow
 
