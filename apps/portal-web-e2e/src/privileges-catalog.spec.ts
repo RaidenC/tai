@@ -55,14 +55,19 @@ test.describe('Privileges Catalog E2E', () => {
     await expect(page).toHaveURL(/search=Portal.Users.Read/);
     
     const table = page.getByTestId('data-table');
-    const rows = table.locator('tr[cdk-row]');
-    await expect(rows).toHaveCount(1);
-    await expect(rows.first()).toContainText('Portal.Users.Read');
+    const row = table.locator('tr', { hasText: 'Portal.Users.Read' });
+    await expect(row).toBeVisible();
+    await expect(table.locator('tr[cdk-row]')).toHaveCount(1);
   });
 
   test('should support keyboard navigation', async ({ page }) => {
-    // 1. Focus search input
+    // 0. Search for a specific privilege to ensure a stable, small table
     const searchInput = page.getByTestId('privilege-search-input');
+    await searchInput.fill('Portal.Users.Read');
+    await expect(page).toHaveURL(/search=Portal.Users.Read/);
+    await expect(page.getByTestId('table-loading')).toBeHidden();
+
+    // 1. Focus search input
     await searchInput.focus();
     
     // 2. Tab to the first sortable header (Name)

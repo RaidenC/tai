@@ -29,10 +29,15 @@ test.describe('Privilege Detail & Edit Page E2E', () => {
     await expect(page.getByTestId('table-loading')).toBeHidden();
     
     // 5. Open Action Menu and click View Details
-    const firstActionTrigger = page.locator('[data-testid^="action-menu-trigger-"]').first();
+    // JUNIOR RATIONALE: We target the specific row containing our search text. 
+    // This is more resilient than using .first() because it ensures 
+    // Playwright waits for the table to actually filter before clicking.
+    const row = page.locator('tr', { hasText: 'Portal.Users.Read' });
+    const actionTrigger = row.locator('[data-testid^="action-menu-trigger-"]');
+    
     // Ensure the trigger is visible and stable before clicking
-    await firstActionTrigger.waitFor({ state: 'visible' });
-    await firstActionTrigger.click({ force: true });
+    await actionTrigger.waitFor({ state: 'visible' });
+    await actionTrigger.click({ force: true });
     
     const viewAction = page.getByTestId('action-view');
     // Ensure the menu item is visible before clicking
