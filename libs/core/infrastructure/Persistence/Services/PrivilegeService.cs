@@ -142,6 +142,9 @@ public class PrivilegeService : IPrivilegeService {
 
     await _context.SaveChangesAsync(cancellationToken);
 
+    // Force a reload to get the latest database-generated RowVersion (xmin)
+    await _context.Entry(privilege).ReloadAsync(cancellationToken);
+
     InvalidateCache(id);
 
     return new PrivilegeDto(

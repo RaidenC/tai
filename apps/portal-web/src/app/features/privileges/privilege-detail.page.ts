@@ -1,4 +1,4 @@
-import { Component, inject, OnInit, signal, effect } from '@angular/core';
+import { Component, inject, OnInit, signal, effect, ChangeDetectorRef } from '@angular/core';
 import { CommonModule, NgClass } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
@@ -32,12 +32,7 @@ import { Privilege, RiskLevel } from './privileges.service';
         <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Privilege Details</h1>
       </nav>
 
-      @if (store.isLoading()) {
-        <div class="flex flex-col items-center justify-center py-20" data-testid="loading-indicator">
-          <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-          <p class="mt-4 text-gray-500 font-medium">Loading privilege...</p>
-        </div>
-      } @else if (store.selectedPrivilege(); as privilege) {
+      @if (store.selectedPrivilege()) {
         <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden" data-testid="privilege-card">
           <!-- Banner -->
           <div class="h-32 bg-gradient-to-r from-slate-700 to-slate-900"></div>
@@ -45,75 +40,23 @@ import { Privilege, RiskLevel } from './privileges.service';
           <div class="px-8 pb-8">
             <div class="relative flex justify-between items-end -mt-12 mb-8">
               <div class="px-6 py-4 bg-white rounded-2xl shadow-lg border-4 border-white flex items-center justify-center text-xl font-bold text-slate-800" data-testid="display-name">
-                {{ privilege.name }}
+                {{ store.selectedPrivilege()?.name }}
               </div>
               
-              @if (!isEditing()) {
-                <button 
-                  (click)="toggleEdit()"
-                  class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-200 cursor-pointer"
-                  data-testid="edit-button">
-                  Edit Privilege
-                </button>
-              }
+              <div class="flex gap-2">
+                @if (!isEditing()) {
+                  <button 
+                    (click)="toggleEdit()"
+                    class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-xl shadow-md hover:bg-indigo-700 transition-all duration-200 cursor-pointer"
+                    data-testid="edit-button">
+                    Edit Privilege
+                  </button>
+                }
+              </div>
             </div>
 
             <!-- Content Area -->
-            @if (!isEditing()) {
-              <div class="space-y-8" data-testid="read-only-view">
-                <h2 class="sr-only">Information</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <span class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Module / Application</span>
-                    <p class="text-lg font-semibold text-gray-900" data-testid="display-module">{{ privilege.module }}</p>
-                  </div>
-                  <div>
-                    <span class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Risk Level</span>
-                    <span 
-                      class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold"
-                      [ngClass]="{
-                        'bg-blue-100 text-blue-700': privilege.riskLevel === 0,
-                        'bg-yellow-100 text-yellow-700': privilege.riskLevel === 1,
-                        'bg-orange-100 text-orange-700': privilege.riskLevel === 2,
-                        'bg-red-100 text-red-700': privilege.riskLevel === 3
-                      }"
-                      data-testid="display-riskLevel">{{ getRiskLevelName(privilege.riskLevel) }}</span>
-                  </div>
-                  <div class="md:col-span-2">
-                    <span class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Description</span>
-                    <p class="text-lg text-gray-700" data-testid="display-description">{{ privilege.description }}</p>
-                  </div>
-                  <div>
-                    <span class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Status</span>
-                    <span 
-                      class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold"
-                      [ngClass]="privilege.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'"
-                      data-testid="display-status">
-                      {{ privilege.isActive ? 'Active' : 'Inactive' }}
-                    </span>
-                  </div>
-                </div>
-
-                <!-- JIT Settings Section -->
-                <div class="p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                  <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Just-In-Time (JIT) Settings</h3>
-                  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <span class="block text-xs font-bold text-gray-500 mb-1">Max Duration</span>
-                      <p class="font-mono font-bold text-slate-700" data-testid="display-jit-duration">{{ privilege.jitSettings.maxElevationDuration || 'No Limit' }}</p>
-                    </div>
-                    <div>
-                      <span class="block text-xs font-bold text-gray-500 mb-1">Requires Approval</span>
-                      <p class="font-bold text-slate-700" data-testid="display-jit-approval">{{ privilege.jitSettings.requiresApproval ? 'Yes' : 'No' }}</p>
-                    </div>
-                    <div>
-                      <span class="block text-xs font-bold text-gray-500 mb-1">Requires Justification</span>
-                      <p class="font-bold text-slate-700" data-testid="display-jit-justification">{{ privilege.jitSettings.requiresJustification ? 'Yes' : 'No' }}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            } @else {
+            @if (isEditing()) {
               <form [formGroup]="editForm" (ngSubmit)="onSave()" class="space-y-6" data-testid="edit-form">
                 <h2 class="sr-only">Edit Form</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -123,7 +66,7 @@ import { Privilege, RiskLevel } from './privileges.service';
                     <input 
                       id="name"
                       type="text" 
-                      [value]="privilege.name" 
+                      [value]="store.selectedPrivilege()?.name" 
                       disabled
                       class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50 text-gray-600 cursor-not-allowed outline-none"
                       data-testid="input-name">
@@ -134,7 +77,7 @@ import { Privilege, RiskLevel } from './privileges.service';
                     <input 
                       id="module"
                       type="text" 
-                      [value]="privilege.module" 
+                      [value]="store.selectedPrivilege()?.module" 
                       disabled
                       class="w-full px-4 py-3 rounded-xl border border-gray-100 bg-gray-50 text-gray-600 cursor-not-allowed outline-none"
                       data-testid="input-module">
@@ -157,10 +100,10 @@ import { Privilege, RiskLevel } from './privileges.service';
                       formControlName="riskLevel"
                       class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 outline-none bg-white"
                       data-testid="input-riskLevel">
-                      <option [value]="0">Low</option>
-                      <option [value]="1">Medium</option>
-                      <option [value]="2">High</option>
-                      <option [value]="3">Critical</option>
+                      <option [ngValue]="0">Low</option>
+                      <option [ngValue]="1">Medium</option>
+                      <option [ngValue]="2">High</option>
+                      <option [ngValue]="3">Critical</option>
                     </select>
                   </div>
 
@@ -215,8 +158,67 @@ import { Privilege, RiskLevel } from './privileges.service';
                   </button>
                 </div>
               </form>
+            } @else {
+              <div class="space-y-8" data-testid="read-only-view">
+                <h2 class="sr-only">Information</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div>
+                    <span class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Module / Application</span>
+                    <p class="text-lg font-semibold text-gray-900" data-testid="display-module">{{ store.selectedPrivilege()?.module }}</p>
+                  </div>
+                  <div>
+                    <span class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Risk Level</span>
+                    <span 
+                      class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold"
+                      [ngClass]="{
+                        'bg-blue-100 text-blue-700': store.selectedPrivilege()?.riskLevel === 0,
+                        'bg-yellow-100 text-yellow-700': store.selectedPrivilege()?.riskLevel === 1,
+                        'bg-orange-100 text-orange-700': store.selectedPrivilege()?.riskLevel === 2,
+                        'bg-red-100 text-red-700': store.selectedPrivilege()?.riskLevel === 3
+                      }"
+                      data-testid="display-riskLevel">{{ getRiskLevelName(store.selectedPrivilege()?.riskLevel ?? 0) }}</span>
+                  </div>
+                  <div class="md:col-span-2">
+                    <span class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Description</span>
+                    <p class="text-lg text-gray-700" data-testid="display-description">{{ store.selectedPrivilege()?.description }}</p>
+                  </div>
+                  <div>
+                    <span class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Status</span>
+                    <span 
+                      class="inline-flex items-center px-3 py-1 rounded-full text-sm font-bold"
+                      [ngClass]="store.selectedPrivilege()?.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'"
+                      data-testid="display-status">
+                      {{ store.selectedPrivilege()?.isActive ? 'Active' : 'Inactive' }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- JIT Settings Section -->
+                <div class="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                  <h3 class="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4">Just-In-Time (JIT) Settings</h3>
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <span class="block text-xs font-bold text-gray-500 mb-1">Max Duration</span>
+                      <p class="font-mono font-bold text-slate-700" data-testid="display-jit-duration">{{ store.selectedPrivilege()?.jitSettings?.maxElevationDuration || 'No Limit' }}</p>
+                    </div>
+                    <div>
+                      <span class="block text-xs font-bold text-gray-500 mb-1">Requires Approval</span>
+                      <p class="font-bold text-slate-700" data-testid="display-jit-approval">{{ store.selectedPrivilege()?.jitSettings?.requiresApproval ? 'Yes' : 'No' }}</p>
+                    </div>
+                    <div>
+                      <span class="block text-xs font-bold text-gray-500 mb-1">Requires Justification</span>
+                      <p class="font-bold text-slate-700" data-testid="display-jit-justification">{{ store.selectedPrivilege()?.jitSettings?.requiresJustification ? 'Yes' : 'No' }}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             }
           </div>
+        </div>
+      } @else if (store.isLoading()) {
+        <div class="flex flex-col items-center justify-center py-20" data-testid="loading-indicator">
+          <div class="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <p class="mt-4 text-gray-500 font-medium">Loading privilege...</p>
         </div>
       } @else if (store.isError()) {
         <div class="bg-red-50 p-8 rounded-2xl border border-red-100 text-center" data-testid="error-message">
@@ -248,6 +250,7 @@ export class PrivilegeDetailPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
+  private readonly cdr = inject(ChangeDetectorRef);
   protected readonly store = inject(PrivilegesStore);
 
   protected readonly RiskLevel = RiskLevel;
@@ -267,7 +270,9 @@ export class PrivilegeDetailPage implements OnInit {
   constructor() {
     effect(() => {
       const privilege = this.store.selectedPrivilege();
-      if (privilege && this.isEditing()) {
+      const editing = this.isEditing();
+      
+      if (privilege && editing) {
         this.editForm.patchValue({
           description: privilege.description,
           riskLevel: privilege.riskLevel,
@@ -278,23 +283,18 @@ export class PrivilegeDetailPage implements OnInit {
             requiresJustification: privilege.jitSettings.requiresJustification
           }
         }, { emitEvent: false });
-      }
-    });
-
-    // Handle transition out of edit mode on success
-    effect(() => {
-      if (this.store.status() === 'Success' && this.isEditing()) {
-        this.isEditing.set(false);
+        this.cdr.detectChanges();
       }
     });
   }
 
   ngOnInit(): void {
-    this.refresh();
+    this.route.queryParamMap.subscribe(params => {
+      this.isEditing.set(params.get('edit') === 'true');
+      this.cdr.detectChanges();
+    });
 
-    if (this.route.snapshot.queryParamMap.get('edit') === 'true') {
-      this.isEditing.set(true);
-    }
+    this.refresh();
   }
 
   protected getRiskLevelName(level: RiskLevel): string {
@@ -325,6 +325,7 @@ export class PrivilegeDetailPage implements OnInit {
       }
     }
     this.isEditing.set(!this.isEditing());
+    this.cdr.detectChanges();
   }
 
   protected onSave(): void {
@@ -335,7 +336,8 @@ export class PrivilegeDetailPage implements OnInit {
         id: privilege.id,
         rowVersion: privilege.rowVersion
       });
-      // Synchronous exit removed to allow effect to handle it after Success status
+      this.isEditing.set(false);
+      this.cdr.detectChanges();
     }
   }
 

@@ -1,12 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { injectAxe, checkA11y } from 'axe-playwright';
 import { injectAuthSession } from './test-utils';
+import * as path from 'path';
 
 test.describe('Privileges Catalog E2E', () => {
   const BASE_URL = 'http://localhost:4200';
 
-  // Use the TAI Admin storage state from the setup project
-  test.use({ storageState: '.auth/user.json' });
+  // Use absolute path to ensure it works regardless of CWD (Root vs Project folder)
+  test.use({ storageState: path.resolve(__dirname, '../.auth/user.json') });
 
   test.beforeEach(async ({ page }) => {
     // 1. Inject session storage (OIDC state etc)
@@ -81,7 +82,7 @@ test.describe('Privileges Catalog E2E', () => {
     
     // 4. Open menu with Enter
     await page.keyboard.press('Enter');
-    const firstMenuItem = page.getByTestId('action-edit');
+    const firstMenuItem = page.getByTestId('action-view');
     await expect(firstMenuItem).toBeVisible({ timeout: 15000 });
     
     // CDK Menu often focuses the first item automatically when opened via keyboard

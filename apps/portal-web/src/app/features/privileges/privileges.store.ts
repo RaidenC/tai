@@ -119,7 +119,8 @@ export class PrivilegesStore {
         next: (updatedPrivilege) => {
           this._selectedPrivilege.set(updatedPrivilege);
           this._status.set('Success');
-          this.loadPrivileges(); // Refresh list
+          // Refresh catalog in background
+          this.loadPrivileges();
         },
         error: (err: HttpErrorResponse) => {
           if (err.status === 403 && err.headers.get('X-Step-Up-Required') === 'true') {

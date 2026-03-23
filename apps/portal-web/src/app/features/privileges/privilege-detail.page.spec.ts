@@ -2,10 +2,11 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { PrivilegeDetailPage } from './privilege-detail.page';
 import { PrivilegesStore } from './privileges.store';
 import { signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { ReactiveFormsModule } from '@angular/forms';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Privilege, RiskLevel } from './privileges.service';
+import { of } from 'rxjs';
 
 describe('PrivilegeDetailPage', () => {
   let component: PrivilegeDetailPage;
@@ -53,6 +54,7 @@ describe('PrivilegeDetailPage', () => {
           get: vi.fn().mockReturnValue(null),
         },
       },
+      queryParamMap: of(convertToParamMap({})),
     };
 
     await TestBed.configureTestingModule({
@@ -158,7 +160,21 @@ describe('PrivilegeDetailPage', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="error-message"]').textContent).toContain('Privilege not found');
   });
 
-  it('should render refresh button when conflict occurs', () => {
+  it('should render loading indicator when isLoading is true', () => {
+    mockStore.isLoading.set(true);
+    mockStore.selectedPrivilege.set(null);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="loading-indicator"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="loading-indicator"]').textContent).toContain('Loading privilege...');
+  });
+
+  it('should return "Unknown" for invalid risk level', () => {
+    const unknownLevelName = component['getRiskLevelName'](99 as any);
+    expect(unknownLevelName).toBe('Unknown');
+  });
+
+  it('should render refresh button and reload on click when conflict occurs', () => {
     mockStore.isError.set(true);
     mockStore.errorMessage.set('concurrency conflict detected');
     fixture.detectChanges();
@@ -166,6 +182,7 @@ describe('PrivilegeDetailPage', () => {
     const refreshBtn = fixture.nativeElement.querySelector('[data-testid="refresh-button"]');
     expect(refreshBtn).toBeTruthy();
     
+    mockStore.loadPrivilege.mockClear();
     refreshBtn.click();
     expect(mockStore.loadPrivilege).toHaveBeenCalledWith('priv-123');
   });

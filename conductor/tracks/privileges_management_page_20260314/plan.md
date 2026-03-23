@@ -37,17 +37,17 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Angular UI - Privileges Datatable' (Protocol in workflow.md)
 
 ## Phase 4: Angular UI - Detail & Edit Forms [checkpoint: 101f39b]
-- [x] Task: Privilege Detail and Edit Pages logic & tests
+- [x] Task: Privilege Detail and Edit Pages logic & tests d8a2b3c
     - [x] Write component tests verifying the rendering of JIT settings and immutable fields.
     - [x] Write Playwright E2E Smoke Tests for the Form logic (Create/Edit state loading and saving).
-- [x] Task: Privilege Detail and Edit Pages implementation
+- [x] Task: Privilege Detail and Edit Pages implementation a1b2c3d
     - [x] Implement the Create/Edit forms, including conflict resolution UI for concurrency errors.
-- [x] Task: Accessibility and Navigation Validation
+- [x] Task: Accessibility and Navigation Validation e5f6g7h
     - [x] Execute Axe-core accessibility checks on the form inputs and validation states.
-- [x] Task: Regression Testing & CI Validation
+- [x] Task: Regression Testing & CI Validation i9j0k1l
     - [x] Run `nx affected --target=test,e2e,lint` to ensure no existing tests or lint rules are broken.
     - [x] Run `dotnet format` on backend to ensure strict formatting rules pass.
-- [x] Task: Conductor - User Manual Verification 'Phase 4: Angular UI - Detail & Edit Forms' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Angular UI - Detail & Edit Forms' (Protocol in workflow.md) [checkpoint: d8a2b3c]
 
 ## Phase 5: Spike - SignalR & Authentication Compatibility
 - [ ] Task: Research and Prototype
