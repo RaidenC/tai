@@ -70,12 +70,25 @@
     - [x] Run `dotnet format` on backend to ensure strict formatting rules pass.
 - [ ] Task: Conductor - User Manual Verification 'Phase 6: Angular UI - Security & Real-Time Directives' (Protocol in workflow.md)
 
-## Phase 7: E2E Validation & Mock Test App
-- [ ] Task: "DocViewer" Mock App setup
-    - [ ] Implement a lightweight Dummy App in the QA environment to test cross-module federation.
-- [ ] Task: Comprehensive Playwright Suite & Penetration Tests
-    - [ ] Implement Steel Thread E2E tests for Standard CRUD operations and Context Switching.
-    - [ ] Implement Negative Security Tests (e.g., API fuzzing, IDOR attempts via API bypassing UI).
+## Phase 7: Federation Mock App Setup & E2E Validation
+- [x] Task: "DocViewer" Mock App setup
+    - [x] Implement a lightweight Dummy App in the QA environment to test cross-module federation.
+- [x] Task: Federation E2E Tests
+    - [x] Implement Steel Thread E2E tests for Standard CRUD operations and Context Switching.
+    - [x] Write E2E test verifying authentication state sharing with the Mock App.
+- [x] Task: Conductor - User Manual Verification 'Phase 7: Federation Mock App Setup & E2E Validation' (Protocol in workflow.md)
+
+## Phase 8: Security Penetration & Visual Regression Tests
+- [ ] Task: Negative Security Testing
+    - [ ] Implement Negative Security Tests (e.g., API fuzzing, IDOR attempts via API bypassing UI, UI redirection for unauthorized users).
+- [ ] Task: Visual Layout Stability
     - [ ] Implement Visual Regression Snapshots for layout edge cases.
-    - [ ] Implement E2E tests validating the Service Bus audit trail using Correlation IDs.
-- [ ] Task: Conductor - User Manual Verification 'Phase 7: E2E Validation & Mock Test App' (Protocol in workflow.md)
+- [ ] Task: Conductor - User Manual Verification 'Phase 8: Security Penetration & Visual Regression Tests' (Protocol in workflow.md)
+
+## Phase 9: Service Bus Audit Trail Validation
+- [ ] Task: Audit Trail Endpoints and Logic
+    - [ ] Expose diagnostic API for fetching audit logs.
+    - [ ] Ensure `IdentityService` correctly dispatches domain events before save.
+- [ ] Task: Audit Trail E2E Test
+    - [ ] Implement E2E tests validating the Service Bus audit trail using Correlation IDs and the diagnostic API.
+- [ ] Task: Conductor - User Manual Verification 'Phase 9: Service Bus Audit Trail Validation' (Protocol in workflow.md)

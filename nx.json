@@ -1,100 +1,100 @@
 {
-    "$schema": "./node_modules/nx/schemas/nx-schema.json",
-    "affected": {
-        "defaultBase": "main"
+  "$schema": "./node_modules/nx/schemas/nx-schema.json",
+  "affected": {
+    "defaultBase": "main"
+  },
+  "targetDefaults": {
+    "build": {
+      "cache": true,
+      "dependsOn": ["^build"]
     },
-    "targetDefaults": {
-        "build": {
-            "cache": true,
-            "dependsOn": ["^build"]
-        },
-        "test": {
-            "cache": true,
-            "options": {
-                "watch": false
-            }
-        },
-        "lint": {
-            "cache": true
-        },
-        "@angular/build:application": {
-            "cache": true,
-            "dependsOn": ["^build"],
-            "inputs": ["default", "^default"]
-        },
-        "@nx/eslint:lint": {
-            "cache": true,
-            "inputs": [
-                "default",
-                "{workspaceRoot}/.eslintrc.json",
-                "{workspaceRoot}/.eslintignore",
-                "{workspaceRoot}/eslint.config.mjs"
-            ]
-        },
-        "@angular/build:unit-test": {
-            "cache": true,
-            "inputs": ["default", "^default"]
-        },
-        "@nx/angular:package": {
-            "cache": true,
-            "dependsOn": ["^build"],
-            "inputs": ["default", "^default"]
-        },
-        "@nx/angular:unit-test": {
-            "cache": true,
-            "inputs": ["default", "^default"]
-        }
+    "test": {
+      "cache": true,
+      "options": {
+        "watch": false
+      }
     },
-    "workspaceLayout": {
-        "appsDir": "apps",
-        "libsDir": "libs"
+    "lint": {
+      "cache": true
     },
-    "plugins": [
-        {
-            "plugin": "@nx-dotnet/core"
-        },
-        {
-            "plugin": "@nx/playwright/plugin",
-            "options": {
-                "targetName": "e2e"
-            }
-        },
-        {
-            "plugin": "@nx/eslint/plugin",
-            "options": {
-                "targetName": "lint"
-            }
-        },
-        {
-            "plugin": "@nx/storybook/plugin",
-            "options": {
-                "serveStorybookTargetName": "storybook",
-                "buildStorybookTargetName": "build-storybook",
-                "testStorybookTargetName": "test-storybook",
-                "staticStorybookTargetName": "static-storybook",
-                "buildDepsTargetName": "build-deps",
-                "watchDepsTargetName": "watch-deps"
-            }
-        }
-    ],
-    "generators": {
-        "@nx/angular:application": {
-            "e2eTestRunner": "playwright",
-            "linter": "eslint",
-            "style": "scss",
-            "unitTestRunner": "vitest-angular"
-        },
-        "@nx/angular:library": {
-            "linter": "eslint",
-            "unitTestRunner": "vitest-angular"
-        },
-        "@nx/angular:component": {
-            "style": "scss"
-        }
+    "@angular/build:application": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^default"]
     },
-    "release": {
-        "version": {
-            "preVersionCommand": "npx nx run-many -t build"
-        }
+    "@nx/eslint:lint": {
+      "cache": true,
+      "inputs": [
+        "default",
+        "{workspaceRoot}/.eslintrc.json",
+        "{workspaceRoot}/.eslintignore",
+        "{workspaceRoot}/eslint.config.mjs"
+      ]
+    },
+    "@angular/build:unit-test": {
+      "cache": true,
+      "inputs": ["default", "^default"]
+    },
+    "@nx/angular:package": {
+      "cache": true,
+      "dependsOn": ["^build"],
+      "inputs": ["default", "^default"]
+    },
+    "@nx/angular:unit-test": {
+      "cache": true,
+      "inputs": ["default", "^default"]
     }
+  },
+  "workspaceLayout": {
+    "appsDir": "apps",
+    "libsDir": "libs"
+  },
+  "plugins": [
+    {
+      "plugin": "@nx-dotnet/core"
+    },
+    {
+      "plugin": "@nx/playwright/plugin",
+      "options": {
+        "targetName": "e2e"
+      }
+    },
+    {
+      "plugin": "@nx/eslint/plugin",
+      "options": {
+        "targetName": "lint"
+      }
+    },
+    {
+      "plugin": "@nx/storybook/plugin",
+      "options": {
+        "serveStorybookTargetName": "storybook",
+        "buildStorybookTargetName": "build-storybook",
+        "testStorybookTargetName": "test-storybook",
+        "staticStorybookTargetName": "static-storybook",
+        "buildDepsTargetName": "build-deps",
+        "watchDepsTargetName": "watch-deps"
+      }
+    }
+  ],
+  "generators": {
+    "@nx/angular:application": {
+      "e2eTestRunner": "playwright",
+      "linter": "eslint",
+      "style": "scss",
+      "unitTestRunner": "vitest-angular"
+    },
+    "@nx/angular:library": {
+      "linter": "eslint",
+      "unitTestRunner": "vitest-angular"
+    },
+    "@nx/angular:component": {
+      "style": "scss"
+    }
+  },
+  "release": {
+    "version": {
+      "preVersionCommand": "npx nx run-many -t build"
+    }
+  }
 }

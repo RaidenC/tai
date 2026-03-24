@@ -255,13 +255,15 @@ public static class SeedData {
                 {
                           new Uri("https://localhost:4200"),
                           new Uri("http://localhost:4200"),
-                          new Uri("http://acme.localhost:4200")
+                          new Uri("http://acme.localhost:4200"),
+                          new Uri("http://localhost:4201")
                       },
               PostLogoutRedirectUris =
                 {
                           new Uri("https://localhost:4200"),
                           new Uri("http://localhost:4200"),
-                          new Uri("http://acme.localhost:4200")
+                          new Uri("http://acme.localhost:4200"),
+                          new Uri("http://localhost:4201")
                       }
             };
 
