@@ -78,7 +78,7 @@
     - [x] Write E2E test verifying authentication state sharing with the Mock App.
 - [x] Task: Conductor - User Manual Verification 'Phase 7: Federation Mock App Setup & E2E Validation' (Protocol in workflow.md)
 
-## Phase 8: Security Penetration & Visual Regression Tests [checkpoint: 5efdcef]
+## Phase 8: Security Penetration & Visual Regression Tests [checkpoint: ac7fdbc]
 - [x] Task: Negative Security Testing [checkpoint: a51283b]
     - [x] Implement Negative Security Tests (e.g., API fuzzing, IDOR attempts via API bypassing UI, UI redirection for unauthorized users).
 - [x] Task: Visual Layout Stability [checkpoint: a51283b]
