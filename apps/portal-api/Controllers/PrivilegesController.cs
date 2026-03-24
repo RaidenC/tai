@@ -22,8 +22,9 @@ public class PrivilegesController : ControllerBase {
   public async Task<ActionResult<PaginatedList<PrivilegeDto>>> GetPrivileges(
       [FromQuery] int pageNumber = 1,
       [FromQuery] int pageSize = 10,
-      [FromQuery] string? search = null) {
-    var query = new GetPrivilegesQuery(pageNumber, pageSize, search);
+      [FromQuery] string? search = null,
+      [FromQuery] string[]? modules = null) {
+    var query = new GetPrivilegesQuery(pageNumber, pageSize, search, modules);
     return await _mediator.Send(query);
   }
 
