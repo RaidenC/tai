@@ -37,12 +37,14 @@ public class PrivilegesController : ControllerBase {
   }
 
   [HttpPost]
+  [Authorize(Roles = "Admin")]
   public async Task<ActionResult<PrivilegeDto>> CreatePrivilege(CreatePrivilegeCommand command) {
     var result = await _mediator.Send(command);
     return CreatedAtAction(nameof(GetPrivileges), new { id = result.Id }, result);
   }
 
   [HttpPut("{id}")]
+  [Authorize(Roles = "Admin")]
   public async Task<ActionResult<PrivilegeDto>> UpdatePrivilege(Guid id, UpdatePrivilegeCommand command) {
     if (id != command.Id) {
       return BadRequest("ID mismatch");

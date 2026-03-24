@@ -79,10 +79,10 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 7: Federation Mock App Setup & E2E Validation' (Protocol in workflow.md)
 
 ## Phase 8: Security Penetration & Visual Regression Tests
-- [ ] Task: Negative Security Testing
-    - [ ] Implement Negative Security Tests (e.g., API fuzzing, IDOR attempts via API bypassing UI, UI redirection for unauthorized users).
-- [ ] Task: Visual Layout Stability
-    - [ ] Implement Visual Regression Snapshots for layout edge cases.
+- [x] Task: Negative Security Testing [checkpoint: a51283b]
+    - [x] Implement Negative Security Tests (e.g., API fuzzing, IDOR attempts via API bypassing UI, UI redirection for unauthorized users).
+- [x] Task: Visual Layout Stability [checkpoint: a51283b]
+    - [x] Implement Visual Regression Snapshots for layout edge cases.
 - [ ] Task: Conductor - User Manual Verification 'Phase 8: Security Penetration & Visual Regression Tests' (Protocol in workflow.md)
 
 ## Phase 9: Service Bus Audit Trail Validation
