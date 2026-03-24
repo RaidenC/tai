@@ -11,6 +11,7 @@ namespace Tai.Portal.Api.IntegrationTests;
 
 public class TestUserContext {
   public string UserId { get; set; } = string.Empty;
+  public string[] Roles { get; set; } = Array.Empty<string>();
 }
 
 public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions> {
@@ -30,11 +31,16 @@ public class TestAuthHandler : AuthenticationHandler<AuthenticationSchemeOptions
       return Task.FromResult(AuthenticateResult.Fail("No user context provided."));
     }
 
-    var claims = new[] {
+    var claims = new List<Claim> {
         new Claim(ClaimTypes.NameIdentifier, _userContext.UserId),
         new Claim(ClaimTypes.Name, "Test User"),
         new Claim("sub", _userContext.UserId)
     };
+
+    foreach (var role in _userContext.Roles) {
+      claims.Add(new Claim(ClaimTypes.Role, role));
+    }
+
     var identity = new ClaimsIdentity(claims, Scheme.Name);
     var principal = new ClaimsPrincipal(identity);
     var ticket = new AuthenticationTicket(principal, Scheme.Name);

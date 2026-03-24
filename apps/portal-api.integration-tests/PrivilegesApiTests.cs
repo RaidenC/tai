@@ -52,7 +52,7 @@ public class PrivilegesApiTests : IClassFixture<WebApplicationFactory<Program>> 
               .Build();
         });
 
-        services.AddSingleton(new TestUserContext { UserId = userId });
+        services.AddSingleton(new TestUserContext { UserId = userId, Roles = new[] { "Admin" } });
         services.AddSingleton<IAuthorizationHandler, AllowAnonymousAuthorizationHandler>();
         services.AddSingleton<IAuthorizationService, BypassAuthorizationService>();
       });
