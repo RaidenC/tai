@@ -1,9 +1,8 @@
 @if (isAuthenticated$ | async) {
   <tai-app-shell 
     [user]="user$ | async" 
-    [menuItems]="menuItems" 
-    (logout)="logout()">
-    
+    [menuItems]="(menuItems$ | async) || []"
+    (logout)="logout()">    
     <router-outlet></router-outlet>
     
     @if (router.url === '/') {

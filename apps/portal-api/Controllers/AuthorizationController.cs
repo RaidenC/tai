@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Collections.Immutable;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -101,7 +102,22 @@ public class AuthorizationController : Controller {
             .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user));
 
     // Add roles to the claims.
-    identity.SetClaims(Claims.Role, [.. (await _userManager.GetRolesAsync(user))]);
+    var roles = await _userManager.GetRolesAsync(user);
+    identity.SetClaims(Claims.Role, [.. roles]);
+
+    // Add privileges for super-users
+    if (roles.Contains("Admin") || roles.Contains("SystemAdmin")) {
+      identity.SetClaims("privileges", new[] {
+          "Portal.Users.Read",
+          "Portal.Users.Create",
+          "Portal.Users.Edit",
+          "Portal.Privileges.Read",
+          "Portal.Privileges.Edit",
+          "Portal.Approvals.Read"
+      }.ToImmutableArray());
+    }
+
+    Console.WriteLine($" [AUTH] Authorize: User {user.Email} has roles: {string.Join(", ", roles)} and requested scopes: {string.Join(", ", request.GetScopes())}");
 
     // Grant the requested scopes (openid, email, profile, roles).
     identity.SetScopes(request.GetScopes());
@@ -201,7 +217,21 @@ public class AuthorizationController : Controller {
               .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
               .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user));
 
-      identity.SetClaims(Claims.Role, [.. (await _userManager.GetRolesAsync(user))]);
+      var roles = await _userManager.GetRolesAsync(user);
+      identity.SetClaims(Claims.Role, [.. roles]);
+
+      if (roles.Contains("Admin") || roles.Contains("SystemAdmin")) {
+        identity.SetClaims("privileges", new[] {
+          "Portal.Users.Read",
+          "Portal.Users.Create",
+          "Portal.Users.Edit",
+          "Portal.Privileges.Read",
+          "Portal.Privileges.Edit",
+          "Portal.Approvals.Read"
+        }.ToImmutableArray());
+      }
+
+      Console.WriteLine($" [AUTH] Exchange: User {user.Email} has roles: {string.Join(", ", roles)}");
 
       identity.SetDestinations(GetDestinations);
 
@@ -236,7 +266,6 @@ public class AuthorizationController : Controller {
     var claims = new Dictionary<string, object>(StringComparer.Ordinal) {
       [Claims.Subject] = await _userManager.GetUserIdAsync(user)
     };
-
     if (User.HasScope(Scopes.Email)) {
       claims[Claims.Email] = await _userManager.GetEmailAsync(user) ?? string.Empty;
       claims[Claims.EmailVerified] = await _userManager.IsEmailConfirmedAsync(user);
@@ -248,7 +277,22 @@ public class AuthorizationController : Controller {
     }
 
     if (User.HasScope(Scopes.Roles)) {
-      claims[Claims.Role] = await _userManager.GetRolesAsync(user);
+      var roles = await _userManager.GetRolesAsync(user);
+      claims[Claims.Role] = roles;
+
+      // JUNIOR RATIONALE: For the POC, if a user is a SystemAdmin, 
+      // we grant them all the privileges needed for E2E tests.
+      // In a future track, this will be driven by a DB join table.
+      if (roles.Contains("SystemAdmin")) {
+        claims["privileges"] = new[] {
+          "Portal.Users.Read",
+          "Portal.Users.Create",
+          "Portal.Users.Edit",
+          "Portal.Privileges.Read",
+          "Portal.Privileges.Edit",
+          "Portal.Approvals.Read"
+        };
+      }
     }
 
     // Add custom tenant claim for the POC context.
@@ -291,6 +335,11 @@ public class AuthorizationController : Controller {
         if (claim.Subject?.HasScope(Scopes.Roles) == true)
           yield return Destinations.IdentityToken;
 
+        yield break;
+
+      case "privileges":
+        yield return Destinations.AccessToken;
+        yield return Destinations.IdentityToken;
         yield break;
 
       // Never include the security stamp in the access and identity tokens, as it's a secret value.
