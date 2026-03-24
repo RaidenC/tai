@@ -108,4 +108,38 @@ describe('AuthService', () => {
     const user = await userPromise;
     expect(user).toBeNull();
   });
+
+  describe('hasPrivilege', () => {
+    it('should return false if user is null', async () => {
+      mockUserDataSubject.next({ userData: null, allUserData: [] });
+      const hasPrivilege = await firstValueFrom(service.hasPrivilege('test'));
+      expect(hasPrivilege).toBe(false);
+    });
+
+    it('should return true if user has the privilege', async () => {
+      const mockRawUser = { sub: '1', role: 'User', privileges: ['test.privilege'] };
+      mockUserDataSubject.next({ userData: mockRawUser, allUserData: [] });
+      const hasPrivilege = await firstValueFrom(service.hasPrivilege('test.privilege'));
+      expect(hasPrivilege).toBe(true);
+    });
+
+    it('should return false if user does not have the privilege', async () => {
+      const mockRawUser = { sub: '1', role: 'User', privileges: ['other.privilege'] };
+      mockUserDataSubject.next({ userData: mockRawUser, allUserData: [] });
+      const hasPrivilege = await firstValueFrom(service.hasPrivilege('test.privilege'));
+      expect(hasPrivilege).toBe(false);
+    });
+
+    it('should return true if user is Admin or SystemAdmin even without explicit privilege', async () => {
+      const mockRawUserAdmin = { sub: '1', role: 'Admin', privileges: [] };
+      mockUserDataSubject.next({ userData: mockRawUserAdmin, allUserData: [] });
+      const hasPrivilegeAdmin = await firstValueFrom(service.hasPrivilege('any.privilege'));
+      expect(hasPrivilegeAdmin).toBe(true);
+
+      const mockRawUserSysAdmin = { sub: '2', role: 'SystemAdmin', privileges: [] };
+      mockUserDataSubject.next({ userData: mockRawUserSysAdmin, allUserData: [] });
+      const hasPrivilegeSysAdmin = await firstValueFrom(service.hasPrivilege('any.privilege'));
+      expect(hasPrivilegeSysAdmin).toBe(true);
+    });
+  });
 });

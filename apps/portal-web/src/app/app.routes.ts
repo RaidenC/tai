@@ -1,5 +1,6 @@
 import { Route } from '@angular/router';
 import { authGuard } from './navigation.guard';
+import { privilegeGuard } from './privilege.guard';
 
 export const appRoutes: Route[] = [
     { 
@@ -22,22 +23,26 @@ export const appRoutes: Route[] = [
     { 
         path: 'admin/privileges', 
         loadComponent: () => import('./features/privileges/privileges.page').then(m => m.PrivilegesPage),
-        canActivate: [authGuard]
+        canActivate: [authGuard, privilegeGuard],
+        data: { requiredPrivilege: 'Portal.Privileges.Read' }
     },
     { 
         path: 'admin/privileges/:id', 
         loadComponent: () => import('./features/privileges/privilege-detail.page').then(m => m.PrivilegeDetailPage),
-        canActivate: [authGuard]
+        canActivate: [authGuard, privilegeGuard],
+        data: { requiredPrivilege: 'Portal.Privileges.Read' }
     },
     { 
         path: 'users', 
         loadComponent: () => import('./features/users/users.page').then(m => m.UsersPage),
-        canActivate: [authGuard]
+        canActivate: [authGuard, privilegeGuard],
+        data: { requiredPrivilege: 'Portal.Users.Read' }
     },
     { 
         path: 'users/:id', 
         loadComponent: () => import('./features/users/user-detail.page').then(m => m.UserDetailPage),
-        canActivate: [authGuard]
+        canActivate: [authGuard, privilegeGuard],
+        data: { requiredPrivilege: 'Portal.Users.Read' }
     },
     { path: 'unauthorized', redirectTo: '' },
     { path: 'forbidden', redirectTo: '' },

@@ -10,6 +10,7 @@ export interface User {
   name: string;
   email: string;
   roles: string[];
+  privileges: string[];
 }
 
 /**
@@ -22,6 +23,7 @@ interface RawUserData {
   email: string;
   role?: string | string[];
   roles?: string | string[];
+  privileges?: string[];
 }
 
 /**
@@ -43,7 +45,7 @@ export class AuthService {
    *    If a new component subscribes, it gets the user data immediately without waiting for a new event.
    */
   public readonly user$: Observable<User | null> = this.oidcSecurityService.userData$.pipe(
-    map((result: UserDataResult) => {
+    map((result) => {
       if (!result.userData) {
         return null; // No user logged in.
       }
@@ -54,6 +56,7 @@ export class AuthService {
         name: data.name || data.preferred_username || 'User',
         email: data.email,
         roles: this.extractRoles(data),
+        privileges: data.privileges || [],
       };
     }),
     shareReplay(1)
@@ -65,6 +68,25 @@ export class AuthService {
   public readonly isAuthenticated$: Observable<boolean> = this.user$.pipe(
     map((user) => !!user)
   );
+
+  /**
+   * hasPrivilege(privilege) checks if the current user has a specific permission.
+   * Logic:
+   * 1. If not authenticated, always false.
+   * 2. If user is a 'SystemAdmin' (role), always true (Super User).
+   * 3. Otherwise, check the explicit privileges array.
+   */
+  public hasPrivilege(privilege: string): Observable<boolean> {
+    return this.user$.pipe(
+      map((user) => {
+        if (!user) return false;
+        // JUNIOR RATIONALE: 'Admin' or 'SystemAdmin' roles act as super-users 
+        // who bypass individual privilege checks.
+        if (user.roles.includes('Admin') || user.roles.includes('SystemAdmin')) return true;
+        return user.privileges.includes(privilege);
+      })
+    );
+  }
 
   /**
    * login() triggers the OIDC "Authorize" flow.

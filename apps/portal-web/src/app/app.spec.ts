@@ -1,12 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { App } from './app';
 import { AuthService } from './auth.service';
+import { RealTimeService } from './real-time.service';
 import { of } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { provideRouter } from '@angular/router';
 
 describe('App', () => {
-    let authServiceMock: Partial<AuthService>;
+    let authServiceMock: any;
+    let realTimeServiceMock: any;
 
     beforeEach(async () => {
         authServiceMock = {
@@ -14,13 +16,19 @@ describe('App', () => {
             isAuthenticated$: of(false),
             login: vi.fn(),
             logout: vi.fn(),
-            checkAuth: vi.fn(() => of(false))
+            checkAuth: vi.fn(() => of(false)),
+            hasPrivilege: vi.fn(() => of(true))
+        };
+
+        realTimeServiceMock = {
+            connectionStatus$: of('Disconnected')
         };
 
         await TestBed.configureTestingModule({
             imports: [App],
             providers: [
                 { provide: AuthService, useValue: authServiceMock },
+                { provide: RealTimeService, useValue: realTimeServiceMock },
                 provideRouter([])
             ]
         }).compileComponents();
@@ -43,10 +51,8 @@ describe('App', () => {
     });
 
     it('should render app shell when authenticated', async () => {
-        // @ts-expect-error - access protected
         authServiceMock.isAuthenticated$ = of(true);
-        // @ts-expect-error - access protected
-        authServiceMock.user$ = of({ id: '1', name: 'John Doe', email: 'john@tai.com', roles: [] });
+        authServiceMock.user$ = of({ id: '1', name: 'John Doe', email: 'john@tai.com', roles: [], privileges: [] });
         
         const fixture = TestBed.createComponent(App);
         fixture.detectChanges();
@@ -56,7 +62,6 @@ describe('App', () => {
     });
 
     it('should call logout when app shell emits logout', async () => {
-        // @ts-expect-error - access protected
         authServiceMock.isAuthenticated$ = of(true);
         
         const fixture = TestBed.createComponent(App);
@@ -67,7 +72,6 @@ describe('App', () => {
     });
 
     it('should render welcome content if title is not portal-web', async () => {
-        // @ts-expect-error - access protected
         authServiceMock.isAuthenticated$ = of(true);
         
         const fixture = TestBed.createComponent(App);

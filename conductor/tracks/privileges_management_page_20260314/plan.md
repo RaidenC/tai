@@ -61,13 +61,13 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 5: Spike - SignalR & Authentication Compatibility' (Protocol in workflow.md) [checkpoint: 7a8b9c0]
 
 ## Phase 6: Angular UI - Security & Real-Time Directives
-- [ ] Task: UI Security structural directives
-    - [ ] Write tests for the `*hasPrivilege` structural directive and Route Guards.
-- [ ] Task: Real-Time UI updates
-    - [ ] Implement SignalR listener to handle `PrivilegesChanged` events for immediate UI degradation using the architecture proven in Phase 5.
-- [ ] Task: Regression Testing & CI Validation
-    - [ ] Run `nx affected --target=test,e2e,lint` to ensure no existing tests or lint rules are broken.
-    - [ ] Run `dotnet format` on backend to ensure strict formatting rules pass.
+- [x] Task: UI Security structural directives
+    - [x] Write tests for the `*hasPrivilege` structural directive and Route Guards.
+- [x] Task: Real-Time UI updates
+    - [x] Implement SignalR listener to handle `PrivilegesChanged` events for immediate UI degradation using the architecture proven in Phase 5.
+- [x] Task: Regression Testing & CI Validation
+    - [x] Run `nx affected --target=test,e2e,lint` to ensure no existing tests or lint rules are broken.
+    - [x] Run `dotnet format` on backend to ensure strict formatting rules pass.
 - [ ] Task: Conductor - User Manual Verification 'Phase 6: Angular UI - Security & Real-Time Directives' (Protocol in workflow.md)
 
 ## Phase 7: E2E Validation & Mock Test App
