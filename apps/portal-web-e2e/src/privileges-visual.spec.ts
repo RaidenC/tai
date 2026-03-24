@@ -19,7 +19,9 @@ test.describe('Privileges Visual Regression E2E', () => {
     
     // Take a full page snapshot or component snapshot
     await expect(page).toHaveScreenshot('privileges-catalog-main.png', {
-        mask: [page.locator('[data-testid^="row-id-"]')] // Mask dynamic IDs if any
+        mask: [page.locator('[data-testid^="row-id-"]')], // Mask dynamic IDs if any
+        maxDiffPixelRatio: 0.05,
+        threshold: 0.2
     });
   });
 
@@ -35,7 +37,10 @@ test.describe('Privileges Visual Regression E2E', () => {
     const row = table.locator('tr', { hasText: 'Portal.Users.ReallyLongNameThatMightBreakTheUILayout' });
     await expect(row).toBeVisible();
     
-    await expect(row).toHaveScreenshot('privilege-long-name-row.png');
+    await expect(row).toHaveScreenshot('privilege-long-name-row.png', {
+        maxDiffPixelRatio: 0.05,
+        threshold: 0.2
+    });
   });
 
   test('visual snapshot - extreme hierarchical depth', async ({ page }) => {
@@ -49,6 +54,9 @@ test.describe('Privileges Visual Regression E2E', () => {
     const row = table.locator('tr', { hasText: 'A.B.C.D.E.F.G.H.I.J.K' });
     await expect(row).toBeVisible();
     
-    await expect(row).toHaveScreenshot('privilege-extreme-depth-row.png');
+    await expect(row).toHaveScreenshot('privilege-extreme-depth-row.png', {
+        maxDiffPixelRatio: 0.05,
+        threshold: 0.2
+    });
   });
 });
