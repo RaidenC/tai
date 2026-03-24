@@ -56,7 +56,7 @@ public class SecurityAndTdmTests : IClassFixture<WebApplicationFactory<Program>>
   private WebApplicationFactory<Program> CreateFactoryWithMockAuth(string userId) {
     return _factory.WithWebHostBuilder(builder => {
       builder.ConfigureTestServices(services => {
-        services.AddSingleton(new TestUserContext { UserId = userId });
+        services.AddSingleton(new TestUserContext { UserId = userId, Roles = new[] { "Admin" } });
         services.AddAuthentication("IntegrationTestAuth")
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("IntegrationTestAuth", null);
 
