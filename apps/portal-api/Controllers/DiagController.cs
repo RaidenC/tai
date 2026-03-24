@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Tai.Portal.Core.Domain.Entities;
+using Tai.Portal.Core.Infrastructure.Persistence;
 
 namespace Tai.Portal.Api.Controllers;
 
@@ -9,10 +11,12 @@ namespace Tai.Portal.Api.Controllers;
 public class DiagController : Controller {
   private readonly IMemoryCache _cache;
   private readonly UserManager<ApplicationUser> _userManager;
+  private readonly PortalDbContext _dbContext;
 
-  public DiagController(IMemoryCache cache, UserManager<ApplicationUser> userManager) {
+  public DiagController(IMemoryCache cache, UserManager<ApplicationUser> userManager, PortalDbContext dbContext) {
     _cache = cache;
     _userManager = userManager;
+    _dbContext = dbContext;
   }
 
   [HttpGet("headers")]
@@ -56,5 +60,20 @@ public class DiagController : Controller {
       return Ok(new { UserId = user.Id, Code = code });
     }
     return NotFound(new { Message = "No OTP found for this user." });
+  }
+
+  /// <summary>
+  /// Diagnostic endpoint to retrieve audit logs for a specific resource.
+  /// ONLY FOR POC/E2E TESTING.
+  /// </summary>
+  [HttpGet("audit-logs/{resourceId}")]
+  public async Task<IActionResult> GetAuditLogs(string resourceId) {
+    var logs = await _dbContext.AuditLogs
+        .IgnoreQueryFilters()
+        .Where(l => l.ResourceId == resourceId)
+        .OrderByDescending(l => l.Timestamp)
+        .ToListAsync();
+
+    return Ok(logs);
   }
 }
