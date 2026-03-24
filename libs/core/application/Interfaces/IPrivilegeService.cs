@@ -9,10 +9,12 @@ public interface IPrivilegeService {
       int skip,
       int take,
       string? search,
+      string[]? modules,
       CancellationToken cancellationToken);
 
   Task<int> CountPrivilegesAsync(
       string? search,
+      string[]? modules,
       CancellationToken cancellationToken);
 
   Task<PrivilegeDto?> GetPrivilegeByIdAsync(Guid id, CancellationToken cancellationToken);

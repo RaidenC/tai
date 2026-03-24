@@ -50,17 +50,10 @@ export class PrivilegesStore {
    * Requirement: Automatically filter out privileges belonging to Apps/Modules ("Tiles") 
    * that are not enabled in the current Tenant's Configuration.
    * 
-   * JUNIOR RATIONALE: We use a computed signal here to handle the filtering reactively.
-   * If the list of privileges or the list of licensed modules changes, this 
-   * automatically recalculates without us needing to manually call a function.
+   * JUNIOR RATIONALE: The filtering is now handled safely on the backend via the 
+   * 'modules' query parameter, ensuring our server-side pagination counts are accurate.
    */
-  public readonly filteredPrivileges = computed(() => {
-    const allPrivileges = this._privileges();
-    const licensed = this._licensedModules();
-    
-    // For this POC, we assume if 'DocViewer' isn't in the list, its privileges are hidden.
-    return allPrivileges.filter(p => licensed.includes(p.module));
-  });
+  public readonly filteredPrivileges = computed(() => this._privileges());
 
   /**
    * Loads the list of privileges.
@@ -73,7 +66,10 @@ export class PrivilegesStore {
     this._status.set('Loading');
     this._errorMessage.set(null);
 
-    this.privilegesService.getPrivileges(this._pageIndex(), this._pageSize(), this._search() || undefined)
+    // Pass the mock licensed modules to the backend so pagination matches the exact count.
+    const modules = this._licensedModules();
+
+    this.privilegesService.getPrivileges(this._pageIndex(), this._pageSize(), this._search() || undefined, modules)
       .subscribe({
         next: (response: PaginatedList<Privilege>) => {
           this._privileges.set(response.items);
