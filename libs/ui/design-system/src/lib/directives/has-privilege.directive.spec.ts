@@ -17,7 +17,7 @@ class TestComponent {}
 describe('HasPrivilegeDirective', () => {
   let fixture: ComponentFixture<TestComponent>;
   let privilegeSubject: BehaviorSubject<boolean>;
-  let privilegeCheckerMock: any;
+  let privilegeCheckerMock: Partial<PrivilegeChecker>;
 
   beforeEach(() => {
     privilegeSubject = new BehaviorSubject<boolean>(false);

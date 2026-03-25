@@ -22,7 +22,7 @@ export abstract class PrivilegeChecker {
   standalone: true
 })
 export class HasPrivilegeDirective implements OnInit, OnDestroy {
-  private templateRef = inject(TemplateRef<any>);
+  private templateRef = inject(TemplateRef<unknown>);
   private viewContainer = inject(ViewContainerRef);
   private privilegeChecker = inject(PrivilegeChecker, { optional: true });
   private destroy$ = new Subject<void>();

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/angular';
-import { TransferListComponent } from './transfer-list';
+import { TransferListComponent, TransferItem } from './transfer-list';
 
-const meta: Meta<TransferListComponent<any>> = {
+const meta: Meta<TransferListComponent<TransferItem>> = {
   title: 'Design System/TransferList',
   component: TransferListComponent,
   tags: ['autodocs'],
@@ -14,7 +14,7 @@ const meta: Meta<TransferListComponent<any>> = {
 };
 
 export default meta;
-type Story = StoryObj<TransferListComponent<any>>;
+type Story = StoryObj<TransferListComponent<TransferItem>>;
 
 const MOCK_ITEMS = [
   { id: 1, name: 'User Management' },

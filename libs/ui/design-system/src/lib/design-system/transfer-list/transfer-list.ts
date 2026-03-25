@@ -76,7 +76,7 @@ export class TransferListComponent<T extends TransferItem> {
   public readonly i18n = input<TransferListI18n>(DEFAULT_I18N);
 
   /** Optional custom template for items. */
-  public readonly itemTemplate = contentChild<TemplateRef<any>>('itemTemplate');
+  public readonly itemTemplate = contentChild<TemplateRef<unknown>>('itemTemplate');
 
   /** Emitted when the set of assigned IDs changes. */
   public readonly assignedIdsChanged = output<(string | number)[]>();
