@@ -255,6 +255,7 @@ export class PrivilegeDetailPage implements OnInit {
 
   protected readonly RiskLevel = RiskLevel;
   protected readonly isEditing = signal(false);
+  private readonly isUpdating = signal(false);
   
   protected readonly editForm = this.fb.group({
     description: ['', [Validators.required, Validators.maxLength(500)]],
@@ -283,6 +284,14 @@ export class PrivilegeDetailPage implements OnInit {
             requiresJustification: privilege.jitSettings.requiresJustification
           }
         }, { emitEvent: false });
+        this.cdr.detectChanges();
+      }
+    });
+
+    effect(() => {
+      if (this.isUpdating() && this.store.status() === 'Success') {
+        this.isEditing.set(false);
+        this.isUpdating.set(false);
         this.cdr.detectChanges();
       }
     });
@@ -331,13 +340,12 @@ export class PrivilegeDetailPage implements OnInit {
   protected onSave(): void {
     const privilege = this.store.selectedPrivilege();
     if (privilege && this.editForm.valid) {
+      this.isUpdating.set(true);
       this.store.updatePrivilege(privilege.id, {
         ...this.editForm.value as Partial<Privilege>,
         id: privilege.id,
         rowVersion: privilege.rowVersion
       });
-      this.isEditing.set(false);
-      this.cdr.detectChanges();
     }
   }
 

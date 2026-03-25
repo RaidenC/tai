@@ -120,7 +120,8 @@ public class PortalDbContextTests : IAsyncLifetime {
       await context.Database.EnsureCreatedAsync();
 
       // We manually register the handler for this test since we are not using full DI container
-      var handler = new Tai.Portal.Core.Infrastructure.Persistence.Handlers.UserApprovedEventHandler(context);
+      var currentUserServiceMock = new Mock<ICurrentUserService>();
+      var handler = new Tai.Portal.Core.Infrastructure.Persistence.Handlers.UserApprovedEventHandler(context, currentUserServiceMock.Object);
       var publisherMock = new Mock<IPublisher>();
       publisherMock.Setup(p => p.Publish(It.IsAny<object>(), It.IsAny<CancellationToken>()))
           .Callback<object, CancellationToken>(async (notif, ct) => {

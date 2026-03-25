@@ -67,25 +67,23 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
 
   private async Task DispatchDomainEventsAsync(CancellationToken cancellationToken) {
     var entities = ChangeTracker
-        .Entries<IHasDomainEvents>()
-        .Where(e => e.Entity.DomainEvents.Any())
-        .Select(e => e.Entity)
+        .Entries()
+        .Where(e => e.Entity is IHasDomainEvents hasEvents && hasEvents.DomainEvents.Any())
+        .Select(e => (IHasDomainEvents)e.Entity)
         .ToList();
+
+    if (!entities.Any()) return;
+
+    var publisher = _serviceProvider.GetService(typeof(IPublisher)) as IPublisher;
+    if (publisher == null) return;
 
     var domainEvents = entities
         .SelectMany(e => e.DomainEvents)
         .ToList();
 
-    if (!domainEvents.Any()) return;
-
-    var publisher = _serviceProvider.GetService(typeof(IPublisher)) as IPublisher;
-    if (publisher == null) return;
-
     entities.ForEach(e => e.ClearDomainEvents());
 
     foreach (var domainEvent in domainEvents) {
-      // We wrap the DomainEvent in a DomainEventNotification<T> to satisfy MediatR's INotification constraint
-      // without introducing MediatR as a dependency to our Domain layer.
       var notificationType = typeof(DomainEventNotification<>).MakeGenericType(domainEvent.GetType());
       var notification = Activator.CreateInstance(notificationType, domainEvent);
       if (notification != null) {
@@ -93,6 +91,7 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
       }
     }
   }
+
 
   protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
     optionsBuilder.AddInterceptors(new TenantInterceptor());

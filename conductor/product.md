@@ -15,7 +15,7 @@ The portal uses a dynamic "Tiles" architecture where dashboard components are re
 - **User & Identity Management:** Full lifecycle management (onboarding, offboarding, role assignment) for all user types.
 - **Institution (Tenant) Management:** Configuration of organizational hierarchies, branding, and tenant-specific settings.
 - **Group Management:** Logical grouping of users or tenants for collective permissioning and reporting.
-- **RBAC & PBAC:** Granular management of Privileges, Roles, and custom "Tiles" access rights.
+- **Privilege Catalog (RBAC/PBAC):** A centralized, paginated directory of system-wide privileges with dot-notation identifiers, risk levels, and JIT settings.
 - **Context Switching:** Seamless account switching for users with access to multiple institutions, triggering real-time state updates.
 - **Security Audit Logs:** Comprehensive logging and visibility into all identity-related events.
 
@@ -26,7 +26,7 @@ The portal uses a dynamic "Tiles" architecture where dashboard components are re
   - **Auto-Expiring Privileges:** Approved elevations result in re-issued Access Tokens with specific scopes that automatically expire (e.g., after 2 hours).
 - **Real-Time Security Notifications:** Proactive user awareness and SOC 2 compliance.
   - **Event-Driven Alerts:** Instant notifications for security events such as new IP access or MFA failures.
-  - **Technical Bridge:** OpenIddict events trigger Service Bus messages, which are pushed to the frontend via a SignalR hub bridged through the BFF.
+  - **Technical Bridge:** OpenIddict and Domain events trigger Service Bus messages, which are pushed to the frontend via a SignalR hub bridged through the BFF.
 - **Step-Up Authentication:** High-assurance flows for sensitive actions (e.g., Wire Transfers, Admin Settings).
   - **Dynamic Enforcement:** Accessing sensitive tiles triggers an immediate challenge if the current session's assurance level is insufficient.
   - **API-Driven Flow:** The API returns a `403 Forbidden` with an `insufficient_assurance` code, which the frontend intercepts.
@@ -35,6 +35,10 @@ The portal uses a dynamic "Tiles" architecture where dashboard components are re
   - **Visual Indicator:** The dashboard border turns bright orange with a "You are viewing as [User]" indicator to prevent accidental actions.
   - **Security Tokens:** The session generates a specific "Impersonation Token" via OpenIddict with a restricted `act_as` scope.
   - **Compliance & Audit:** Every action taken during an impersonation session is logged with both the Actor ID (Admin) and Subject ID (User), ensuring a non-repudiation chain.
+
+## Multi-Layer Verification
+- **Traceable Audit Trail:** Every destructive action is recorded in a cryptographically immutable audit log, including a **Correlation ID** that maps UI interactions through the Gateway, API, and Event Handlers.
+- **Diagnostic Traceability:** Authorized E2E tests can verify the global audit state via protected diagnostic endpoints, ensuring requirements-to-audit traceability.
 
 ## Quality, Integrity & Security Standards
 - **Test-Driven Development (TDD):** The portal is built using a strict **Red-Green-Refactor** methodology. Every business requirement is preceded by a failing test case, ensuring 100% requirements-to-code traceability.

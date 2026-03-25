@@ -15,6 +15,7 @@ public class AuditEntry : IMultiTenantEntity {
   public required string UserId { get; init; }
   public required string Action { get; init; }
   public required string ResourceId { get; init; }
+  public string? CorrelationId { get; init; }
   public DateTimeOffset Timestamp { get; private set; }
   public string? IpAddress { get; init; }
   public string? Details { get; init; }
@@ -28,6 +29,7 @@ public class AuditEntry : IMultiTenantEntity {
       string userId,
       string action,
       string resourceId,
+      string? correlationId = null,
       string? ipAddress = null,
       string? details = null) {
     Id = Guid.NewGuid();
@@ -35,6 +37,7 @@ public class AuditEntry : IMultiTenantEntity {
     UserId = userId;
     Action = action;
     ResourceId = resourceId;
+    CorrelationId = correlationId;
     Timestamp = DateTimeOffset.UtcNow;
     IpAddress = ipAddress;
     Details = details;
