@@ -15,7 +15,7 @@ test('authenticate TAI Admin', async ({ page, request }) => {
     firstName: 'System',
     lastName: 'Administrator',
     password: 'Password123!',
-    role: 'SystemAdmin',
+    role: 'Admin',
     status: 3 // Active
   });
 
@@ -49,7 +49,7 @@ test('authenticate ACME Admin', async ({ page, request }) => {
     lastName: 'Admin',
     password: 'Password123!',
     tenantHost: 'acme.localhost',
-    role: 'SystemAdmin',
+    role: 'Admin',
     status: 3 // Active
   });
 

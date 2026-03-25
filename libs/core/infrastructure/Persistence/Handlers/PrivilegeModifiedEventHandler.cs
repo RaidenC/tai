@@ -39,6 +39,7 @@ public class PrivilegeModifiedEventHandler : INotificationHandler<DomainEventNot
         userId,
         "PrivilegeModified",
         domainEvent.PrivilegeId.ToString(),
+        _currentUserService.CorrelationId,
         null,
         $"Privilege '{domainEvent.Name}' was modified by {userId}."
     );
@@ -46,6 +47,7 @@ public class PrivilegeModifiedEventHandler : INotificationHandler<DomainEventNot
     _dbContext.AuditLogs.Add(auditEntry);
 
     // 2. Publish integration event for external systems (e.g., Cache invalidation, SIEM)
+
     await _messageBus.PublishAsync(new {
       EventName = "PrivilegeModified",
       PrivilegeId = domainEvent.PrivilegeId.Value,

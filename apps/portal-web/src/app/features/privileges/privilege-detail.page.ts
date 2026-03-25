@@ -336,8 +336,10 @@ export class PrivilegeDetailPage implements OnInit {
         id: privilege.id,
         rowVersion: privilege.rowVersion
       });
-      this.isEditing.set(false);
-      this.cdr.detectChanges();
+      
+      // Navigate back to catalog after a successful dispatch. 
+      // The store handles the actual update and status signals.
+      this.router.navigate(['/admin/privileges']);
     }
   }
 

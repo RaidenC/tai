@@ -52,6 +52,7 @@ builder.Services.AddValidatorsFromAssembly(typeof(RegisterCustomerCommand).Assem
 
 builder.Services.AddMediatR(cfg => {
   cfg.RegisterServicesFromAssembly(typeof(RegisterCustomerCommand).Assembly);
+  cfg.RegisterServicesFromAssembly(typeof(PortalDbContext).Assembly);
   cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationPipelineBehavior<,>));
 });
 

@@ -139,11 +139,14 @@ public static class SeedData {
               if (!context.Privileges.IgnoreQueryFilters().Any(p => p.Name == privilege.Name)) {
                 try {
                   context.Privileges.Add(privilege);
+                  Console.WriteLine($" [SEED] Added privilege: {privilege.Name}");
                 } catch (DbUpdateException) { /* Already exists */ }
+              } else {
+                Console.WriteLine($" [SEED] Privilege already exists: {privilege.Name}");
               }
             }
-            context.SaveChanges();
-            Console.WriteLine($" [SEED] Privileges checked/seeded in {privsSw.ElapsedMilliseconds}ms");
+            int saved = context.SaveChanges();
+            Console.WriteLine($" [SEED] Privileges checked/seeded in {privsSw.ElapsedMilliseconds}ms. Saved {saved} changes.");
 
             // Seed Users
             Console.WriteLine(" [SEED] Seeding users...");
