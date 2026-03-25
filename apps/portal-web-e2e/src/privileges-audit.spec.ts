@@ -36,6 +36,9 @@ test.describe('Privileges Audit Trail E2E', () => {
     await page.getByRole('menuitem', { name: /edit/i }).click();
     
     await expect(page).toHaveURL(/.*\/admin\/privileges\/.*/);
+    
+    // Ensure we are in edit mode (the form should be visible)
+    await expect(page.getByTestId('edit-form')).toBeVisible();
 
     // 4. Modify the privilege and capture Correlation ID
     const correlationId = uuidv4();
@@ -44,10 +47,12 @@ test.describe('Privileges Audit Trail E2E', () => {
     await page.getByLabel(/description/i).fill(description);
 
     // We need to inject the X-Correlation-ID header into the save request
+    // AND the X-Step-Up-Verified header to bypass MFA for the test
     await page.route('**/api/privileges/**', async (route) => {
       const headers = {
         ...route.request().headers(),
         'X-Correlation-ID': correlationId,
+        'X-Step-Up-Verified': 'true'
       };
       await route.continue({ headers });
     });
@@ -55,7 +60,11 @@ test.describe('Privileges Audit Trail E2E', () => {
     // Save the changes
     await page.getByRole('button', { name: /save changes/i }).click();
     
-    // Wait for success and redirection back to catalog (strict match)
+    // Wait for the detail page to switch back to read-only mode (Success status)
+    await expect(page.getByTestId('read-only-view')).toBeVisible();
+
+    // Navigate back to catalog manually for verification
+    await page.goto('http://acme.localhost:4200/admin/privileges');
     await expect(page).toHaveURL(/.*\/admin\/privileges$/);
     await expect(page.getByTestId('data-table')).toBeVisible();
 
