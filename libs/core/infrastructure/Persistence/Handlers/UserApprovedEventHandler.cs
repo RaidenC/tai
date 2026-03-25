@@ -5,6 +5,7 @@ using Tai.Portal.Core.Domain.Events;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Infrastructure.Persistence;
 using Tai.Portal.Core.Application.Models;
+using Tai.Portal.Core.Application.Interfaces;
 
 namespace Tai.Portal.Core.Infrastructure.Persistence.Handlers;
 
@@ -14,9 +15,11 @@ namespace Tai.Portal.Core.Infrastructure.Persistence.Handlers;
 /// </summary>
 public class UserApprovedEventHandler : INotificationHandler<DomainEventNotification<UserApprovedEvent>> {
   private readonly PortalDbContext _dbContext;
+  private readonly ICurrentUserService _currentUserService;
 
-  public UserApprovedEventHandler(PortalDbContext dbContext) {
+  public UserApprovedEventHandler(PortalDbContext dbContext, ICurrentUserService currentUserService) {
     _dbContext = dbContext;
+    _currentUserService = currentUserService;
   }
 
   public async Task Handle(DomainEventNotification<UserApprovedEvent> notification, CancellationToken cancellationToken) {
@@ -35,6 +38,7 @@ public class UserApprovedEventHandler : INotificationHandler<DomainEventNotifica
         (string)domainEvent.ApprovedByUserId,
         "UserApproved",
         domainEvent.UserId,
+        _currentUserService.CorrelationId,
         null, // IP Address would ideally be captured from HttpContext if available.
         $"User {user.UserName} approved by administrator {domainEvent.ApprovedByUserId}."
     );

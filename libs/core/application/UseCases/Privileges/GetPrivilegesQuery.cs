@@ -10,7 +10,8 @@ namespace Tai.Portal.Core.Application.UseCases.Privileges;
 public record GetPrivilegesQuery(
     int PageNumber = 1,
     int PageSize = 10,
-    string? Search = null) : IRequest<PaginatedList<PrivilegeDto>>;
+    string? Search = null,
+    string[]? Modules = null) : IRequest<PaginatedList<PrivilegeDto>>;
 
 public class GetPrivilegesQueryHandler : IRequestHandler<GetPrivilegesQuery, PaginatedList<PrivilegeDto>> {
   private readonly IPrivilegeService _privilegeService;
@@ -26,9 +27,10 @@ public class GetPrivilegesQueryHandler : IRequestHandler<GetPrivilegesQuery, Pag
       skip,
       request.PageSize,
       request.Search,
+      request.Modules,
       cancellationToken);
 
-    var totalCount = await _privilegeService.CountPrivilegesAsync(request.Search, cancellationToken);
+    var totalCount = await _privilegeService.CountPrivilegesAsync(request.Search, request.Modules, cancellationToken);
 
     return new PaginatedList<PrivilegeDto>(items.ToList(), totalCount, request.PageNumber, request.PageSize);
   }

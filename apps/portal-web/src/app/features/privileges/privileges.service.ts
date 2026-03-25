@@ -10,9 +10,9 @@ export enum RiskLevel {
 }
 
 export interface JitSettings {
-  expiry: string | null;
-  allowGuest: boolean;
-  requireMfa: boolean;
+  maxElevationDuration: string | null;
+  requiresApproval: boolean;
+  requiresJustification: boolean;
 }
 
 export interface Privilege {
@@ -42,13 +42,20 @@ export class PrivilegesService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/privileges';
 
-  getPrivileges(page: number, size: number, search?: string): Observable<PaginatedList<Privilege>> {
+  getPrivileges(page: number, size: number, search?: string, modules?: string[]): Observable<PaginatedList<Privilege>> {
     let params = new HttpParams()
       .set('pageNumber', page.toString())
       .set('pageSize', size.toString());
 
     if (search) {
       params = params.set('search', search);
+    }
+
+    if (modules && modules.length > 0) {
+      // HttpParams with multiple values for the same key sends 'modules=A&modules=B'
+      modules.forEach(m => {
+        params = params.append('modules', m);
+      });
     }
 
     return this.http.get<PaginatedList<Privilege>>(this.apiUrl, { params });

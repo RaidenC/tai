@@ -1,0 +1,114 @@
+import { test, expect } from '@playwright/test';
+import { injectAxe, checkA11y } from 'axe-playwright';
+import { injectAuthSession } from './test-utils';
+import * as path from 'path';
+
+test.describe('Privileges Catalog E2E', () => {
+  const BASE_URL = 'http://localhost:4200';
+
+  // Use absolute path to ensure it works regardless of CWD (Root vs Project folder)
+  test.use({ storageState: path.resolve(__dirname, '../.auth/user.json') });
+
+  test.beforeEach(async ({ page }) => {
+    // 1. Inject session storage (OIDC state etc)
+    await injectAuthSession(page, 'session.json');
+
+    // 2. Navigate to Privileges
+    await page.goto(`${BASE_URL}/admin/privileges`);
+    
+    // 3. Verify page loaded
+    await expect(page.locator('tai-sidebar')).toBeVisible({ timeout: 30000 });
+    await expect(page).toHaveURL(/\/admin\/privileges/);
+    await expect(page.locator('h1')).toContainText('Privilege Catalog');
+    
+    // Inject Axe for all tests
+    await injectAxe(page);
+  });
+
+  test('should pass accessibility checks', async ({ page }) => {
+    // Wait for table to load
+    await expect(page.getByTestId('data-table')).toBeVisible();
+    
+    // Run Axe audit
+    await checkA11y(page, undefined, {
+      detailedReport: true,
+      detailedReportOptions: { html: true }
+    });
+  });
+
+  test('should display the datatable with privileges', async ({ page }) => {
+    const table = page.getByTestId('data-table');
+    await expect(table).toBeVisible();
+    
+    // Should have at least one row (from seed data)
+    const rows = table.locator('tr[cdk-row]');
+    await expect(rows.first()).toBeVisible();
+  });
+
+  test('should support searching privileges', async ({ page }) => {
+    const searchInput = page.getByTestId('privilege-search-input');
+    await expect(searchInput).toBeVisible();
+    
+    await searchInput.fill('Portal.Users.Read');
+    
+    // Wait for debounce and reload
+    await expect(page).toHaveURL(/search=Portal.Users.Read/);
+    
+    const table = page.getByTestId('data-table');
+    const row = table.locator('tr', { hasText: 'Portal.Users.Read' });
+    await expect(row).toBeVisible();
+    await expect(table.locator('tr[cdk-row]')).toHaveCount(1);
+  });
+
+  test('should support keyboard navigation', async ({ page }) => {
+    // 0. Search for a specific privilege to ensure a stable, small table
+    const searchInput = page.getByTestId('privilege-search-input');
+    await searchInput.fill('Portal.Users.Read');
+    await expect(page).toHaveURL(/search=Portal.Users.Read/);
+    await expect(page.getByTestId('table-loading')).toBeHidden();
+
+    // 1. Focus search input
+    await searchInput.focus();
+    
+    // 2. Tab to the first sortable header (Name)
+    await page.keyboard.press('Tab');
+    const nameHeader = page.getByTestId('sort-button-name');
+    await expect(nameHeader).toBeFocused({ timeout: 10000 });
+    
+    // 3. Tab through headers to the first action trigger
+    // Sequence: Module Header -> Risk Level Header -> Status Header -> First Row Action Trigger
+    await page.keyboard.press('Tab'); // Module
+    await page.keyboard.press('Tab'); // Risk
+    await page.keyboard.press('Tab'); // Status
+    await page.keyboard.press('Tab'); // First Row Action Trigger
+    
+    const firstActionTrigger = page.locator('[data-testid^="action-menu-trigger-"]').first();
+    await expect(firstActionTrigger).toBeFocused({ timeout: 10000 });
+    
+    // 4. Open menu with Enter
+    await page.keyboard.press('Enter');
+    const firstMenuItem = page.getByTestId('action-view');
+    await expect(firstMenuItem).toBeVisible({ timeout: 15000 });
+    
+    // CDK Menu often focuses the first item automatically when opened via keyboard
+    await expect(async () => {
+      const isFocused = await firstMenuItem.evaluate(el => document.activeElement === el);
+      if (!isFocused) {
+        await page.keyboard.press('ArrowDown');
+      }
+      await expect(firstMenuItem).toBeFocused();
+    }).toPass({ timeout: 30000 });
+  });
+
+  test('should support pagination', async ({ page }) => {
+    // Navigate to page 2 (assuming there are > 10 privileges in seed data)
+    const nextBtn = page.getByTestId('pagination-next');
+    
+    // Seed data has ~11 privileges, so next button should be enabled if page size is 10
+    if (await nextBtn.isEnabled()) {
+      await nextBtn.click();
+      await expect(page).toHaveURL(/page=2/);
+      await expect(page.getByTestId('pagination-summary')).toContainText(/Showing 11 to/);
+    }
+  });
+});

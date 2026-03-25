@@ -1,6 +1,5 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { PrivilegesService, Privilege, PaginatedList } from './privileges.service';
-import { finalize } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 
 export type PrivilegesStatus = 'Idle' | 'Loading' | 'Success' | 'Error' | 'StepUpRequired';
@@ -36,10 +35,25 @@ export class PrivilegesStore {
   public readonly status = this._status.asReadonly();
   public readonly errorMessage = this._errorMessage.asReadonly();
 
+  // --- Mocked Licensed Modules (UI-Side Prototype) ---
+  // In a real system, this would come from a 'TenantConfigurationService' or OIDC claims.
+  private readonly _licensedModules = signal<string[]>(['Portal', 'LoanOrigination', 'Wires', 'System']);
+
   // --- Derived State ---
   public readonly isLoading = computed(() => this._status() === 'Loading');
   public readonly isError = computed(() => this._status() === 'Error');
   public readonly isStepUpRequired = computed(() => this._status() === 'StepUpRequired');
+
+  /**
+   * Filtered Privileges
+   * 
+   * Requirement: Automatically filter out privileges belonging to Apps/Modules ("Tiles") 
+   * that are not enabled in the current Tenant's Configuration.
+   * 
+   * JUNIOR RATIONALE: The filtering is now handled safely on the backend via the 
+   * 'modules' query parameter, ensuring our server-side pagination counts are accurate.
+   */
+  public readonly filteredPrivileges = computed(() => this._privileges());
 
   /**
    * Loads the list of privileges.
@@ -52,7 +66,10 @@ export class PrivilegesStore {
     this._status.set('Loading');
     this._errorMessage.set(null);
 
-    this.privilegesService.getPrivileges(this._pageIndex(), this._pageSize(), this._search() || undefined)
+    // Pass the mock licensed modules to the backend so pagination matches the exact count.
+    const modules = this._licensedModules();
+
+    this.privilegesService.getPrivileges(this._pageIndex(), this._pageSize(), this._search() || undefined, modules)
       .subscribe({
         next: (response: PaginatedList<Privilege>) => {
           this._privileges.set(response.items);
@@ -95,9 +112,11 @@ export class PrivilegesStore {
 
     this.privilegesService.updatePrivilege(id, data, isStepUpVerified)
       .subscribe({
-        next: () => {
+        next: (updatedPrivilege) => {
+          this._selectedPrivilege.set(updatedPrivilege);
           this._status.set('Success');
-          this.loadPrivileges(); // Refresh list
+          // Refresh catalog in background
+          this.loadPrivileges();
         },
         error: (err: HttpErrorResponse) => {
           if (err.status === 403 && err.headers.get('X-Step-Up-Required') === 'true') {

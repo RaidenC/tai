@@ -10,6 +10,8 @@
 ## Backend (Presentation & Application)
 - **Framework:** .NET 10 REST API (Minimal APIs / Controllers).
 - **Core Pattern:** Strict Clean Architecture (Domain, Application, Infrastructure, Presentation).
+- **Event Dispatching:** Robust MediatR-based domain event dispatcher integrated into EF Core `SaveChangesAsync`, supporting proxy-wrapped entities.
+- **Traceability:** Implementation of **Correlation IDs** across all layers, extracted from the `X-Correlation-ID` header and persisted in audit logs.
 - **Identity Service:** Custom-built via **OpenIddict**, adhering to the **FAPI 2.0** security profile.
 - **Security Protocols:** DPoP (Demonstrating Proof-of-Possession), Phishing-Resistant Auth via **Passkeys (FIDO2/WebAuthn)**.
 - **Persistence:** **PostgreSQL** via EF Core 10 with Global Query Filters for tenant isolation.
@@ -27,7 +29,7 @@
 - **Isolation & Docs:** **Storybook** for isolated component development and verifiable security ledgers.
 
 ## Infrastructure & Tooling
-- **Monorepo Management:** **Nx** for build orchestration and linting enforcement.
+- Monorepo Management:** **Nx** for build orchestration and linting enforcement.
 - **CI/CD Pipeline:** **GitHub Actions** using **Nx Affected** for optimized build/test cycles.
 - **Security Scanning:** Automated **Gitleaks** integration to prevent credential exposure.
 - **Containerization:** **Docker** multi-stage builds for production-grade API and Gateway images.
@@ -46,4 +48,4 @@
 - **Backend Integration:** WebApplicationFactory + Respawn / TestContainers (API & Persistence).
 - **Frontend Logic:** Vitest (Services, Signal logic, Reducers).
 - **Component Verification:** Storybook Interaction Tests (Play functions) + Axe-core (Accessibility).
-- **End-to-End (E2E):** Playwright for critical "Steel Thread" workflows.
+- **End-to-End (E2E):** Playwright for critical "Steel Thread" workflows, utilizing Global Auth state and TDM API seeding for setup efficiency.

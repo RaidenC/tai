@@ -12,4 +12,6 @@ public class CurrentUserService : ICurrentUserService {
   }
 
   public string? UserId => _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+
+  public string? CorrelationId => _httpContextAccessor.HttpContext?.Request?.Headers["X-Correlation-ID"].ToString();
 }

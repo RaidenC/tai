@@ -16,6 +16,7 @@ using Tai.Portal.Core.Infrastructure.Identity;
 using Tai.Portal.Core.Infrastructure.Middleware;
 using Tai.Portal.Core.Infrastructure.Services;
 using Tai.Portal.Core.Infrastructure.Persistence.Services;
+using Tai.Portal.Api.Hubs;
 
 using Tai.Portal.Core.Application.Behaviors;
 using FluentValidation;
@@ -51,6 +52,7 @@ builder.Services.AddValidatorsFromAssembly(typeof(RegisterCustomerCommand).Assem
 
 builder.Services.AddMediatR(cfg => {
   cfg.RegisterServicesFromAssembly(typeof(RegisterCustomerCommand).Assembly);
+  cfg.RegisterServicesFromAssembly(typeof(PortalDbContext).Assembly);
   cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationPipelineBehavior<,>));
 });
 
@@ -140,6 +142,7 @@ builder.Services.AddAuthentication(options => {
 
 builder.Services.AddAuthorization();
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 
 builder.Services.AddCors(options => {
   options.AddDefaultPolicy(policy => {
@@ -223,6 +226,7 @@ app.UseMiddleware<TenantResolutionMiddleware>();
 app.MapGet("/", () => "Portal API is running");
 
 app.MapControllers();
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();
 public partial class Program { }

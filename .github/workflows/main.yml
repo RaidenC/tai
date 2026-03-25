@@ -129,8 +129,25 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Get Playwright version
+        run: echo "PLAYWRIGHT_VERSION=$(npx playwright --version | sed 's/Version //')" >> $GITHUB_ENV
+
+      - name: Cache Playwright Browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
       - name: Install Playwright Browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps
+
+      - name: Install Playwright Dependencies (on cache hit)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps
 
       - name: Setup Local DNS
         run: |
@@ -140,20 +157,24 @@ jobs:
         env:
           ConnectionStrings__DefaultConnection: Host=localhost;Database=portal;Username=postgres;Password=postgres
         run: |
-          # Start Backend
+          # 1. Build Tailwind sequentially to prevent race conditions
+          npx nx run-many -t build-tailwind
+          
+          # 2. Start Backend
           npx nx run portal-api:serve --launchProfile=http &
           npx nx run portal-gateway:serve &
           
-          # Start Portal Web
-          npx nx run portal-web:serve --port=4200 &
+          # 3. Start Portal Web
+          npx nx run portal-web:serve --port=4200 --host=0.0.0.0 &
           
-          # Start Identity UI (needed for redirects)
-          npx nx run identity-ui:serve &
+          # 4. Start Identity UI
+          npx nx run identity-ui:serve --host=0.0.0.0 &
+
+          # 5. Start DocViewer Mock (Federation Testing)
+          npx nx run docviewer-mock:serve --port=4201 --host=0.0.0.0 &
           
-          # Wait for services to be ready
-          # portal-api (5031), portal-gateway (5217), portal-web (4200), identity-ui (4300)
-          npx wait-on http-get://localhost:5031/identity/ http-get://localhost:5217/identity/ http-get://localhost:4200/ http-get://localhost:4300/ --timeout 180000
-        continue-on-error: true
+          # 6. Wait for services to be ready via TCP
+          npx wait-on tcp:127.0.0.1:5031 tcp:127.0.0.1:5217 tcp:127.0.0.1:4200 tcp:127.0.0.1:4300 tcp:127.0.0.1:4201 --timeout 180000
 
       - name: Run E2E Affected
         run: npx nx affected -t e2e

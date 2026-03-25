@@ -46,6 +46,18 @@ describe('PrivilegesStore', () => {
     expect(store.status()).toBe('Success');
   });
 
+  it('should pass licensed modules to the backend service', () => {
+    serviceMock.getPrivileges.mockReturnValue(of({
+      items: [mockPrivilege],
+      totalCount: 1
+    }));
+
+    store.loadPrivileges();
+
+    // The store should request privileges and pass its licensed modules to the backend
+    expect(serviceMock.getPrivileges).toHaveBeenCalledWith(1, 10, undefined, ['Portal', 'LoanOrigination', 'Wires', 'System']);
+  });
+
   it('should handle Step-Up requirement error', () => {
     const errorResponse = new HttpErrorResponse({
       status: 403,
@@ -58,5 +70,16 @@ describe('PrivilegesStore', () => {
 
     expect(store.status()).toBe('StepUpRequired');
     expect(store.isStepUpRequired()).toBe(true);
+  });
+
+  it('should update selectedPrivilege after successful update', () => {
+    const updatedPrivilege = { ...mockPrivilege, description: 'Updated' };
+    serviceMock.updatePrivilege.mockReturnValue(of(updatedPrivilege));
+    serviceMock.getPrivileges.mockReturnValue(of({ items: [], totalCount: 0 }));
+
+    store.updatePrivilege('1', { description: 'Updated' });
+
+    expect(store.selectedPrivilege()).toEqual(updatedPrivilege);
+    expect(store.status()).toBe('Success');
   });
 });

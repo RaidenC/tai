@@ -51,3 +51,6 @@ coverage/
 __screenshots__/
 test-results/.last-run.json
 .worktrees/
+
+# Playwright auth state
+.auth/

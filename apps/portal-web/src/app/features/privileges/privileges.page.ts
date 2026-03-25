@@ -6,9 +6,7 @@ import { FormsModule } from '@angular/forms';
 import { 
   DataTableComponent, 
   TableColumnDef, 
-  TableActionDef,
-  ConfirmationDialogComponent,
-  ConfirmationDialogData
+  TableActionDef
 } from '@tai/ui-design-system';
 import { PrivilegesStore } from './privileges.store';
 import { Privilege, RiskLevel } from './privileges.service';
@@ -81,7 +79,7 @@ import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
 
       <div class="bg-white rounded-xl shadow-lg border border-gray-100 overflow-hidden">
         <tai-data-table
-          [data]="store.privileges()"
+          [data]="store.filteredPrivileges()"
           [columns]="columns"
           [actions]="actions"
           [loading]="store.isLoading()"
@@ -89,6 +87,7 @@ import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
           [pageIndex]="store.pageIndex()"
           [pageSize]="store.pageSize()"
           (pageChanged)="onPageChange($event)"
+          (sortChanged)="onSortChange($event)"
           (actionTriggered)="onAction($event)">
         </tai-data-table>
       </div>
@@ -109,21 +108,28 @@ export class PrivilegesPage implements OnInit {
   private pendingUpdate: { id: string; data: Partial<Privilege> } | null = null;
 
   protected readonly columns: TableColumnDef<Privilege>[] = [
-    { id: 'name', header: 'Privilege Name', cell: (p) => p.name },
-    { id: 'module', header: 'Module', cell: (p) => p.module },
+    { id: 'name', header: 'Privilege Name', cell: (p) => p.name, sortable: true },
+    { id: 'module', header: 'Module', cell: (p) => p.module, sortable: true },
     { 
       id: 'risk', 
       header: 'Risk Level', 
-      cell: (p) => RiskLevel[p.riskLevel] 
+      cell: (p) => RiskLevel[p.riskLevel],
+      sortable: true
     },
     { 
       id: 'status', 
       header: 'Status', 
-      cell: (p) => p.isActive ? 'Active' : 'Inactive' 
+      cell: (p) => p.isActive ? 'Active' : 'Inactive',
+      sortable: true
     }
   ];
 
   protected readonly actions: TableActionDef<Privilege>[] = [
+    {
+      id: 'view',
+      label: 'View Details',
+      class: 'text-gray-600 hover:text-gray-900'
+    },
     {
       id: 'edit',
       label: 'Edit',
@@ -141,6 +147,10 @@ export class PrivilegesPage implements OnInit {
       const page = +params['page'] || 1;
       const size = +params['size'] || 10;
       const search = params['search'] || '';
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const sort = params['sort'] || '';
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const dir = params['dir'] || '';
 
       this.searchTerm = search;
       this.store.loadPrivileges(page, size, search);
@@ -158,12 +168,22 @@ export class PrivilegesPage implements OnInit {
     this.updateUrl({ page });
   }
 
+  protected onSortChange(event: { columnId: string; direction: 'asc' | 'desc' }): void {
+    this.updateUrl({ sort: event.columnId, dir: event.direction, page: 1 });
+  }
+
   protected onSearchChange(search: string): void {
     this.searchSubject.next(search);
   }
 
   protected onAction(event: { actionId: string; row: Privilege }): void {
-    if (event.actionId === 'toggle') {
+    if (event.actionId === 'view') {
+      this.router.navigate(['/admin/privileges', event.row.id]);
+    } else if (event.actionId === 'edit') {
+      this.router.navigate(['/admin/privileges', event.row.id], { 
+        queryParams: { edit: 'true' } 
+      });
+    } else if (event.actionId === 'toggle') {
       this.pendingUpdate = { 
         id: event.row.id, 
         data: { ...event.row, isActive: !event.row.isActive } 
@@ -179,7 +199,7 @@ export class PrivilegesPage implements OnInit {
     }
   }
 
-  private updateUrl(params: Partial<{ page: number; size: number; search: string }>): void {
+  private updateUrl(params: Partial<{ page: number; size: number; search: string; sort: string; dir: string }>): void {
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: params,

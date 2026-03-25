@@ -3,6 +3,7 @@ export * from './lib/design-system/secure-input/secure-input';
 export * from './lib/design-system/secure-input/trusted-types.service';
 export * from './lib/design-system/login-form/login-form';
 export * from './lib/sidebar/sidebar.component';
+export * from './lib/directives/has-privilege.directive';
 export * from './lib/user-profile/user-profile.component';
 export * from './lib/app-shell/app-shell.component';
 export * from './lib/design-system/registration-form/registration-form';

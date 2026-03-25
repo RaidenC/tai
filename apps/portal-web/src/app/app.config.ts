@@ -7,6 +7,8 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAuth, LogLevel, authInterceptor } from 'angular-auth-oidc-client';
 import { appRoutes } from './app.routes';
 import { dpopInterceptor } from './dpop.interceptor';
+import { PrivilegeChecker } from '@tai/ui-design-system';
+import { AuthService } from './auth.service';
 
 const SYSTEM_CONFIG = {
     gatewayPort: 5217,
@@ -17,6 +19,7 @@ export const appConfig: ApplicationConfig = {
     providers: [
         provideZoneChangeDetection({ eventCoalescing: true }),
         provideRouter(appRoutes),
+        { provide: PrivilegeChecker, useExisting: AuthService },
         // provideHttpClient is how we configure Angular's HttpClient.
         // The 'withInterceptors' function is used to register our custom interceptors.
         // The interceptors will be executed in the order they are provided.
@@ -41,7 +44,7 @@ export const appConfig: ApplicationConfig = {
                 redirectUrl: window.location.origin,
                 postLogoutRedirectUri: window.location.origin,
                 clientId: 'portal-web',
-                scope: 'openid profile email roles',
+                scope: 'openid profile email offline_access roles',
                 responseType: 'code',
                 silentRenew: true,
                 useRefreshToken: true,

@@ -473,6 +473,9 @@ namespace Tai.Portal.Core.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("CorrelationId")
+                        .HasColumnType("text");
+
                     b.Property<string>("Details")
                         .HasColumnType("text");
 

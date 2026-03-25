@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import * as path from 'path';
+import { injectAuthSession, seedTestUser } from './test-utils';
 
 /**
  * Onboarding "Steel Thread" E2E Tests
@@ -52,7 +54,6 @@ test.describe('User Onboarding Flows', () => {
     });
 
     // 6. Enter OTP
-    // The component uses a single input for the full code
     await page.getByLabel(/Verification Code/i).fill(code);
     await page.getByRole('button', { name: /Verify Code/i }).click();
 
@@ -61,10 +62,10 @@ test.describe('User Onboarding Flows', () => {
     await expect(page.locator('h2')).toContainText(/Create Your Passkey/i);
   });
 
-  test('Staff Approval: Should require admin approval before OTP verification', async ({ page, request }) => {
+  test('Staff Approval: Should require admin approval before OTP verification', async ({ page, request, browser }) => {
     const email = `staff_${Date.now()}@acme.com`;
 
-    // 1. Register as Staff at ACME Subdomain
+    // 1. ARRANGE: Register as Staff at ACME Subdomain
     await page.goto(ACME_URL);
     await page.getByRole('button', { name: /Create New Account/i }).click();
     await expect(page).toHaveURL(/\/register/);
@@ -79,20 +80,17 @@ test.describe('User Onboarding Flows', () => {
     const registerResponse = await registerResponsePromise;
     expect(registerResponse.ok()).toBeTruthy();
 
-    // 2. Should be redirected to /verify
+    // 2. ASSERT: Should be redirected to /verify
     await expect(page).toHaveURL(/\/verify/);
     
-    // 3. Admin Login (ACME Tenant)
-    const adminPage = await page.context().newPage();
+    // 3. ACT: Admin Approval (Bypassing UI login with ACME Admin session)
+    const adminContext = await browser.newContext({ storageState: path.join(__dirname, '../.auth/acme-admin.json') });
+    const adminPage = await adminContext.newPage();
+    await injectAuthSession(adminPage, 'acme-session.json');
     await adminPage.goto(ACME_URL);
-    await adminPage.getByRole('button', { name: /Sign In with TAI Identity/i }).click();
-    await adminPage.getByLabel(/Corporate Email/i).fill('admin@acme.com');
-    await adminPage.getByLabel(/Password/i).fill('Password123!');
-    await adminPage.getByRole('button', { name: /Sign In to Portal/i }).click();
-
+    
     // 4. Navigate to Approvals
     await expect(adminPage.locator('tai-sidebar')).toBeVisible({ timeout: 15000 });
-    // Using resilient role-based locator
     await adminPage.getByRole('menuitem', { name: /Approvals/i }).click();
     await expect(adminPage).toHaveURL(/\/admin\/approvals/);
 
@@ -101,10 +99,11 @@ test.describe('User Onboarding Flows', () => {
     await adminPage.reload();
     await initialPendingPromise;
     
-    const row = adminPage.locator('tr', { hasText: email });
+    // Use a locator that specifically targets the table body to avoid matching headers/footers
+    const table = adminPage.locator('table');
+    const row = table.locator('tr').filter({ hasText: email });
     await expect(row).toBeVisible({ timeout: 15000 });
     
-    // Wait for the approve and subsequent refresh calls
     const approveResponsePromise = adminPage.waitForResponse(r => r.url().includes('/api/onboarding/approve') && r.request().method() === 'POST');
     const refreshResponsePromise = adminPage.waitForResponse(r => r.url().includes('/api/onboarding/pending-approvals') && r.request().method() === 'GET');
     
@@ -115,7 +114,7 @@ test.describe('User Onboarding Flows', () => {
     
     await expect(row).toBeHidden({ timeout: 10000 }); 
 
-    // 6. Now the staff member can verify OTP
+    // 6. ACT: Verify OTP as the approved staff member
     let code = '';
     await expect(async () => {
       const otpResponse = await request.get(`${API_URL}/identity/diag/otp-by-email?email=${encodeURIComponent(email)}`, {
@@ -138,25 +137,28 @@ test.describe('User Onboarding Flows', () => {
     await page.getByLabel(/Verification Code/i).fill(code);
     await page.getByRole('button', { name: /Verify Code/i }).click();
 
-    // 7. Success
+    // 7. ASSERT: Success
     await expect(page).toHaveURL(/\/create-passkey/, { timeout: 10000 });
+    
+    await adminPage.close();
   });
 
-  test('User Directory: Should enforce tenant isolation', async ({ page }) => {
-    // 1. Login as TAI Admin
-    await page.goto(TAI_URL);
-    await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click();
-    await page.getByLabel(/Corporate Email/i).fill('admin@tai.com');
-    await page.getByLabel(/Password/i).fill('Password123!');
-    await page.getByRole('button', { name: /Sign In to Portal/i }).click();
+  test.describe('Authenticated Tests (TAI Admin)', () => {
+    test.use({ storageState: path.join(__dirname, '../.auth/user.json') });
 
-    // 2. Navigate to Users
-    await expect(page.locator('tai-sidebar')).toBeVisible({ timeout: 15000 });
-    await page.getByRole('menuitem', { name: /Users/i }).click();
-    await expect(page).toHaveURL(/\/users/);
+    test('User Directory: Should enforce tenant isolation', async ({ page }) => {
+      // 1. Inject global auth state
+      await injectAuthSession(page);
 
-    // 3. Verify visibility
-    await expect(page.locator('tbody')).toContainText('admin@tai.com');
-    await expect(page.locator('tbody')).not.toContainText('admin@acme.com');
+      // 2. Navigate directly to Users
+      await page.goto(TAI_URL);
+      await expect(page.locator('tai-sidebar')).toBeVisible({ timeout: 15000 });
+      await page.getByRole('menuitem', { name: /Users/i }).click();
+      await expect(page).toHaveURL(/\/users/);
+
+      // 3. Verify visibility (Isolation check)
+      await expect(page.locator('tbody')).toContainText('admin@tai.com');
+      await expect(page.locator('tbody')).not.toContainText('admin@acme.com');
+    });
   });
 });

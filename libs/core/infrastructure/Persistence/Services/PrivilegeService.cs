@@ -23,23 +23,28 @@ public class PrivilegeService : IPrivilegeService {
       int skip,
       int take,
       string? search,
+      string[]? modules,
       CancellationToken cancellationToken) {
 
-    if (skip == 0 && take == 10 && string.IsNullOrWhiteSpace(search)) {
+    if (skip == 0 && take == 10 && string.IsNullOrWhiteSpace(search) && (modules == null || modules.Length == 0)) {
       return await _cache.GetOrCreateAsync(PrivilegesCacheKey, async entry => {
         entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
-        return await FetchPrivilegesFromDb(0, 10, null, cancellationToken);
+        return await FetchPrivilegesFromDb(0, 10, null, null, cancellationToken);
       }) ?? Enumerable.Empty<PrivilegeDto>();
     }
 
-    return await FetchPrivilegesFromDb(skip, take, search, cancellationToken);
+    return await FetchPrivilegesFromDb(skip, take, search, modules, cancellationToken);
   }
 
-  private async Task<IEnumerable<PrivilegeDto>> FetchPrivilegesFromDb(int skip, int take, string? search, CancellationToken cancellationToken) {
+  private async Task<IEnumerable<PrivilegeDto>> FetchPrivilegesFromDb(int skip, int take, string? search, string[]? modules, CancellationToken cancellationToken) {
     var query = _context.Privileges.AsNoTracking();
 
     if (!string.IsNullOrWhiteSpace(search)) {
       query = query.Where(p => p.Name.Contains(search) || p.Description.Contains(search));
+    }
+
+    if (modules != null && modules.Length > 0) {
+      query = query.Where(p => modules.Contains(p.Module));
     }
 
     return await query
@@ -58,11 +63,15 @@ public class PrivilegeService : IPrivilegeService {
         .ToListAsync(cancellationToken);
   }
 
-  public async Task<int> CountPrivilegesAsync(string? search, CancellationToken cancellationToken) {
+  public async Task<int> CountPrivilegesAsync(string? search, string[]? modules, CancellationToken cancellationToken) {
     var query = _context.Privileges.AsNoTracking();
 
     if (!string.IsNullOrWhiteSpace(search)) {
       query = query.Where(p => p.Name.Contains(search) || p.Description.Contains(search));
+    }
+
+    if (modules != null && modules.Length > 0) {
+      query = query.Where(p => modules.Contains(p.Module));
     }
 
     return await query.CountAsync(cancellationToken);
@@ -141,6 +150,9 @@ public class PrivilegeService : IPrivilegeService {
     if (isActive) privilege.Activate(); else privilege.Deactivate();
 
     await _context.SaveChangesAsync(cancellationToken);
+
+    // Force a reload to get the latest database-generated RowVersion (xmin)
+    await _context.Entry(privilege).ReloadAsync(cancellationToken);
 
     InvalidateCache(id);
 

@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test';
+import * as path from 'path';
+import { injectAuthSession, seedTestUser } from './test-utils';
 
 /**
  * Users Approval Workflow E2E Tests
@@ -8,60 +10,68 @@ import { test, expect } from '@playwright/test';
  */
 test.describe('Users Approval Workflow', () => {
   const TAI_URL = 'http://localhost:4200';
+  const authFile = path.join(__dirname, '../.auth/user.json');
 
-  test('should approve a pending user successfully', async ({ page }) => {
-    // 1. Login as TAI Admin
+  test.use({ storageState: authFile });
+
+  test('should approve a pending user successfully', async ({ page, request }) => {
+    // 1. Arrange: Seed a pending user via API
+    const uniqueId = Date.now();
+    const testEmail = `pending_${uniqueId}@tai.com`;
+    const firstName = `Pending_${uniqueId}`;
+    
+    await seedTestUser(request, {
+        email: testEmail,
+        firstName: firstName,
+        lastName: 'User',
+        status: 1 // PendingApproval
+    });
+
+    // 2. Inject global auth state (SessionStorage)
+    await injectAuthSession(page);
+
+    // 3. Navigate directly to the portal
     await page.goto(TAI_URL);
-    await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click();
-    await page.getByLabel(/Corporate Email/i).fill('admin@tai.com');
-    await page.getByLabel(/Password/i).fill('Password123!');
-    await page.getByRole('button', { name: /Sign In to Portal/i }).click();
 
-    // 2. Navigate to Users
+    // 4. Navigate to Users
     await expect(page.locator('tai-sidebar')).toBeVisible({ timeout: 15000 });
     await page.getByRole('menuitem', { name: /Users/i }).click();
     await expect(page).toHaveURL(/\/users/);
 
-    // 3. Find a pending user and click approve
-    // Note: In a real test, we would seed a specific pending user.
-    // Assuming there's a row with 'PendingApproval' status
+    // 5. Find the specific pending user and click approve
     const dataTable = page.getByTestId('data-table');
     await expect(dataTable).toBeVisible();
 
-    // Look for the action menu trigger on a row that has a pending user.
-    // For the sake of this E2E test structural requirement, we verify the action dropdown exists
-    // and can be interacted with. We will mock the API response to avoid test state pollution if needed,
-    // or rely on a seeded pending user.
+    // Use search to find our specific user (avoids pagination issues)
+    const searchInput = page.getByPlaceholder(/Search users/i);
+    await searchInput.fill(testEmail);
+    // Wait for the table to filter
+    await expect(page.locator('tr', { hasText: testEmail })).toBeVisible({ timeout: 10000 });
+
+    // Find the row for our specific user
+    const row = page.locator('tr', { hasText: testEmail });
+    await expect(row).toContainText('Pending');
+
+    // Trigger the action menu for this specific user
+    const actionMenuTrigger = row.locator('[data-testid^="action-menu-trigger-"]');
+    await actionMenuTrigger.click();
     
-    // Attempt to find the first action menu
-    const actionMenuTrigger = page.locator('[data-testid^="action-menu-trigger-"]').first();
+    const approveAction = page.getByTestId('action-approve');
+    await expect(approveAction).toBeVisible();
+    await approveAction.click();
     
-    if (await actionMenuTrigger.isVisible()) {
-        await actionMenuTrigger.click();
-        
-        const approveAction = page.getByTestId('action-approve');
-        
-        // If the approve action is visible for this user, test the modal flow
-        if (await approveAction.isVisible()) {
-            await approveAction.click();
-            
-            // 4. Verify Modal opens
-            const dialog = page.locator('tai-confirmation-dialog');
-            await expect(dialog).toBeVisible();
-            await expect(dialog).toContainText('Approve User Registration');
-            
-            // 5. Confirm Approval
-            // We intercept the API call to ensure it fires and optionally mock it
-            const approvePromise = page.waitForResponse(r => r.url().includes('/api/users/') && r.url().includes('/approve') && r.request().method() === 'POST');
-            
-            await page.getByRole('button', { name: 'Approve User' }).click();
-            
-            // 6. Verify API call
-            // await approvePromise; // Uncomment when backend is fully wired in the test environment for this route
-            
-            // 7. Verify Modal closes
-            await expect(dialog).toBeHidden();
-        }
-    }
+    // 6. Verify Modal opens
+    const dialog = page.locator('tai-confirmation-dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('Approve User Registration');
+    
+    // 7. Confirm Approval
+    await page.getByRole('button', { name: 'Approve User' }).click();
+    
+    // 8. Verify Modal closes and status updates
+    await expect(dialog).toBeHidden();
+    
+    // Status should now be 'PendingVerification' as per domain logic (Approving PendingApproval leads to PendingVerification)
+    await expect(row).toContainText(/Verification/i);
   });
 });
