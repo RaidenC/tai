@@ -18,20 +18,20 @@
     - [x] Run `npx nx affected --target=lint` to ensure no style regressions.
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Component Scaffold & CDK Listbox' (Protocol in workflow.md) [da3da9d]
 
-## Phase 2: Responsive UI, Virtual Scroll & Density Control
+## Phase 2: Responsive UI, Virtual Scroll & Density Control [checkpoint: 641c093]
 - [x] Task: Responsive UI Construction & View Transitions [9f4559d]
     - [x] Implement the layout using Tailwind CSS 4.0, ensuring it stacks vertically on mobile breakpoints and side-by-side on desktop.
     - [x] Rotate the "Smart Move" icons (Left/Right to Up/Down) dynamically based on the current responsive breakpoint.
     - [x] Integrate `<cdk-virtual-scroll-viewport>` and apply custom webkit scrollbar styling.
     - [x] Apply CSS View Transitions (`view-transition-name`) and `focus-visible:ring` for premium micro-interactions.
     - [x] Implement Density Control (`compact` vs `comfortable` Tailwind padding) and Content Projection (`<ng-template>`).
-- [~] Task: Dynamic Badges & Active Accessibility
-    - [ ] Implement Contextual Pill Badges that reactively display total vs. filtered counts (e.g., `[ 3 / 10 ]`).
-    - [ ] Inject `LiveAnnouncer` from `@angular/cdk/a11y`.
-    - [ ] Create Storybook stories representing all states (Desktop, Mobile, Compact, Comfortable) and implement automated Axe-core checks.
-- [ ] Task: Continuous Integration Gate
-    - [ ] Run `npx nx affected --target=test --coverage` and `--target=lint`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Responsive UI, Virtual Scroll & Density Control' (Protocol in workflow.md)
+- [x] Task: Dynamic Badges & Active Accessibility [641c093]
+    - [x] Implement Contextual Pill Badges that reactively display total vs. filtered counts (e.g., `[ 3 / 10 ]`).
+    - [x] Inject `LiveAnnouncer` from `@angular/cdk/a11y`.
+    - [x] Create Storybook stories representing all states (Desktop, Mobile, Compact, Comfortable) and implement automated Axe-core checks.
+- [x] Task: Continuous Integration Gate [641c093]
+    - [x] Run `npx nx affected --target=test --coverage` and `--target=lint`.
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Responsive UI, Virtual Scroll & Density Control' (Protocol in workflow.md) [641c093]
 
 ## Phase 3: Drag & Drop Architecture Spike
 - [ ] Task: Architectural Resolution: Drag-Drop within Virtual Scroll
