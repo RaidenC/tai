@@ -1,18 +1,22 @@
 # Implementation Plan: Custom Transfer List Component
 
-## Phase 1: Component Scaffold & CDK Listbox
-- [ ] Task: Project Scaffolding
-    - [ ] Generate the new `TransferListComponent` in the `libs/ui/design-system` library.
-    - [ ] Define the Generic Types `<T>` and Signal Inputs (`items`, `assignedIds`, `displayKey`, `trackKey`, `density`).
-    - [ ] Expose i18n dictionary Inputs for all button labels and ARIA tags.
-- [ ] Task: Selection & Filtering Logic via CDK (TDD)
-    - [ ] Integrate `@angular/cdk/listbox` (`cdkListbox`, `cdkOption`).
-    - [ ] Write failing Vitest tests for the debounced `computed()` search filtering logic.
-    - [ ] Implement the logic using Angular Signals to pass the Vitest suite.
-- [ ] Task: Continuous Integration Gate
-    - [ ] Run `npx nx affected --target=test --coverage` to ensure 90%+ coverage.
-    - [ ] Run `npx nx affected --target=lint` to ensure no style regressions.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Component Scaffold & CDK Listbox' (Protocol in workflow.md)
+## Phase 1: Component Scaffold & CDK Listbox [checkpoint: da3da9d]
+- [x] Task: Project Scaffolding [9f4559d]
+    - [x] Generate the new `TransferListComponent` in the `libs/ui/design-system` library.
+    - [x] Define the Generic Types `<T>` and Signal Inputs (`items`, `assignedIds`, `displayKey`, `trackKey`, `density`).
+    - [x] Expose i18n dictionary Inputs for all button labels and ARIA tags.
+- [x] Task: Selection & Filtering Logic via CDK (TDD) [9f4559d]
+    - [x] Integrate `@angular/cdk/listbox` (`cdkListbox`, `cdkOption`).
+    - [x] Write failing Vitest tests for the debounced `computed()` search filtering logic.
+    - [x] Implement the logic using Angular Signals to pass the Vitest suite.
+- [x] Task: Selection-based Move Buttons (>) and (<) [da3da9d]
+    - [x] Track current selection in both panes using Signals.
+    - [x] Add `>` and `<` buttons to move only selected items.
+    - [x] Ensure Ctrl-click and single-click multi-selection works.
+- [x] Task: Continuous Integration Gate [9f4559d]
+    - [x] Run `npx nx affected --target=test --coverage` to ensure 90%+ coverage.
+    - [x] Run `npx nx affected --target=lint` to ensure no style regressions.
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Component Scaffold & CDK Listbox' (Protocol in workflow.md) [da3da9d]
 
 ## Phase 2: Responsive UI, Virtual Scroll & Density Control
 - [ ] Task: Responsive UI Construction & View Transitions
