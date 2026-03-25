@@ -1,0 +1,37 @@
+.custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #e2e8f0; // gray-200
+    border-radius: 10px;
+    
+    &:hover {
+      background: #cbd5e1; // gray-300
+    }
+  }
+}
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.transfer-list-container {
+  // Smooth transition for layout changes
+  transition: all 0.3s ease-in-out;
+  
+  // Ensure the container is always accessible
+  min-width: 300px;
+}
+
+// Support for CSS View Transitions
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 0.2s;
+}
