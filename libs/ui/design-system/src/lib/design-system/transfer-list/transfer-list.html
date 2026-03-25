@@ -1,7 +1,7 @@
 <div class="transfer-list-container flex flex-col gap-4 p-4 border border-gray-200 rounded-lg bg-gray-50" [class.density-compact]="density() === 'compact'">
   <div class="flex gap-4 items-start">
     <!-- Available List -->
-    <div class="flex-1 bg-white border border-gray-300 rounded shadow-sm overflow-hidden">
+    <div class="flex-1 bg-white border border-gray-300 rounded shadow-sm overflow-hidden flex flex-col">
       <div class="p-2 border-b border-gray-200 font-bold bg-gray-50 text-sm uppercase tracking-wider">{{ i18n().availableTitle }}</div>
       <div class="p-2">
         <input 
@@ -14,13 +14,16 @@
       </div>
       <ul 
         cdkListbox
-        multiple
+        cdkListboxMultiple
+        [cdkListboxValue]="selectedAvailable()"
+        (cdkListboxValueChange)="updateSelectedAvailable($event)"
         class="h-64 overflow-y-auto p-1 outline-none"
         aria-labelledby="available-title">
         @for (item of availableItems(); track item[trackKey()]) {
           <li 
             [cdkOption]="item[trackKey()]"
-            class="p-2 text-sm cursor-pointer rounded hover:bg-blue-50 cdk-option-selected:bg-blue-100 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            [class.bg-blue-100]="selectedAvailable().includes($any(item[trackKey()]))"
+            class="p-2 text-sm cursor-pointer rounded hover:bg-blue-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             (dblclick)="moveRight([$any(item[trackKey()])])">
             <ng-container *ngTemplateOutlet="itemTemplate() || defaultItemTemplate; context: { $implicit: item }"></ng-container>
           </li>
@@ -31,13 +34,43 @@
     </div>
 
     <!-- Actions -->
-    <div class="flex flex-col gap-2 justify-center py-10">
-      <button type="button" (click)="moveAllRight()" class="p-2 border border-gray-300 rounded hover:bg-gray-100 shadow-sm" [title]="i18n().moveAllRight"> >> </button>
-      <button type="button" (click)="moveAllLeft()" class="p-2 border border-gray-300 rounded hover:bg-gray-100 shadow-sm" [title]="i18n().moveAllLeft"> << </button>
+    <div class="flex flex-col gap-2 justify-center py-10 px-2">
+      <button 
+        type="button" 
+        (click)="moveAllRight()" 
+        class="p-2 border border-gray-300 rounded hover:bg-gray-100 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed" 
+        [title]="i18n().moveAllRight"
+        [disabled]="availableItems().length === 0"> 
+        >> 
+      </button>
+      <button 
+        type="button" 
+        (click)="moveSelectedRight()" 
+        class="p-2 border border-gray-300 rounded hover:bg-gray-100 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed font-bold" 
+        [title]="i18n().moveSelectedRight"
+        [disabled]="selectedAvailable().length === 0"> 
+        &gt; 
+      </button>
+      <button 
+        type="button" 
+        (click)="moveSelectedLeft()" 
+        class="p-2 border border-gray-300 rounded hover:bg-gray-100 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed font-bold" 
+        [title]="i18n().moveSelectedLeft"
+        [disabled]="selectedAssigned().length === 0"> 
+        &lt; 
+      </button>
+      <button 
+        type="button" 
+        (click)="moveAllLeft()" 
+        class="p-2 border border-gray-300 rounded hover:bg-gray-100 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed" 
+        [title]="i18n().moveAllLeft"
+        [disabled]="assignedItems().length === 0"> 
+        << 
+      </button>
     </div>
 
     <!-- Assigned List -->
-    <div class="flex-1 bg-white border border-gray-300 rounded shadow-sm overflow-hidden">
+    <div class="flex-1 bg-white border border-gray-300 rounded shadow-sm overflow-hidden flex flex-col">
       <div class="p-2 border-b border-gray-200 font-bold bg-gray-50 text-sm uppercase tracking-wider">{{ i18n().assignedTitle }}</div>
       <div class="p-2">
         <input 
@@ -50,13 +83,16 @@
       </div>
       <ul 
         cdkListbox
-        multiple
+        cdkListboxMultiple
+        [cdkListboxValue]="selectedAssigned()"
+        (cdkListboxValueChange)="updateSelectedAssigned($event)"
         class="h-64 overflow-y-auto p-1 outline-none"
         aria-labelledby="assigned-title">
         @for (item of assignedItems(); track item[trackKey()]) {
           <li 
             [cdkOption]="item[trackKey()]"
-            class="p-2 text-sm cursor-pointer rounded hover:bg-blue-50 cdk-option-selected:bg-blue-100 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            [class.bg-blue-100]="selectedAssigned().includes($any(item[trackKey()]))"
+            class="p-2 text-sm cursor-pointer rounded hover:bg-blue-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             (dblclick)="moveLeft([$any(item[trackKey()])])">
             <ng-container *ngTemplateOutlet="itemTemplate() || defaultItemTemplate; context: { $implicit: item }"></ng-container>
           </li>

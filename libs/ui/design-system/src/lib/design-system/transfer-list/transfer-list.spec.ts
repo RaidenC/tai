@@ -123,4 +123,29 @@ describe('TransferListComponent', () => {
     expect(host.lastChangedIds).toContain(2);
     expect(host.lastChangedIds).not.toContain(3);
   });
+
+  it('should move selected items to assigned', () => {
+    // Select Apple (1) and Cherry (3)
+    component.updateSelectedAvailable({ value: [1, 3] });
+    fixture.detectChanges();
+    
+    component.moveSelectedRight();
+    fixture.detectChanges();
+    
+    expect(host.lastChangedIds).toContain(1);
+    expect(host.lastChangedIds).toContain(2); // Was already assigned
+    expect(host.lastChangedIds).toContain(3);
+  });
+
+  it('should move selected items to available', () => {
+    // First move Banana (2) out of assigned by selecting it
+    component.updateSelectedAssigned({ value: [2] });
+    fixture.detectChanges();
+    
+    component.moveSelectedLeft();
+    fixture.detectChanges();
+    
+    expect(host.lastChangedIds).not.toContain(2);
+    expect(component.assignedItems().length).toBe(0);
+  });
 });

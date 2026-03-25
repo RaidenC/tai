@@ -100,6 +100,11 @@ export class TransferListComponent<T extends TransferItem> {
   /** IDs of items currently in the 'assigned' bucket. */
   protected readonly assignedIds = signal<Set<string | number>>(new Set());
 
+  /** IDs of currently selected items in the available list. */
+  protected readonly selectedAvailable = signal<(string | number)[]>([]);
+  /** IDs of currently selected items in the assigned list. */
+  protected readonly selectedAssigned = signal<(string | number)[]>([]);
+
   constructor() {
     // Initialize assignedIds from input
     effect(() => {
@@ -150,6 +155,8 @@ export class TransferListComponent<T extends TransferItem> {
     const current = new Set(this.assignedIds());
     ids.forEach(id => current.add(id));
     this.updateAssigned(current);
+    // Clear selection after move
+    this.selectedAvailable.set([]);
   }
 
   /**
@@ -159,6 +166,22 @@ export class TransferListComponent<T extends TransferItem> {
     const current = new Set(this.assignedIds());
     ids.forEach(id => current.delete(id));
     this.updateAssigned(current);
+    // Clear selection after move
+    this.selectedAssigned.set([]);
+  }
+
+  /**
+   * Moves currently selected items from available to assigned.
+   */
+  public moveSelectedRight(): void {
+    this.moveRight(this.selectedAvailable());
+  }
+
+  /**
+   * Moves currently selected items from assigned to available.
+   */
+  public moveSelectedLeft(): void {
+    this.moveLeft(this.selectedAssigned());
   }
 
   /**
@@ -189,6 +212,22 @@ export class TransferListComponent<T extends TransferItem> {
    */
   public updateSearchAssigned(term: string): void {
     this.searchTermAssigned$.next(term);
+  }
+
+  /**
+   * Updates the current selection in the available list.
+   */
+  public updateSelectedAvailable(event: any): void {
+    const ids = event.value;
+    this.selectedAvailable.set(Array.isArray(ids) ? ids : []);
+  }
+
+  /**
+   * Updates the current selection in the assigned list.
+   */
+  public updateSelectedAssigned(event: any): void {
+    const ids = event.value;
+    this.selectedAssigned.set(Array.isArray(ids) ? ids : []);
   }
 
   private updateAssigned(newSet: Set<string | number>): void {
