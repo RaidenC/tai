@@ -85,7 +85,7 @@
     - [x] Implement Visual Regression Snapshots for layout edge cases.
 - [x] Task: Conductor - User Manual Verification 'Phase 8: Security Penetration & Visual Regression Tests' (Protocol in workflow.md)
 
-## Phase 9: Service Bus Audit Trail Validation [checkpoint: c71edee]
+## Phase 9: Service Bus Audit Trail Validation [checkpoint: 09b17c1]
 - [x] Task: Audit Trail Endpoints and Logic ee0a844
     - [x] Expose diagnostic API for fetching audit logs.
     - [x] Ensure `IdentityService` correctly dispatches domain events before save (handled by `PortalDbContext`).
