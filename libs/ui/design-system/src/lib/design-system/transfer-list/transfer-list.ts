@@ -1,4 +1,4 @@
-import { Component, input, output, ChangeDetectionStrategy, signal, computed, effect } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, signal, computed, effect, contentChild, TemplateRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkListboxModule } from '@angular/cdk/listbox';
 import { FormsModule } from '@angular/forms';
@@ -74,6 +74,9 @@ export class TransferListComponent<T extends TransferItem> {
   public readonly density = input<'compact' | 'comfortable'>('comfortable');
   /** Custom i18n dictionary. */
   public readonly i18n = input<TransferListI18n>(DEFAULT_I18N);
+
+  /** Optional custom template for items. */
+  public readonly itemTemplate = contentChild<TemplateRef<any>>('itemTemplate');
 
   /** Emitted when the set of assigned IDs changes. */
   public readonly assignedIdsChanged = output<(string | number)[]>();

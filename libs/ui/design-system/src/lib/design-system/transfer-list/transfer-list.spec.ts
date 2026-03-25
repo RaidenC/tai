@@ -1,3 +1,6 @@
+import 'zone.js';
+import 'zone.js/testing';
+import { describe, it, beforeEach, expect } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TransferListComponent, TransferItem } from './transfer-list';
 import { signal, Component, ViewChild } from '@angular/core';

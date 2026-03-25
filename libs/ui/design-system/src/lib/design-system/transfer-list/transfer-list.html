@@ -2,7 +2,7 @@
   <div class="flex gap-4 items-start">
     <!-- Available List -->
     <div class="flex-1 bg-white border border-gray-300 rounded shadow-sm overflow-hidden">
-      <div class="p-2 border-b border-gray-200 font-bold bg-gray-50">{{ i18n().availableTitle }}</div>
+      <div class="p-2 border-b border-gray-200 font-bold bg-gray-50 text-sm uppercase tracking-wider">{{ i18n().availableTitle }}</div>
       <div class="p-2">
         <input 
           type="text" 
@@ -20,9 +20,9 @@
         @for (item of availableItems(); track item[trackKey()]) {
           <li 
             [cdkOption]="item[trackKey()]"
-            class="p-2 text-sm cursor-pointer rounded hover:bg-blue-50 cdk-option-selected:bg-blue-100 transition-colors"
-            (dblclick)="moveRight([item[trackKey()]])">
-            {{ item[displayKey()] }}
+            class="p-2 text-sm cursor-pointer rounded hover:bg-blue-50 cdk-option-selected:bg-blue-100 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            (dblclick)="moveRight([$any(item[trackKey()])])">
+            <ng-container *ngTemplateOutlet="itemTemplate() || defaultItemTemplate; context: { $implicit: item }"></ng-container>
           </li>
         } @empty {
           <li class="p-4 text-sm text-gray-500 italic text-center">{{ i18n().noItemsAvailable }}</li>
@@ -30,15 +30,15 @@
       </ul>
     </div>
 
-    <!-- Actions (Placeholder for now) -->
+    <!-- Actions -->
     <div class="flex flex-col gap-2 justify-center py-10">
-      <button (click)="moveAllRight()" class="p-2 border border-gray-300 rounded hover:bg-gray-100" [title]="i18n().moveAllRight"> >> </button>
-      <button (click)="moveAllLeft()" class="p-2 border border-gray-300 rounded hover:bg-gray-100" [title]="i18n().moveAllLeft"> << </button>
+      <button type="button" (click)="moveAllRight()" class="p-2 border border-gray-300 rounded hover:bg-gray-100 shadow-sm" [title]="i18n().moveAllRight"> >> </button>
+      <button type="button" (click)="moveAllLeft()" class="p-2 border border-gray-300 rounded hover:bg-gray-100 shadow-sm" [title]="i18n().moveAllLeft"> << </button>
     </div>
 
     <!-- Assigned List -->
     <div class="flex-1 bg-white border border-gray-300 rounded shadow-sm overflow-hidden">
-      <div class="p-2 border-b border-gray-200 font-bold bg-gray-50">{{ i18n().assignedTitle }}</div>
+      <div class="p-2 border-b border-gray-200 font-bold bg-gray-50 text-sm uppercase tracking-wider">{{ i18n().assignedTitle }}</div>
       <div class="p-2">
         <input 
           type="text" 
@@ -56,9 +56,9 @@
         @for (item of assignedItems(); track item[trackKey()]) {
           <li 
             [cdkOption]="item[trackKey()]"
-            class="p-2 text-sm cursor-pointer rounded hover:bg-blue-50 cdk-option-selected:bg-blue-100 transition-colors"
-            (dblclick)="moveLeft([item[trackKey()]])">
-            {{ item[displayKey()] }}
+            class="p-2 text-sm cursor-pointer rounded hover:bg-blue-50 cdk-option-selected:bg-blue-100 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            (dblclick)="moveLeft([$any(item[trackKey()])])">
+            <ng-container *ngTemplateOutlet="itemTemplate() || defaultItemTemplate; context: { $implicit: item }"></ng-container>
           </li>
         } @empty {
           <li class="p-4 text-sm text-gray-500 italic text-center">{{ i18n().noItemsAssigned }}</li>
@@ -67,3 +67,8 @@
     </div>
   </div>
 </div>
+
+<!-- Default Item Template -->
+<ng-template #defaultItemTemplate let-item>
+  <span class="block truncate">{{ item[displayKey()] }}</span>
+</ng-template>
