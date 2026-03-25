@@ -286,6 +286,13 @@ export class PrivilegeDetailPage implements OnInit {
         this.cdr.detectChanges();
       }
     });
+
+    effect(() => {
+      if (this.store.status() === 'Success') {
+        this.isEditing.set(false);
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   ngOnInit(): void {
