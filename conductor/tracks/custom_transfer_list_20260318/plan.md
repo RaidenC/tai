@@ -1,6 +1,6 @@
 # Implementation Plan: Custom Transfer List Component
 
-## Phase 1: Component Scaffold & CDK Listbox [checkpoint: 7c4f804]
+## Phase 1: Component Scaffold & CDK Listbox [checkpoint: da3da9d]
 - [x] Task: Project Scaffolding [9f4559d]
     - [x] Generate the new `TransferListComponent` in the `libs/ui/design-system` library.
     - [x] Define the Generic Types `<T>` and Signal Inputs (`items`, `assignedIds`, `displayKey`, `trackKey`, `density`).
@@ -9,14 +9,14 @@
     - [x] Integrate `@angular/cdk/listbox` (`cdkListbox`, `cdkOption`).
     - [x] Write failing Vitest tests for the debounced `computed()` search filtering logic.
     - [x] Implement the logic using Angular Signals to pass the Vitest suite.
-- [x] Task: Selection-based Move Buttons (>) and (<)
+- [x] Task: Selection-based Move Buttons (>) and (<) [da3da9d]
     - [x] Track current selection in both panes using Signals.
     - [x] Add `>` and `<` buttons to move only selected items.
     - [x] Ensure Ctrl-click and single-click multi-selection works.
 - [x] Task: Continuous Integration Gate [9f4559d]
     - [x] Run `npx nx affected --target=test --coverage` to ensure 90%+ coverage.
     - [x] Run `npx nx affected --target=lint` to ensure no style regressions.
-- [~] Task: Conductor - User Manual Verification 'Phase 1: Component Scaffold & CDK Listbox' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Component Scaffold & CDK Listbox' (Protocol in workflow.md) [da3da9d]
 
 ## Phase 2: Responsive UI, Virtual Scroll & Density Control
 - [ ] Task: Responsive UI Construction & View Transitions
