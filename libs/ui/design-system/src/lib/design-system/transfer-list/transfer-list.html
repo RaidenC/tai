@@ -1,10 +1,8 @@
 <div class="transfer-list-container flex flex-col gap-4 p-4 border border-gray-200 rounded-lg bg-gray-50" 
      [class.density-compact]="density() === 'compact'">
-  <div class="grid gap-4 items-stretch"
-       [class.grid-cols-1]="isSmallScreen()"
-       [class.grid-cols-[1fr_auto_1fr]]="!isSmallScreen()">
+  <div class="flex flex-row gap-4 items-stretch w-full">
     <!-- Available List -->
-    <div class="flex flex-col bg-white border border-gray-300 rounded shadow-sm overflow-hidden min-h-[400px]">
+    <div class="flex-1 flex flex-col bg-white border border-gray-300 rounded shadow-sm overflow-hidden min-h-[400px]">
       <div class="p-3 border-b border-gray-200 font-bold bg-gray-50 text-xs uppercase tracking-wider flex justify-between items-center">
         <span>{{ i18n().availableTitle }}</span>
         <span class="text-[10px] text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">
@@ -47,46 +45,43 @@
     </div>
 
     <!-- Actions -->
-    <div class="flex gap-2 justify-center py-4 px-2"
-         [class.flex-row]="isSmallScreen()"
-         [class.flex-col]="!isSmallScreen()"
-         [class.md:py-10]="!isSmallScreen()">
+    <div class="flex flex-none flex-col gap-2 justify-center py-10 px-2">
       <button 
         type="button" 
         (click)="moveAllRight()" 
-        class="flex-1 md:flex-none p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-400 hover:text-blue-600 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95" 
+        class="p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-400 hover:text-blue-600 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95" 
         [title]="i18n().moveAllRight"
         [disabled]="availableItems().length === 0"> 
-        <span [class.rotate-90]="isSmallScreen()">{{ isSmallScreen() ? '<<' : '>>' }}</span>
+        <span>{{ '>>' }}</span>
       </button>
       <button 
         type="button" 
         (click)="moveSelectedRight()" 
-        class="flex-1 md:flex-none p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-500 hover:text-blue-700 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed font-bold transition-all active:scale-95" 
+        class="p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-500 hover:text-blue-700 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed font-bold transition-all active:scale-95" 
         [title]="i18n().moveSelectedRight"
         [disabled]="selectedAvailable().length === 0"> 
-        <span [class.rotate-90]="isSmallScreen()">{{ isSmallScreen() ? '<' : '>' }}</span>
+        <span>{{ '>' }}</span>
       </button>
       <button 
         type="button" 
         (click)="moveSelectedLeft()" 
-        class="flex-1 md:flex-none p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-500 hover:text-blue-700 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed font-bold transition-all active:scale-95" 
+        class="p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-500 hover:text-blue-700 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed font-bold transition-all active:scale-95" 
         [title]="i18n().moveSelectedLeft"
         [disabled]="selectedAssigned().length === 0"> 
-        <span [class.rotate-90]="isSmallScreen()">{{ isSmallScreen() ? '>' : '<' }}</span>
+        <span>{{ '<' }}</span>
       </button>
       <button 
         type="button" 
         (click)="moveAllLeft()" 
-        class="flex-1 md:flex-none p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-400 hover:text-blue-600 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95" 
+        class="p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-400 hover:text-blue-600 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95" 
         [title]="i18n().moveAllLeft"
         [disabled]="assignedItems().length === 0"> 
-        <span [class.rotate-90]="isSmallScreen()">{{ isSmallScreen() ? '>>' : '<<' }}</span>
+        <span>{{ '<<' }}</span>
       </button>
     </div>
 
     <!-- Assigned List -->
-    <div class="flex flex-col bg-white border border-gray-300 rounded shadow-sm overflow-hidden min-h-[400px]">
+    <div class="flex-1 flex flex-col bg-white border border-gray-300 rounded shadow-sm overflow-hidden min-h-[400px]">
       <div class="p-3 border-b border-gray-200 font-bold bg-gray-50 text-xs uppercase tracking-wider flex justify-between items-center">
         <span>{{ i18n().assignedTitle }}</span>
         <span class="text-[10px] text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">

@@ -55,17 +55,6 @@ export const LargeDataset: Story = {
   },
 };
 
-export const MobileView: Story = {
-  args: {
-    ...Default.args,
-  },
-  parameters: {
-    viewport: {
-      defaultViewport: 'mobile1',
-    },
-  },
-};
-
 export const CustomTemplate: Story = {
   render: (args) => ({
     props: args,
