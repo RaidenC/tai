@@ -1,10 +1,13 @@
-import { Component, input, output, ChangeDetectionStrategy, signal, computed, effect, contentChild, TemplateRef } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, signal, computed, effect, contentChild, TemplateRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkListboxModule } from '@angular/cdk/listbox';
+import { ScrollingModule } from '@angular/cdk/scrolling';
 import { FormsModule } from '@angular/forms';
 import { Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 
 /**
  * Interface for items in the TransferList.
@@ -56,12 +59,15 @@ const DEFAULT_I18N: TransferListI18n = {
 @Component({
   selector: 'tai-transfer-list',
   standalone: true,
-  imports: [CommonModule, CdkListboxModule, FormsModule],
+  imports: [CommonModule, CdkListboxModule, ScrollingModule, FormsModule],
   templateUrl: './transfer-list.html',
   styleUrl: './transfer-list.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TransferListComponent<T extends TransferItem> {
+  private readonly breakpointObserver = inject(BreakpointObserver);
+  private readonly liveAnnouncer = inject(LiveAnnouncer);
+
   /** The full list of available items. */
   public readonly items = input.required<T[]>();
   /** IDs of items that are initially assigned. */
@@ -80,6 +86,22 @@ export class TransferListComponent<T extends TransferItem> {
 
   /** Emitted when the set of assigned IDs changes. */
   public readonly assignedIdsChanged = output<(string | number)[]>();
+
+  /** Detects if the screen is small (mobile/vertical layout). */
+  protected readonly isSmallScreen = toSignal(
+    this.breakpointObserver.observe([Breakpoints.XSmall, Breakpoints.Small]).pipe(map(result => result.matches)),
+    { initialValue: false }
+  );
+
+  /** Total number of items that are NOT assigned. */
+  public readonly totalAvailableCount = computed(() => {
+    const ids = this.assignedIds();
+    const trackKey = this.trackKey();
+    return this.items().filter(item => !ids.has(item[trackKey] as unknown as (string | number))).length;
+  });
+
+  /** Total number of items that ARE assigned. */
+  public readonly totalAssignedCount = computed(() => this.assignedIds().size);
 
   /** Subject for available list search term to support debouncing. */
   private readonly searchTermAvailable$ = new Subject<string>();
@@ -104,6 +126,12 @@ export class TransferListComponent<T extends TransferItem> {
   protected readonly selectedAvailable = signal<(string | number)[]>([]);
   /** IDs of currently selected items in the assigned list. */
   protected readonly selectedAssigned = signal<(string | number)[]>([]);
+
+  /** trackBy function for virtual scroll. */
+  protected readonly trackByFn = computed(() => {
+    const key = this.trackKey();
+    return (index: number, item: T) => item[key];
+  });
 
   constructor() {
     // Initialize assignedIds from input

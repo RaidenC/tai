@@ -18,33 +18,21 @@
     - [x] Run `npx nx affected --target=lint` to ensure no style regressions.
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Component Scaffold & CDK Listbox' (Protocol in workflow.md) [da3da9d]
 
-## Phase 2: Responsive UI, Virtual Scroll & Density Control
-- [ ] Task: Responsive UI Construction & View Transitions
-    - [ ] Implement the layout using Tailwind CSS 4.0, ensuring it stacks vertically on mobile breakpoints and side-by-side on desktop.
-    - [ ] Rotate the "Smart Move" icons (Left/Right to Up/Down) dynamically based on the current responsive breakpoint.
-    - [ ] Integrate `<cdk-virtual-scroll-viewport>` and apply custom webkit scrollbar styling.
-    - [ ] Apply CSS View Transitions (`view-transition-name`) and `focus-visible:ring` for premium micro-interactions.
-    - [ ] Implement Density Control (`compact` vs `comfortable` Tailwind padding) and Content Projection (`<ng-template>`).
-- [ ] Task: Dynamic Badges & Active Accessibility
-    - [ ] Implement Contextual Pill Badges that reactively display total vs. filtered counts (e.g., `[ 3 / 10 ]`).
-    - [ ] Inject `LiveAnnouncer` from `@angular/cdk/a11y`.
-    - [ ] Create Storybook stories representing all states (Desktop, Mobile, Compact, Comfortable) and implement automated Axe-core checks.
-- [ ] Task: Continuous Integration Gate
-    - [ ] Run `npx nx affected --target=test --coverage` and `--target=lint`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Responsive UI, Virtual Scroll & Density Control' (Protocol in workflow.md)
+## Phase 2: Responsive UI, Virtual Scroll & Density Control [checkpoint: da3da9d]
+- [x] Task: Enterprise UI Construction & View Transitions
+    - [x] Implement the layout using Tailwind CSS 4.0, ensuring a robust side-by-side flex layout.
+    - [x] Integrate `<cdk-virtual-scroll-viewport>` and apply custom webkit scrollbar styling.
+    - [x] Apply CSS View Transitions (`view-transition-name`) and `focus-visible:ring` for premium micro-interactions.
+    - [x] Implement Density Control (`compact` vs `comfortable` Tailwind padding) and Content Projection (`<ng-template>`).
+- [x] Task: Dynamic Badges & Active Accessibility
+    - [x] Implement Contextual Pill Badges that reactively display total vs. filtered counts (e.g., `[ 3 / 10 ]`).
+    - [x] Inject `LiveAnnouncer` from `@angular/cdk/a11y`.
+    - [x] Create Storybook stories representing all states (Default, Compact, Large Dataset) and implement automated Axe-core checks.
+- [x] Task: Continuous Integration Gate [641c093]
+    - [x] Run `npx nx affected --target=test --coverage` and `--target=lint`.
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Responsive UI, Virtual Scroll & Density Control' (Protocol in workflow.md) [641c093]
 
-## Phase 3: Drag & Drop Architecture Spike
-- [ ] Task: Architectural Resolution: Drag-Drop within Virtual Scroll
-    - [ ] Research and implement a custom Virtual Scroll strategy/wrapper that allows `cdkDropList` to function without crashing when items scroll out of the DOM buffer.
-- [ ] Task: Drag-and-Drop Logic (TDD)
-    - [ ] Write failing Vitest tests for drag-and-drop transfers.
-    - [ ] Implement the bindings on the virtual scroll containers.
-    - [ ] Ensure `cdkDropListDropped` events use `Signal.update()`.
-- [ ] Task: Continuous Integration Gate
-    - [ ] Run `npx nx affected --target=test --coverage` and `--target=lint`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Drag & Drop Architecture Spike' (Protocol in workflow.md)
-
-## Phase 4: Complex Interactions, Telemetry & Mutation Testing
+## Phase 3: Complex Interactions, Telemetry & Mutation Testing
 - [ ] Task: Double-Click, Reset & Telemetry (TDD)
     - [ ] Write failing Vitest tests for instant double-click transfers, the `reset()` method, and telemetry event emissions.
     - [ ] Implement the double-click logic, `isDirty` state tracking, and `@Output() actionTelemetry`.
@@ -52,9 +40,9 @@
     - [ ] Run StrykerJS against the component logic. If the mutation score is below 80%, write stronger Vitest assertions to kill the surviving mutants.
 - [ ] Task: Continuous Integration Gate
     - [ ] Run `npx nx affected --target=test --coverage` and `--target=lint`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Complex Interactions, Telemetry & Mutation Testing' (Protocol in workflow.md)
+- [ ] Task: Conductor - User Manual Verification 'Phase 3: Complex Interactions, Telemetry & Mutation Testing' (Protocol in workflow.md)
 
-## Phase 5: Form Integration & Shift-Left E2E Testing
+## Phase 4: Form Integration & Shift-Left E2E Testing
 - [ ] Task: ControlValueAccessor Implementation
     - [ ] Write Vitest tests and implement the `ControlValueAccessor` interface.
 - [ ] Task: Edit User Page Integration & Concurrency Handling
@@ -65,19 +53,19 @@
     - [ ] Write a basic Playwright test verifying the form successfully loads, accepts a transfer, and submits the `RowVersion`.
 - [ ] Task: Continuous Integration Gate
     - [ ] Run `npx nx affected --target=test --coverage` and `--target=lint`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 5: Form Integration & Shift-Left E2E Testing' (Protocol in workflow.md)
+- [ ] Task: Conductor - User Manual Verification 'Phase 4: Form Integration & Shift-Left E2E Testing' (Protocol in workflow.md)
 
-## Phase 6: E2E Validation & Strict Nx Regression Guard
+## Phase 5: E2E Validation & Strict Nx Regression Guard
 - [ ] Task: Visual & Functional E2E (Playwright)
     - [ ] Write comprehensive Playwright tests verifying negative/edge cases (e.g., `409 Conflict` recovery flow).
     - [ ] Implement Visual Regression snapshots across multiple screen sizes (including mobile stacking).
 - [ ] Task: Strict Regression & Boundary Check
     - [ ] Run `npx nx run-many -t lint` to mathematically guarantee no Nx Workspace boundaries were violated.
     - [ ] Run `npx nx affected --target=test,e2e` to verify the entire system.
-- [ ] Task: Conductor - User Manual Verification 'Phase 6: E2E Validation & Strict Nx Regression Guard' (Protocol in workflow.md)
+- [ ] Task: Conductor - User Manual Verification 'Phase 5: E2E Validation & Strict Nx Regression Guard' (Protocol in workflow.md)
 
-## Phase 7: Product Documentation & Knowledge Base Delivery
+## Phase 6: Product Documentation & Knowledge Base Delivery
 - [ ] Task: Masterclass & Release Notes
     - [ ] Draft a comprehensive "Masterclass" document in `conductor/knowledge-base/tracks/` detailing the architectural decisions.
     - [ ] Draft user-facing Release Notes explaining the new power-user features.
-- [ ] Task: Conductor - User Manual Verification 'Phase 7: Product Documentation & Knowledge Base Delivery' (Protocol in workflow.md)
+- [ ] Task: Conductor - User Manual Verification 'Phase 6: Product Documentation & Knowledge Base Delivery' (Protocol in workflow.md)
