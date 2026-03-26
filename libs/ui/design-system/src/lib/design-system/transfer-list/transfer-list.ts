@@ -65,6 +65,7 @@ const DEFAULT_I18N: TransferListI18n = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TransferListComponent<T extends TransferItem> {
+  private readonly breakpointObserver = inject(BreakpointObserver);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
 
   /** The full list of available items. */
@@ -85,6 +86,12 @@ export class TransferListComponent<T extends TransferItem> {
 
   /** Emitted when the set of assigned IDs changes. */
   public readonly assignedIdsChanged = output<(string | number)[]>();
+
+  /** Detects if the screen is small (mobile/vertical layout). */
+  protected readonly isSmallScreen = toSignal(
+    this.breakpointObserver.observe([Breakpoints.XSmall, Breakpoints.Small]).pipe(map(result => result.matches)),
+    { initialValue: false }
+  );
 
   /** Total number of items that are NOT assigned. */
   public readonly totalAvailableCount = computed(() => {
