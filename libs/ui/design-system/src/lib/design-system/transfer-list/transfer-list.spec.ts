@@ -1,9 +1,10 @@
 import 'zone.js';
 import 'zone.js/testing';
-import { describe, it, beforeEach, expect } from 'vitest';
+import { describe, it, beforeEach, expect, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TransferListComponent, TransferItem } from './transfer-list';
 import { signal, Component, ViewChild } from '@angular/core';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 
 interface TestItem extends TransferItem {
   id: number;
@@ -12,7 +13,7 @@ interface TestItem extends TransferItem {
 
 @Component({
   standalone: true,
-  imports: [TransferListComponent],
+  imports: [TransferListComponent, ReactiveFormsModule],
   template: `
     <tai-transfer-list
       [items]="items()"
@@ -44,6 +45,28 @@ class TestHostComponent {
   }
 }
 
+@Component({
+  standalone: true,
+  imports: [TransferListComponent, ReactiveFormsModule],
+  template: `
+    <tai-transfer-list
+      [items]="items()"
+      [displayKey]="'name'"
+      [trackKey]="'id'"
+      [formControl]="control"
+    />
+  `,
+})
+class TestCvaHostComponent {
+  @ViewChild(TransferListComponent) component!: TransferListComponent<TestItem>;
+  items = signal<TestItem[]>([
+    { id: 1, name: 'Apple' },
+    { id: 2, name: 'Banana' },
+    { id: 3, name: 'Cherry' },
+  ]);
+  control = new FormControl<(string | number)[]>([]);
+}
+
 describe('TransferListComponent', () => {
   let host: TestHostComponent;
   let fixture: ComponentFixture<TestHostComponent>;
@@ -51,7 +74,7 @@ describe('TransferListComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [TestHostComponent, TransferListComponent],
+      imports: [TestHostComponent, TestCvaHostComponent, TransferListComponent],
     }).compileComponents();
 
     fixture = TestBed.createComponent(TestHostComponent);
@@ -244,6 +267,52 @@ describe('TransferListComponent', () => {
     expect(host.lastTelemetry).toMatchObject({
       action: 'transfer_bulk',
       direction: 'to_available'
+    });
+  });
+
+  describe('ControlValueAccessor Integration', () => {
+    let cvaHost: TestCvaHostComponent;
+    let cvaFixture: ComponentFixture<TestCvaHostComponent>;
+    let cvaComponent: TransferListComponent<TestItem>;
+
+    beforeEach(async () => {
+      cvaFixture = TestBed.createComponent(TestCvaHostComponent);
+      cvaHost = cvaFixture.componentInstance;
+      cvaFixture.detectChanges();
+      cvaComponent = cvaHost.component;
+    });
+
+    it('should update assignedIds when form control value changes (writeValue)', () => {
+      cvaHost.control.setValue([1, 2]);
+      cvaFixture.detectChanges();
+      
+      expect(cvaComponent.assignedIds().has(1)).toBe(true);
+      expect(cvaComponent.assignedIds().has(2)).toBe(true);
+      expect(cvaComponent.assignedIds().has(3)).toBe(false);
+    });
+
+    it('should update form control value when assignedIds change (registerOnChange)', () => {
+      cvaComponent.moveRight([3]);
+      cvaFixture.detectChanges();
+      
+      expect(cvaHost.control.value).toContain(3);
+    });
+
+    it('should mark form control as touched on interaction (registerOnTouched)', () => {
+      const markAsTouchedSpy = vi.spyOn(cvaHost.control, 'markAsTouched');
+      
+      // Simulate interaction by moving an item
+      cvaComponent.moveRight([1]);
+      cvaFixture.detectChanges();
+      
+      expect(markAsTouchedSpy).toHaveBeenCalled();
+    });
+
+    it('should disable interaction when form control is disabled (setDisabledState)', () => {
+      cvaHost.control.disable();
+      cvaFixture.detectChanges();
+      
+      expect(cvaComponent.isDisabled()).toBe(true);
     });
   });
 });

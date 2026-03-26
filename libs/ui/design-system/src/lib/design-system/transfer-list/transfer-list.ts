@@ -1,8 +1,8 @@
-import { Component, input, output, ChangeDetectionStrategy, signal, computed, effect, contentChild, TemplateRef, inject } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, signal, computed, effect, contentChild, TemplateRef, inject, forwardRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkListboxModule } from '@angular/cdk/listbox';
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -65,8 +65,15 @@ const DEFAULT_I18N: TransferListI18n = {
   templateUrl: './transfer-list.html',
   styleUrl: './transfer-list.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => TransferListComponent),
+      multi: true,
+    },
+  ],
 })
-export class TransferListComponent<T extends TransferItem> {
+export class TransferListComponent<T extends TransferItem> implements ControlValueAccessor {
   private readonly breakpointObserver = inject(BreakpointObserver);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
 
@@ -154,12 +161,42 @@ export class TransferListComponent<T extends TransferItem> {
     return (index: number, item: T) => item[key];
   });
 
+  /** Track if the component is disabled via CVA. */
+  public readonly isDisabled = signal(false);
+
+  private onChange: (value: (string | number)[]) => void = () => {};
+  private onTouched: () => void = () => {};
+
   constructor() {
     // Initialize assignedIds from input
     effect(() => {
       this.assignedIds.set(new Set(this.initialAssignedIds()));
     }, { allowSignalWrites: true });
   }
+
+  // --- ControlValueAccessor Implementation ---
+
+  public writeValue(value: (string | number)[] | null): void {
+    if (value) {
+      this.assignedIds.set(new Set(value));
+    } else {
+      this.assignedIds.set(new Set());
+    }
+  }
+
+  public registerOnChange(fn: (value: (string | number)[]) => void): void {
+    this.onChange = fn;
+  }
+
+  public registerOnTouched(fn: () => void): void {
+    this.onTouched = fn;
+  }
+
+  public setDisabledState(isDisabled: boolean): void {
+    this.isDisabled.set(isDisabled);
+  }
+
+  // ------------------------------------------
 
   /**
    * Filtered list of items that are NOT assigned.
@@ -306,6 +343,9 @@ export class TransferListComponent<T extends TransferItem> {
 
   private updateAssigned(newSet: Set<string | number>): void {
     this.assignedIds.set(newSet);
-    this.assignedIdsChanged.emit(Array.from(newSet) as (string | number)[]);
+    const arrayValue = Array.from(newSet) as (string | number)[];
+    this.assignedIdsChanged.emit(arrayValue);
+    this.onChange(arrayValue);
+    this.onTouched();
   }
 }

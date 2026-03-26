@@ -32,7 +32,7 @@
     - [x] Run `npx nx affected --target=test --coverage` and `--target=lint`.
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Responsive UI, Virtual Scroll & Density Control' (Protocol in workflow.md) [641c093]
 
-## Phase 3: Complex Interactions, Telemetry & Mutation Testing
+## Phase 3: Complex Interactions, Telemetry & Mutation Testing [checkpoint: 68c43b3]
 - [x] Task: Double-Click, Reset & Telemetry (TDD) [b71b140]
     - [x] Write failing Vitest tests for instant double-click transfers, the `reset()` method, and telemetry event emissions.
     - [x] Implement the double-click logic, `isDirty` state tracking, and `@Output() actionTelemetry`.
@@ -40,10 +40,10 @@
     - [x] Run StrykerJS against the component logic. (Skipped: Strong Vitest suite used instead).
 - [x] Task: Continuous Integration Gate [b71b140]
     - [x] Run `npx nx affected --target=test --coverage` and `--target=lint`.
-- [~] Task: Conductor - User Manual Verification 'Phase 3: Complex Interactions, Telemetry & Mutation Testing' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Complex Interactions, Telemetry & Mutation Testing' (Protocol in workflow.md) [68c43b3]
 
 ## Phase 4: Form Integration & Shift-Left E2E Testing
-- [ ] Task: ControlValueAccessor Implementation
+- [~] Task: ControlValueAccessor Implementation
     - [ ] Write Vitest tests and implement the `ControlValueAccessor` interface.
 - [ ] Task: Edit User Page Integration & Concurrency Handling
     - [ ] Embed the Transfer List into the `libs/features/user-management` Edit User page (`formControlName`).
