@@ -1,6 +1,8 @@
 <div class="transfer-list-container flex flex-col gap-4 p-4 border border-gray-200 rounded-lg bg-gray-50" 
      [class.density-compact]="density() === 'compact'">
-  <div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-stretch">
+  <div class="grid gap-4 items-stretch"
+       [class.grid-cols-1]="isSmallScreen()"
+       [class.grid-cols-[1fr_auto_1fr]]="!isSmallScreen()">
     <!-- Available List -->
     <div class="flex flex-col bg-white border border-gray-300 rounded shadow-sm overflow-hidden min-h-[400px]">
       <div class="p-3 border-b border-gray-200 font-bold bg-gray-50 text-xs uppercase tracking-wider flex justify-between items-center">
@@ -45,7 +47,10 @@
     </div>
 
     <!-- Actions -->
-    <div class="flex flex-row md:flex-col gap-2 justify-center py-4 md:py-10 px-2">
+    <div class="flex gap-2 justify-center py-4 px-2"
+         [class.flex-row]="isSmallScreen()"
+         [class.flex-col]="!isSmallScreen()"
+         [class.md:py-10]="!isSmallScreen()">
       <button 
         type="button" 
         (click)="moveAllRight()" 

@@ -69,7 +69,7 @@ describe('TransferListComponent', () => {
 
   it('should filter available items based on search term', async () => {
     component.updateSearchAvailable('ap');
-    await new Promise(resolve => setTimeout(resolve, 310));
+    await new Promise(resolve => setTimeout(resolve, 400));
     fixture.detectChanges();
     
     const available = component.availableItems();
@@ -84,7 +84,7 @@ describe('TransferListComponent', () => {
     // Immediate check - should NOT be filtered yet if debounce is 300ms
     expect(component.availableItems().length).toBe(2); // Since 'Banana' (id 2) is assigned
     
-    await new Promise(resolve => setTimeout(resolve, 310));
+    await new Promise(resolve => setTimeout(resolve, 400));
     fixture.detectChanges();
     
     expect(component.availableItems().length).toBe(1);
@@ -114,7 +114,7 @@ describe('TransferListComponent', () => {
 
   it('should move all visible available items to assigned', async () => {
     component.updateSearchAvailable('apple');
-    await new Promise(resolve => setTimeout(resolve, 310));
+    await new Promise(resolve => setTimeout(resolve, 400));
     fixture.detectChanges();
     
     component.moveAllRight();

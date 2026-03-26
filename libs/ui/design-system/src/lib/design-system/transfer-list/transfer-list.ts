@@ -87,9 +87,9 @@ export class TransferListComponent<T extends TransferItem> {
   /** Emitted when the set of assigned IDs changes. */
   public readonly assignedIdsChanged = output<(string | number)[]>();
 
-  /** Detects if the screen is small (mobile/vertical layout). */
+  /** Detects if the screen is very small (mobile handset). */
   protected readonly isSmallScreen = toSignal(
-    this.breakpointObserver.observe([Breakpoints.XSmall, Breakpoints.Small]).pipe(map(result => result.matches)),
+    this.breakpointObserver.observe([Breakpoints.HandsetPortrait, Breakpoints.XSmall]).pipe(map(result => result.matches)),
     { initialValue: false }
   );
 
