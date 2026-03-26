@@ -28,6 +28,7 @@ export interface TransferListI18n {
   moveSelectedLeft: string;
   moveAllRight: string;
   moveAllLeft: string;
+  reset: string;
   noItemsAvailable: string;
   noItemsAssigned: string;
 }
@@ -40,6 +41,7 @@ const DEFAULT_I18N: TransferListI18n = {
   moveSelectedLeft: 'Move selected to available',
   moveAllRight: 'Move all to assigned',
   moveAllLeft: 'Move all to available',
+  reset: 'Reset to initial state',
   noItemsAvailable: 'No items available',
   noItemsAssigned: 'No items assigned',
 };
@@ -87,6 +89,14 @@ export class TransferListComponent<T extends TransferItem> {
   /** Emitted when the set of assigned IDs changes. */
   public readonly assignedIdsChanged = output<(string | number)[]>();
 
+  /** Emitted for telemetry tracking of user actions. */
+  public readonly actionTelemetry = output<{
+    action: 'transfer_single' | 'transfer_bulk' | 'reset';
+    direction?: 'to_assigned' | 'to_available';
+    id?: string | number;
+    count?: number;
+  }>();
+
   /** Detects if the screen is small (mobile/vertical layout). */
   protected readonly isSmallScreen = toSignal(
     this.breakpointObserver.observe([Breakpoints.XSmall, Breakpoints.Small]).pipe(map(result => result.matches)),
@@ -120,7 +130,18 @@ export class TransferListComponent<T extends TransferItem> {
   );
 
   /** IDs of items currently in the 'assigned' bucket. */
-  protected readonly assignedIds = signal<Set<string | number>>(new Set());
+  public readonly assignedIds = signal<Set<string | number>>(new Set());
+
+  /** Returns true if the current assigned items differ from the initial state. */
+  public readonly isDirty = computed(() => {
+    const current = this.assignedIds();
+    const initial = new Set(this.initialAssignedIds());
+    if (current.size !== initial.size) return true;
+    for (const id of current) {
+      if (!initial.has(id)) return true;
+    }
+    return false;
+  });
 
   /** IDs of currently selected items in the available list. */
   protected readonly selectedAvailable = signal<(string | number)[]>([]);
@@ -180,22 +201,47 @@ export class TransferListComponent<T extends TransferItem> {
    * Moves a set of IDs to the assigned bucket.
    */
   public moveRight(ids: (string | number)[]): void {
+    if (ids.length === 0) return;
     const current = new Set(this.assignedIds());
     ids.forEach(id => current.add(id));
     this.updateAssigned(current);
     // Clear selection after move
     this.selectedAvailable.set([]);
+
+    // Telemetry
+    if (ids.length === 1) {
+      this.actionTelemetry.emit({ action: 'transfer_single', direction: 'to_assigned', id: ids[0] });
+    } else {
+      this.actionTelemetry.emit({ action: 'transfer_bulk', direction: 'to_assigned', count: ids.length });
+    }
   }
 
   /**
    * Moves a set of IDs to the available bucket.
    */
   public moveLeft(ids: (string | number)[]): void {
+    if (ids.length === 0) return;
     const current = new Set(this.assignedIds());
     ids.forEach(id => current.delete(id));
     this.updateAssigned(current);
     // Clear selection after move
     this.selectedAssigned.set([]);
+
+    // Telemetry
+    if (ids.length === 1) {
+      this.actionTelemetry.emit({ action: 'transfer_single', direction: 'to_available', id: ids[0] });
+    } else {
+      this.actionTelemetry.emit({ action: 'transfer_bulk', direction: 'to_available', count: ids.length });
+    }
+  }
+
+  /**
+   * Resets the component to its initial state.
+   */
+  public reset(): void {
+    const initial = new Set(this.initialAssignedIds());
+    this.updateAssigned(initial);
+    this.actionTelemetry.emit({ action: 'reset' });
   }
 
   /**
