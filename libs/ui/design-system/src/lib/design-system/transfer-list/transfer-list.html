@@ -20,6 +20,7 @@
       </div>
       
       <cdk-virtual-scroll-viewport 
+        id="available-list"
         [itemSize]="density() === 'compact' ? 32 : 44" 
         class="flex-1 h-64 outline-none custom-scrollbar"
         cdkListbox
@@ -78,6 +79,17 @@
         [disabled]="assignedItems().length === 0"> 
         <span>{{ isSmallScreen() ? '^^' : '<<' }}</span>
       </button>
+
+      <div class="border-t border-gray-200 my-2"></div>
+
+      <button 
+        type="button" 
+        (click)="reset()" 
+        class="p-2 border border-red-100 bg-red-50 text-red-600 rounded hover:bg-red-100 hover:border-red-400 shadow-sm disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed transition-all active:scale-95 flex items-center justify-center text-[10px] font-bold uppercase tracking-widest" 
+        [title]="i18n().reset"
+        [disabled]="!isDirty()"> 
+        <span>{{ 'Reset' }}</span>
+      </button>
     </div>
 
     <!-- Assigned List -->
@@ -99,6 +111,7 @@
       </div>
       
       <cdk-virtual-scroll-viewport 
+        id="assigned-list"
         [itemSize]="density() === 'compact' ? 32 : 44" 
         class="flex-1 h-64 outline-none custom-scrollbar"
         cdkListbox

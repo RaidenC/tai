@@ -24,8 +24,10 @@ test.describe('Privileges Audit Trail E2E', () => {
     await page.getByPlaceholder(/search privileges/i).fill(privilegeName);
     await page.waitForResponse(res => res.url().includes('/api/privileges') && res.status() === 200);
     
-    // Locate the specific row and open Actions menu
+    // Locate the specific row and ensure it's visible before interacting
     const row = page.locator('tr').filter({ hasText: privilegeName });
+    await expect(row).toBeVisible();
+
     const actionsTrigger = row.getByRole('button', { name: /actions/i });
     
     // Capture ID from the catalog row BEFORE navigating away
@@ -33,7 +35,11 @@ test.describe('Privileges Audit Trail E2E', () => {
     expect(privilegeId).toBeDefined();
 
     await actionsTrigger.click();
-    await page.getByRole('menuitem', { name: /edit/i }).click();
+    
+    // FIX: Wait for the menu item to be stable and visible before clicking
+    const editMenuItem = page.getByRole('menuitem', { name: /edit/i });
+    await expect(editMenuItem).toBeVisible();
+    await editMenuItem.click();
     
     await expect(page).toHaveURL(/.*\/admin\/privileges\/.*/);
     
