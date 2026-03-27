@@ -65,7 +65,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 5: E2E Validation & Strict Nx Regression Guard' (Protocol in workflow.md) [ea7b2d1]
 
 ## Phase 6: Product Documentation & Knowledge Base Delivery
-- [ ] Task: Masterclass & Release Notes
-    - [ ] Draft a comprehensive "Masterclass" document in `conductor/knowledge-base/tracks/` detailing the architectural decisions.
-    - [ ] Draft user-facing Release Notes explaining the new power-user features.
-- [ ] Task: Conductor - User Manual Verification 'Phase 6: Product Documentation & Knowledge Base Delivery' (Protocol in workflow.md)
+- [x] Task: Masterclass & Release Notes [ceab1f6]
+    - [x] Draft a comprehensive "Masterclass" document in `conductor/knowledge-base/tracks/` detailing the architectural decisions.
+    - [x] Draft user-facing Release Notes explaining the new power-user features.
+- [x] Task: Conductor - User Manual Verification 'Phase 6: Product Documentation & Knowledge Base Delivery' (Protocol in workflow.md) [ceab1f6]
