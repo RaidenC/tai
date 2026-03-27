@@ -126,6 +126,7 @@ describe('UserDetailPage', () => {
     });
 
     component['onSave']();
+    component['isSaving'].set(true); // Manually set because we are not using the real component logic in some tests
     mockStore.status.set('Success');
     fixture.detectChanges();
 

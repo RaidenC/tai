@@ -209,6 +209,7 @@ export class UserDetailPage implements OnInit {
   protected readonly privilegesStore = inject(PrivilegesStore);
 
   protected readonly isEditing = signal(false);
+  protected readonly isSaving = signal(false);
   
   protected readonly editForm = this.fb.group({
     firstName: ['', [Validators.required, Validators.maxLength(100)]],
@@ -222,7 +223,8 @@ export class UserDetailPage implements OnInit {
       const user = this.store.selectedUser();
       const status = this.store.status();
 
-      if (status === 'Success' && this.isEditing()) {
+      if (status === 'Success' && this.isEditing() && this.isSaving()) {
+        this.isSaving.set(false);
         this.isEditing.set(false);
       }
 
@@ -266,12 +268,14 @@ export class UserDetailPage implements OnInit {
       // If cancelling, reset the transfer list component state if it exists
       this.transferList?.reset();
     }
+    this.isSaving.set(false);
     this.isEditing.set(!this.isEditing());
   }
 
   protected onSave(): void {
     const user = this.store.selectedUser();
     if (user && this.editForm.valid) {
+      this.isSaving.set(true);
       this.store.updateUser(user.id, this.editForm.value as Partial<UserDetail>, user.rowVersion);
     }
   }
