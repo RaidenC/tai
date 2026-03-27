@@ -108,13 +108,21 @@ public class PrivilegeSecurityTests : IClassFixture<WebApplicationFactory<Progra
     var factory = CreateFactoryWithMockAuth(NormalUserId, Array.Empty<string>());
     var client = CreateClient(factory);
 
+    // Use a known existing privilege ID from SeedData or previous tests
+    // In these tests, we usually have some seeded data or can create one as admin first
+    var adminFactory = CreateFactoryWithMockAuth(AdminUserId, new[] { "Admin" });
+    var adminClient = CreateClient(adminFactory);
+    var createResponse = await adminClient.PostAsJsonAsync("/api/Privileges", new CreatePrivilegeCommand(
+        $"Security.Update.{Guid.NewGuid()}", "Test", "Test", RiskLevel.Low, new JitSettings()));
+    var privilege = await createResponse.Content.ReadFromJsonAsync<PrivilegeDto>();
+
     var command = new UpdatePrivilegeCommand(
-      Guid.NewGuid(),
+      privilege!.Id,
       "Should fail",
       RiskLevel.Low,
       true,
       new JitSettings(),
-      0
+      privilege.RowVersion
     );
 
     // Act
