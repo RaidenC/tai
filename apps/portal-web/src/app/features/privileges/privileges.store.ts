@@ -112,8 +112,8 @@ export class PrivilegesStore {
 
     this.privilegesService.updatePrivilege(id, data, isStepUpVerified)
       .subscribe({
-        next: (updatedPrivilege) => {
-          this._selectedPrivilege.set(updatedPrivilege);
+        next: (response: any) => {
+          this._selectedPrivilege.set(response.body);
           this._status.set('Success');
           // Refresh catalog in background
           this.loadPrivileges();

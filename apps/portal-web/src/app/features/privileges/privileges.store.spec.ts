@@ -74,7 +74,8 @@ describe('PrivilegesStore', () => {
 
   it('should update selectedPrivilege after successful update', () => {
     const updatedPrivilege = { ...mockPrivilege, description: 'Updated' };
-    serviceMock.updatePrivilege.mockReturnValue(of(updatedPrivilege));
+    // Mocking HttpResponse structure where body contains the data
+    serviceMock.updatePrivilege.mockReturnValue(of({ body: updatedPrivilege }));
     serviceMock.getPrivileges.mockReturnValue(of({ items: [], totalCount: 0 }));
 
     store.updatePrivilege('1', { description: 'Updated' });
