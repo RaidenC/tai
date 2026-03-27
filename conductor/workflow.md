@@ -16,7 +16,7 @@ For the most reliable results during TDD and debugging, follow these patterns:
 ### The "Gold Standard" Debug Command
 Use this when you need to verify multiple projects or run a full suite without getting stuck in watch mode:
 ```bash
-CI=true npx nx run-many -t test e2e --projects=portal-web,portal-web-e2e --watch=false
+CI=true npx nx run-many -t test e2e --projects=portal-web,portal-web-e2e
 ```
 
 ### Targeted E2E Debugging

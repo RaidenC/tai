@@ -34,13 +34,13 @@ class TestHostComponent {
   ]);
   assignedIds = signal<(string | number)[]>([2]);
   lastChangedIds: (string | number)[] = [];
-  lastTelemetry: any = null;
+  lastTelemetry: { action: string; direction?: string; id?: string | number; count?: number } | null = null;
 
   onChanged(ids: (string | number)[]) {
     this.lastChangedIds = ids;
   }
 
-  onTelemetry(data: any) {
+  onTelemetry(data: { action: string; direction?: string; id?: string | number; count?: number }) {
     this.lastTelemetry = data;
   }
 }
@@ -312,7 +312,7 @@ describe('TransferListComponent', () => {
       cvaHost.control.disable();
       cvaFixture.detectChanges();
       
-      expect(cvaComponent.isDisabled()).toBe(true);
+      expect(cvaComponent.isDisabled).toBe(true);
     });
   });
 });

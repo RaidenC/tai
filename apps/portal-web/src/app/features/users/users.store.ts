@@ -3,7 +3,7 @@ import { UsersService, User, PaginatedUsers, UserDetail } from './users.service'
 import { finalize } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 
-export type UsersStatus = 'Idle' | 'Loading' | 'Success' | 'Error';
+export type UsersStatus = 'Idle' | 'Loading' | 'Success' | 'Error' | 'Conflict';
 
 /**
  * UsersStore
@@ -44,6 +44,7 @@ export class UsersStore {
   // --- Derived State (Computed Signals) ---
   public readonly isLoading = computed(() => this._status() === 'Loading');
   public readonly isError = computed(() => this._status() === 'Error');
+  public readonly isConflict = computed(() => this._status() === 'Conflict');
 
   /**
    * Loads the list of users with pagination, sorting and filtering.
@@ -110,7 +111,7 @@ export class UsersStore {
   /**
    * Updates a user profile.
    */
-  public updateUser(id: string, userData: Partial<User>, rowVersion: number): void {
+  public updateUser(id: string, userData: Partial<UserDetail>, rowVersion: number): void {
     this._status.set('Loading');
     this._errorMessage.set(null);
 
@@ -121,8 +122,13 @@ export class UsersStore {
           this.loadUser(id); // Reload to get fresh data/xmin
         },
         error: (err: HttpErrorResponse) => {
-          this._status.set('Error');
-          this._errorMessage.set(err.error?.detail || 'Failed to update user.');
+          if (err.status === 409) {
+            this._status.set('Conflict');
+            this._errorMessage.set(err.error?.detail || 'This record has been modified by another user. Please refresh and try again.');
+          } else {
+            this._status.set('Error');
+            this._errorMessage.set(err.error?.detail || 'Failed to update user.');
+          }
         }
       });
   }

@@ -1,4 +1,4 @@
-import { Component, input, output, ChangeDetectionStrategy, signal, computed, effect, contentChild, TemplateRef, inject, forwardRef } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, signal, computed, effect, contentChild, TemplateRef, inject, forwardRef, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkListboxModule } from '@angular/cdk/listbox';
 import { ScrollingModule } from '@angular/cdk/scrolling';
@@ -14,7 +14,6 @@ import { LiveAnnouncer } from '@angular/cdk/a11y';
  */
 export interface TransferItem {
   id: string | number;
-  [key: string]: unknown;
 }
 
 /**
@@ -158,14 +157,20 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
   /** trackBy function for virtual scroll. */
   protected readonly trackByFn = computed(() => {
     const key = this.trackKey();
-    return (index: number, item: T) => item[key];
+    return (index: number, item: T) => (item as any)[key];
   });
 
-  /** Track if the component is disabled via CVA. */
-  public readonly isDisabled = signal(false);
+  /** Track if the component is disabled via CVA or manual input. */
+  @Input() set isDisabled(value: boolean) {
+    this._isDisabled.set(value);
+  }
+  get isDisabled(): boolean {
+    return this._isDisabled();
+  }
+  public readonly _isDisabled = signal(false);
 
-  private onChange: (value: (string | number)[]) => void = () => {};
-  private onTouched: () => void = () => {};
+  private onChange: (value: (string | number)[]) => void = () => { /* Noop for CVA */ };
+  private onTouched: () => void = () => { /* Noop for CVA */ };
 
   constructor() {
     // Initialize assignedIds from input
@@ -193,7 +198,7 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
   }
 
   public setDisabledState(isDisabled: boolean): void {
-    this.isDisabled.set(isDisabled);
+    this._isDisabled.set(isDisabled);
   }
 
   // ------------------------------------------
@@ -208,10 +213,10 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
     const displayKey = this.displayKey();
 
     return this.items().filter(item => {
-      const id = item[trackKey] as unknown as (string | number);
+      const id = (item as any)[trackKey] as unknown as (string | number);
       const isAvailable = !ids.has(id);
       if (!term) return isAvailable;
-      const label = String(item[displayKey]).toLowerCase();
+      const label = String((item as any)[displayKey]).toLowerCase();
       return isAvailable && label.includes(term);
     });
   });
@@ -226,10 +231,10 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
     const displayKey = this.displayKey();
 
     return this.items().filter(item => {
-      const id = item[trackKey] as unknown as (string | number);
+      const id = (item as any)[trackKey] as unknown as (string | number);
       const isAssigned = ids.has(id);
       if (!term) return isAssigned;
-      const label = String(item[displayKey]).toLowerCase();
+      const label = String((item as any)[displayKey]).toLowerCase();
       return isAssigned && label.includes(term);
     });
   });
@@ -300,7 +305,7 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
    */
   public moveAllRight(): void {
     const trackKey = this.trackKey();
-    this.moveRight(this.availableItems().map(i => i[trackKey] as unknown as (string | number)));
+    this.moveRight(this.availableItems().map(i => (i as any)[trackKey] as unknown as (string | number)));
   }
 
   /**
@@ -308,7 +313,7 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
    */
   public moveAllLeft(): void {
     const trackKey = this.trackKey();
-    this.moveLeft(this.assignedItems().map(i => i[trackKey] as unknown as (string | number)));
+    this.moveLeft(this.assignedItems().map(i => (i as any)[trackKey] as unknown as (string | number)));
   }
 
   /**
@@ -328,17 +333,17 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
   /**
    * Updates the current selection in the available list.
    */
-  public updateSelectedAvailable(event: any): void {
+  public updateSelectedAvailable(event: { value: readonly (string | number)[] }): void {
     const ids = event.value;
-    this.selectedAvailable.set(Array.isArray(ids) ? ids : []);
+    this.selectedAvailable.set(Array.isArray(ids) ? [...ids] : []);
   }
 
   /**
    * Updates the current selection in the assigned list.
    */
-  public updateSelectedAssigned(event: any): void {
+  public updateSelectedAssigned(event: { value: readonly (string | number)[] }): void {
     const ids = event.value;
-    this.selectedAssigned.set(Array.isArray(ids) ? ids : []);
+    this.selectedAssigned.set(Array.isArray(ids) ? [...ids] : []);
   }
 
   private updateAssigned(newSet: Set<string | number>): void {

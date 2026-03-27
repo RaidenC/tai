@@ -15,7 +15,7 @@
           [placeholder]="i18n().searchPlaceholder"
           (input)="updateSearchAvailable(searchInputAvailable.value)"
           #searchInputAvailable
-          [disabled]="isDisabled()"
+          [disabled]="_isDisabled()"
           class="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-50 disabled:bg-gray-100"
         />
       </div>
@@ -27,7 +27,7 @@
         cdkListbox
         cdkListboxMultiple
         [cdkListboxValue]="selectedAvailable()"
-        [cdkListboxDisabled]="isDisabled()"
+        [cdkListboxDisabled]="_isDisabled()"
         (cdkListboxValueChange)="updateSelectedAvailable($event)">
         <ul class="m-0 p-0 list-none outline-none" aria-labelledby="available-title">
           <li *cdkVirtualFor="let item of availableItems(); trackBy: trackByFn()"
@@ -37,7 +37,7 @@
               [class.p-2.5]="density() === 'comfortable'"
               class="text-sm cursor-pointer rounded-sm hover:bg-blue-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 mx-1 my-0.5 flex items-center"
               [style.view-transition-name]="'item-' + item[trackKey()]"
-              (dblclick)="!isDisabled() && moveRight([$any(item[trackKey()])])">
+              (dblclick)="!_isDisabled() && moveRight([$any(item[trackKey()])])">
             <ng-container *ngTemplateOutlet="itemTemplate() || defaultItemTemplate; context: { $implicit: item }"></ng-container>
           </li>
           @if (availableItems().length === 0) {
@@ -54,7 +54,7 @@
         (click)="moveAllRight()" 
         class="p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-400 hover:text-blue-600 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95" 
         [title]="i18n().moveAllRight"
-        [disabled]="availableItems().length === 0 || isDisabled()"> 
+        [disabled]="availableItems().length === 0 || _isDisabled()"> 
         <span>{{ isSmallScreen() ? 'vv' : '>>' }}</span>
       </button>
       <button 
@@ -62,7 +62,7 @@
         (click)="moveSelectedRight()" 
         class="p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-500 hover:text-blue-700 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed font-bold transition-all active:scale-95" 
         [title]="i18n().moveSelectedRight"
-        [disabled]="selectedAvailable().length === 0 || isDisabled()"> 
+        [disabled]="selectedAvailable().length === 0 || _isDisabled()"> 
         <span>{{ isSmallScreen() ? 'v' : '>' }}</span>
       </button>
       <button 
@@ -70,7 +70,7 @@
         (click)="moveSelectedLeft()" 
         class="p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-500 hover:text-blue-700 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed font-bold transition-all active:scale-95" 
         [title]="i18n().moveSelectedLeft"
-        [disabled]="selectedAssigned().length === 0 || isDisabled()"> 
+        [disabled]="selectedAssigned().length === 0 || _isDisabled()"> 
         <span>{{ isSmallScreen() ? '^' : '<' }}</span>
       </button>
       <button 
@@ -78,7 +78,7 @@
         (click)="moveAllLeft()" 
         class="p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-400 hover:text-blue-600 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95" 
         [title]="i18n().moveAllLeft"
-        [disabled]="assignedItems().length === 0 || isDisabled()"> 
+        [disabled]="assignedItems().length === 0 || _isDisabled()"> 
         <span>{{ isSmallScreen() ? '^^' : '<<' }}</span>
       </button>
 
@@ -89,7 +89,7 @@
         (click)="reset()" 
         class="p-2 border border-red-100 bg-red-50 text-red-600 rounded hover:bg-red-100 hover:border-red-400 shadow-sm disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed transition-all active:scale-95 flex items-center justify-center text-[10px] font-bold uppercase tracking-widest" 
         [title]="i18n().reset"
-        [disabled]="!isDirty() || isDisabled()"> 
+        [disabled]="!isDirty() || _isDisabled()"> 
         <span>{{ 'Reset' }}</span>
       </button>
     </div>
@@ -108,7 +108,7 @@
           [placeholder]="i18n().searchPlaceholder"
           (input)="updateSearchAssigned(searchInputAssigned.value)"
           #searchInputAssigned
-          [disabled]="isDisabled()"
+          [disabled]="_isDisabled()"
           class="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-50 disabled:bg-gray-100"
         />
       </div>
@@ -120,7 +120,7 @@
         cdkListbox
         cdkListboxMultiple
         [cdkListboxValue]="selectedAssigned()"
-        [cdkListboxDisabled]="isDisabled()"
+        [cdkListboxDisabled]="_isDisabled()"
         (cdkListboxValueChange)="updateSelectedAssigned($event)">
         <ul class="m-0 p-0 list-none outline-none" aria-labelledby="assigned-title">
           <li *cdkVirtualFor="let item of assignedItems(); trackBy: trackByFn()"
@@ -130,7 +130,7 @@
               [class.p-2.5]="density() === 'comfortable'"
               class="text-sm cursor-pointer rounded-sm hover:bg-blue-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 mx-1 my-0.5 flex items-center"
               [style.view-transition-name]="'item-' + item[trackKey()]"
-              (dblclick)="!isDisabled() && moveLeft([$any(item[trackKey()])])">
+              (dblclick)="!_isDisabled() && moveLeft([$any(item[trackKey()])])">
             <ng-container *ngTemplateOutlet="itemTemplate() || defaultItemTemplate; context: { $implicit: item }"></ng-container>
           </li>
           @if (assignedItems().length === 0) {

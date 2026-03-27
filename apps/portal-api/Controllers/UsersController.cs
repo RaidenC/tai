@@ -46,7 +46,7 @@ public class UsersController : ControllerBase {
     return Ok(result);
   }
 
-  public record UpdateUserRequest(string FirstName, string LastName, string Email);
+  public record UpdateUserRequest(string FirstName, string LastName, string Email, IEnumerable<Guid> PrivilegeIds);
 
   [HttpPut("{id}")]
   public async Task<IActionResult> UpdateUser(string id, [FromBody] UpdateUserRequest request) {
@@ -54,7 +54,7 @@ public class UsersController : ControllerBase {
       return BadRequest("If-Match header is required and must contain a valid ETag.");
     }
 
-    var command = new UpdateUserCommand(id, request.FirstName, request.LastName, request.Email, rowVersion);
+    var command = new UpdateUserCommand(id, request.FirstName, request.LastName, request.Email, rowVersion, request.PrivilegeIds);
     try {
       var result = await _mediator.Send(command);
       if (!result) {

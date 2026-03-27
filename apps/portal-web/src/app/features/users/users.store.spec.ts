@@ -50,7 +50,7 @@ describe('UsersStore', () => {
   });
 
   it('should load a single user successfully', () => {
-    const mockUser: UserDetail = { id: '1', firstName: 'John', lastName: 'Doe', email: 'john@tai.com', status: 'Active', rowVersion: 1 };
+    const mockUser: UserDetail = { id: '1', firstName: 'John', lastName: 'Doe', email: 'john@tai.com', status: 'Active', rowVersion: 1, privilegeIds: [] };
     mockService.getUserById.mockReturnValue(of(mockUser));
 
     store.loadUser('1');
@@ -73,7 +73,7 @@ describe('UsersStore', () => {
   });
 
   it('should update a user and reload', () => {
-    const mockUser: UserDetail = { id: '1', firstName: 'John', lastName: 'Doe', email: 'john@tai.com', status: 'Active', rowVersion: 1 };
+    const mockUser: UserDetail = { id: '1', firstName: 'John', lastName: 'Doe', email: 'john@tai.com', status: 'Active', rowVersion: 1, privilegeIds: [] };
     mockService.updateUser.mockReturnValue(of(void 0));
     mockService.getUserById.mockReturnValue(of(mockUser));
 

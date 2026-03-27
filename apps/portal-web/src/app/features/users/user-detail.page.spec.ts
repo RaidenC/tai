@@ -14,6 +14,8 @@ describe('UserDetailPage', () => {
     selectedUser: any;
     isLoading: any;
     isError: any;
+    isConflict: any;
+    status: any;
     errorMessage: any;
     loadUser: any;
     updateUser: any;
@@ -28,6 +30,8 @@ describe('UserDetailPage', () => {
       selectedUser: signal<UserDetail | null>(null),
       isLoading: signal(false),
       isError: signal(false),
+      isConflict: signal(false),
+      status: signal('Idle'),
       errorMessage: signal(null),
       loadUser: vi.fn(),
       updateUser: vi.fn(),
@@ -87,7 +91,8 @@ describe('UserDetailPage', () => {
       lastName: 'Doe', 
       email: 'john@tai.com', 
       status: 'Active', 
-      rowVersion: 1 
+      rowVersion: 1,
+      privilegeIds: []
     };
     mockStore.selectedUser.set(user);
     
@@ -97,7 +102,8 @@ describe('UserDetailPage', () => {
     expect(component['editForm'].value).toEqual({
       firstName: 'John',
       lastName: 'Doe',
-      email: 'john@tai.com'
+      email: 'john@tai.com',
+      privilegeIds: []
     });
   });
 
@@ -108,7 +114,8 @@ describe('UserDetailPage', () => {
       lastName: 'Doe', 
       email: 'john@tai.com', 
       status: 'Active', 
-      rowVersion: 1 
+      rowVersion: 1,
+      privilegeIds: []
     };
     mockStore.selectedUser.set(user);
     component['isEditing'].set(true);
@@ -119,11 +126,14 @@ describe('UserDetailPage', () => {
     });
 
     component['onSave']();
+    mockStore.status.set('Success');
+    fixture.detectChanges();
 
     expect(mockStore.updateUser).toHaveBeenCalledWith('user-123', {
       firstName: 'Johnny',
       lastName: 'D',
-      email: 'johnny@tai.com'
+      email: 'johnny@tai.com',
+      privilegeIds: []
     }, 1);
     expect(component['isEditing']()).toBe(false);
   });
@@ -141,7 +151,8 @@ describe('UserDetailPage', () => {
       email: 'john@tai.com', 
       status: 'Active', 
       rowVersion: 1,
-      institution: 'Global Bank'
+      institution: 'Global Bank',
+      privilegeIds: []
     };
     mockStore.selectedUser.set(user);
     fixture.detectChanges();
@@ -158,7 +169,7 @@ describe('UserDetailPage', () => {
   });
 
   it('should NOT call updateUser if form is invalid', () => {
-    const user: UserDetail = { id: '1', firstName: 'A', lastName: 'B', email: 'a@b.com', status: 'Active', rowVersion: 1 };
+    const user: UserDetail = { id: '1', firstName: 'A', lastName: 'B', email: 'a@b.com', status: 'Active', rowVersion: 1, privilegeIds: [] };
     mockStore.selectedUser.set(user);
     component['isEditing'].set(true);
     component['editForm'].patchValue({ email: 'invalid-email' });

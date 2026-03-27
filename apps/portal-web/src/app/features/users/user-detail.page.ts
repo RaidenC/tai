@@ -1,9 +1,11 @@
-import { Component, inject, OnInit, signal, effect } from '@angular/core';
+import { Component, inject, OnInit, signal, effect, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { UsersStore } from './users.store';
-import { User } from './users.service';
+import { UserDetail } from './users.service';
+import { TransferListComponent } from '@tai/ui-design-system';
+import { PrivilegesStore } from '../privileges/privileges.store';
 
 /**
  * UserDetailPage
@@ -20,7 +22,7 @@ import { User } from './users.service';
 @Component({
   selector: 'app-user-detail-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, TransferListComponent],
   template: `
     <div class="p-8 max-w-4xl mx-auto">
       <!-- Header -->
@@ -64,6 +66,23 @@ import { User } from './users.service';
             </div>
 
             <!-- Content Area -->
+            @if (store.isConflict()) {
+              <div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-3 animate-in fade-in slide-in-from-top-4 duration-300" data-testid="conflict-alert">
+                <svg class="w-6 h-6 text-amber-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div class="flex-1">
+                  <p class="text-sm font-bold text-amber-900">Concurrency Conflict</p>
+                  <p class="text-sm text-amber-700">{{ store.errorMessage() }}</p>
+                  <button 
+                    (click)="store.loadUser(user.id)" 
+                    class="mt-2 text-xs font-bold text-amber-900 underline hover:no-underline">
+                    Refresh data and try again
+                  </button>
+                </div>
+              </div>
+            }
+
             @if (!isEditing()) {
               <div class="grid grid-cols-1 md:grid-cols-2 gap-8" data-testid="read-only-view">
                 <div>
@@ -88,6 +107,19 @@ import { User } from './users.service';
                   <span class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Institution</span>
                   <p class="text-lg font-semibold text-gray-700" data-testid="display-institution">{{ user.institution || 'Tai Portal' }}</p>
                   <p class="mt-1 text-xs text-gray-400">This field is managed by System Administrators and cannot be edited.</p>
+                </div>
+
+                <div class="md:col-span-2 mt-8">
+                  <h3 class="text-lg font-bold text-gray-900 mb-4">Assigned Privileges</h3>
+                  <h1 data-testid="test-marker">RENDERED</h1>
+                  <tai-transfer-list
+                    [items]="privilegesStore.privileges()"
+                    [initialAssignedIds]="user.privilegeIds || []"
+                    [displayKey]="'name'"
+                    [trackKey]="'id'"
+                    [isDisabled]="true"
+                    data-testid="view-privileges-list"
+                  />
                 </div>
               </div>
             } @else {
@@ -119,6 +151,17 @@ import { User } from './users.service';
                       formControlName="email"
                       class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200 outline-none"
                       data-testid="input-email">
+                  </div>
+
+                  <div class="md:col-span-2 mt-6">
+                    <span class="block text-sm font-bold text-gray-700 mb-4">Manage Privileges</span>
+                    <tai-transfer-list
+                      formControlName="privilegeIds"
+                      [items]="privilegesStore.privileges()"
+                      [displayKey]="'name'"
+                      [trackKey]="'id'"
+                      data-testid="edit-privileges-list"
+                    />
                   </div>
                 </div>
 
@@ -157,10 +200,13 @@ import { User } from './users.service';
   styleUrls: ['./user-detail.page.scss']
 })
 export class UserDetailPage implements OnInit {
+  @ViewChild(TransferListComponent) transferList?: TransferListComponent<any>;
+
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
   protected readonly store = inject(UsersStore);
+  protected readonly privilegesStore = inject(PrivilegesStore);
 
   protected readonly isEditing = signal(false);
   
@@ -168,16 +214,24 @@ export class UserDetailPage implements OnInit {
     firstName: ['', [Validators.required, Validators.maxLength(100)]],
     lastName: ['', [Validators.required, Validators.maxLength(100)]],
     email: ['', [Validators.required, Validators.email]],
+    privilegeIds: [[] as string[]],
   });
 
   constructor() {
     effect(() => {
       const user = this.store.selectedUser();
+      const status = this.store.status();
+
+      if (status === 'Success' && this.isEditing()) {
+        this.isEditing.set(false);
+      }
+
       if (user && this.isEditing()) {
         this.editForm.patchValue({
           firstName: user.firstName,
           lastName: user.lastName,
-          email: user.email
+          email: user.email,
+          privilegeIds: user.privilegeIds || []
         }, { emitEvent: false });
       }
     });
@@ -188,6 +242,9 @@ export class UserDetailPage implements OnInit {
     if (id) {
       this.store.loadUser(id);
     }
+
+    // Load all privileges for the transfer list
+    this.privilegesStore.loadPrivileges(1, 1000);
 
     if (this.route.snapshot.queryParamMap.get('edit') === 'true') {
       this.isEditing.set(true);
@@ -201,9 +258,13 @@ export class UserDetailPage implements OnInit {
         this.editForm.patchValue({
           firstName: user.firstName,
           lastName: user.lastName,
-          email: user.email
+          email: user.email,
+          privilegeIds: user.privilegeIds || []
         });
       }
+    } else {
+      // If cancelling, reset the transfer list component state if it exists
+      this.transferList?.reset();
     }
     this.isEditing.set(!this.isEditing());
   }
@@ -211,8 +272,7 @@ export class UserDetailPage implements OnInit {
   protected onSave(): void {
     const user = this.store.selectedUser();
     if (user && this.editForm.valid) {
-      this.store.updateUser(user.id, this.editForm.value as Partial<User>, user.rowVersion);
-      this.isEditing.set(false);
+      this.store.updateUser(user.id, this.editForm.value as Partial<UserDetail>, user.rowVersion);
     }
   }
 
