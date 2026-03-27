@@ -114,10 +114,12 @@ export class PrivilegesStore {
         },
         error: (err: HttpErrorResponse) => {
           console.error('[PrivilegesStore] Update failed:', err);
-          console.log('[PrivilegesStore] Headers:', err.headers.keys());
-          console.log('[PrivilegesStore] X-Step-Up-Required:', err.headers.get('X-Step-Up-Required'));
           
-          if (err.status === 403 && err.headers.get('X-Step-Up-Required') === 'true') {
+          // Case-insensitive header check
+          const stepUpHeader = err.headers.get('X-Step-Up-Required') || err.headers.get('x-step-up-required');
+          console.log('[PrivilegesStore] Step-Up Header Value:', stepUpHeader);
+          
+          if (err.status === 403 && stepUpHeader === 'true') {
             this._status.set('StepUpRequired');
           } else {
             this._status.set('Error');

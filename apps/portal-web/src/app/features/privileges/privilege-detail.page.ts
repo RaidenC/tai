@@ -32,6 +32,28 @@ import { Privilege, RiskLevel } from './privileges.service';
         <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Privilege Details</h1>
       </nav>
 
+      @if (store.isStepUpRequired()) {
+        <div class="mb-6 p-4 bg-amber-50 border-l-4 border-amber-400 text-amber-700 rounded-r-md shadow-sm" role="alert">
+          <div class="flex justify-between items-center">
+            <div class="flex">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 0v2m0-2h2m-2 0H10m11 3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm font-medium">Step-up authentication required for this high-risk action.</p>
+              </div>
+            </div>
+            <button 
+              (click)="simulateStepUp()"
+              class="px-3 py-1 bg-amber-600 text-white text-xs font-bold rounded hover:bg-amber-700 transition-colors">
+              VERIFY MFA
+            </button>
+          </div>
+        </div>
+      }
+
       @if (store.selectedPrivilege()) {
         <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden" data-testid="privilege-card">
           <!-- Banner -->
@@ -346,6 +368,17 @@ export class PrivilegeDetailPage implements OnInit {
         id: privilege.id,
         rowVersion: privilege.rowVersion
       });
+    }
+  }
+
+  protected simulateStepUp(): void {
+    const privilege = this.store.selectedPrivilege();
+    if (privilege && this.editForm.valid) {
+      this.store.updatePrivilege(privilege.id, {
+        ...this.editForm.value as Partial<Privilege>,
+        id: privilege.id,
+        rowVersion: privilege.rowVersion
+      }, true);
     }
   }
 
