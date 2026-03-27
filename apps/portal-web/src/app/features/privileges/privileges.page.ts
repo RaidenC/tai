@@ -188,6 +188,8 @@ export class PrivilegesPage implements OnInit {
         id: event.row.id, 
         data: { ...event.row, isActive: !event.row.isActive } 
       };
+      // Reset store state before new action to clear old errors
+      this.store.reset();
       this.store.updatePrivilege(this.pendingUpdate.id, this.pendingUpdate.data);
     }
   }

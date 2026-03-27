@@ -119,11 +119,17 @@ export class PrivilegesStore {
           this.loadPrivileges();
         },
         error: (err: HttpErrorResponse) => {
+          console.error('[PrivilegesStore] Update failed:', err);
+          console.log('[PrivilegesStore] Headers:', err.headers.keys());
+          console.log('[PrivilegesStore] X-Step-Up-Required:', err.headers.get('X-Step-Up-Required'));
+          
           if (err.status === 403 && err.headers.get('X-Step-Up-Required') === 'true') {
             this._status.set('StepUpRequired');
           } else {
             this._status.set('Error');
-            this._errorMessage.set(err.error?.detail || 'Failed to update privilege.');
+            // Extract error message safely regardless of whether it's a string or object
+            const message = err.error?.detail || (typeof err.error === 'string' ? err.error : null) || 'Failed to update privilege.';
+            this._errorMessage.set(message);
           }
         }
       });

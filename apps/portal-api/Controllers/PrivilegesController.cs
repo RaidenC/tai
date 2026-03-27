@@ -56,6 +56,7 @@ public class PrivilegesController : ControllerBase {
       var stepUpVerified = Request.Headers["X-Step-Up-Verified"] == "true";
       if (!stepUpVerified) {
         Response.Headers.Append("X-Step-Up-Required", "true");
+        Response.Headers.Append("Access-Control-Expose-Headers", "X-Step-Up-Required");
         return StatusCode(StatusCodes.Status403Forbidden, "Step-up authentication (MFA) is required for this action.");
       }
     }
