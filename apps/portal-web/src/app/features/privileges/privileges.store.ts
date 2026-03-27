@@ -46,12 +46,6 @@ export class PrivilegesStore {
 
   /**
    * Filtered Privileges
-   * 
-   * Requirement: Automatically filter out privileges belonging to Apps/Modules ("Tiles") 
-   * that are not enabled in the current Tenant's Configuration.
-   * 
-   * JUNIOR RATIONALE: The filtering is now handled safely on the backend via the 
-   * 'modules' query parameter, ensuring our server-side pagination counts are accurate.
    */
   public readonly filteredPrivileges = computed(() => this._privileges());
 
@@ -133,5 +127,11 @@ export class PrivilegesStore {
           }
         }
       });
+  }
+
+  public reset(): void {
+    this._status.set('Idle');
+    this._errorMessage.set(null);
+    this._selectedPrivilege.set(null);
   }
 }

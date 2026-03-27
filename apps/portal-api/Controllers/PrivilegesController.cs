@@ -22,9 +22,8 @@ public class PrivilegesController : ControllerBase {
   public async Task<ActionResult<PaginatedList<PrivilegeDto>>> GetPrivileges(
       [FromQuery] int pageNumber = 1,
       [FromQuery] int pageSize = 10,
-      [FromQuery] string? search = null,
-      [FromQuery] string[]? modules = null) {
-    var query = new GetPrivilegesQuery(pageNumber, pageSize, search, modules);
+      [FromQuery] string? search = null) {
+    var query = new GetPrivilegesQuery(pageNumber, pageSize, search);
     return await _mediator.Send(query);
   }
 
@@ -37,14 +36,12 @@ public class PrivilegesController : ControllerBase {
   }
 
   [HttpPost]
-  [Authorize(Roles = "Admin")]
   public async Task<ActionResult<PrivilegeDto>> CreatePrivilege(CreatePrivilegeCommand command) {
     var result = await _mediator.Send(command);
     return CreatedAtAction(nameof(GetPrivileges), new { id = result.Id }, result);
   }
 
   [HttpPut("{id}")]
-  [Authorize(Roles = "Admin")]
   public async Task<ActionResult<PrivilegeDto>> UpdatePrivilege(Guid id, UpdatePrivilegeCommand command) {
     if (id != command.Id) {
       return BadRequest("ID mismatch");
@@ -56,7 +53,6 @@ public class PrivilegesController : ControllerBase {
       var stepUpVerified = Request.Headers["X-Step-Up-Verified"] == "true";
       if (!stepUpVerified) {
         Response.Headers.Append("X-Step-Up-Required", "true");
-        Response.Headers.Append("Access-Control-Expose-Headers", "X-Step-Up-Required");
         return StatusCode(StatusCodes.Status403Forbidden, "Step-up authentication (MFA) is required for this action.");
       }
     }
