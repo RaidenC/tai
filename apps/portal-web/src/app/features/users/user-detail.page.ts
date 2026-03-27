@@ -223,9 +223,11 @@ export class UserDetailPage implements OnInit {
       const user = this.store.selectedUser();
       const status = this.store.status();
 
-      if (status === 'Success' && this.isEditing() && this.isSaving()) {
+      if (this.isSaving() && (status === 'Success' || status === 'Conflict' || status === 'Error')) {
         this.isSaving.set(false);
-        this.isEditing.set(false);
+        if (status === 'Success') {
+          this.isEditing.set(false);
+        }
       }
 
       if (user && this.isEditing()) {
