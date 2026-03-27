@@ -26,6 +26,7 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
   public DbSet<Tenant> Tenants { get; set; }
   public DbSet<AuditEntry> AuditLogs { get; set; }
   public DbSet<Privilege> Privileges { get; set; }
+  public DbSet<UserPrivilege> UserPrivileges { get; set; }
 
   public PortalDbContext(
       DbContextOptions<PortalDbContext> options,
@@ -192,6 +193,27 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
         .ValueGeneratedOnAddOrUpdate();
 
       // No Global Query Filter for Privilege as it is a global catalog.
+    });
+
+    // Configure UserPrivilege
+    builder.Entity<UserPrivilege>(b => {
+      b.HasKey(up => new { up.UserId, up.PrivilegeId });
+
+      b.Property(up => up.PrivilegeId).HasConversion(
+          id => id.Value,
+          value => new PrivilegeId(value));
+
+      b.HasOne<ApplicationUser>()
+        .WithMany()
+        .HasForeignKey(up => up.UserId)
+        .IsRequired()
+        .OnDelete(DeleteBehavior.Cascade);
+
+      b.HasOne<Privilege>()
+        .WithMany()
+        .HasForeignKey(up => up.PrivilegeId)
+        .IsRequired()
+        .OnDelete(DeleteBehavior.Cascade);
     });
   }
 }

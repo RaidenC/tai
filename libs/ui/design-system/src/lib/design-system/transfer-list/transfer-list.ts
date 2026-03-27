@@ -1,8 +1,8 @@
-import { Component, input, output, ChangeDetectionStrategy, signal, computed, effect, contentChild, TemplateRef, inject } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, signal, computed, effect, contentChild, TemplateRef, inject, forwardRef, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkListboxModule } from '@angular/cdk/listbox';
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -14,7 +14,6 @@ import { LiveAnnouncer } from '@angular/cdk/a11y';
  */
 export interface TransferItem {
   id: string | number;
-  [key: string]: unknown;
 }
 
 /**
@@ -65,8 +64,15 @@ const DEFAULT_I18N: TransferListI18n = {
   templateUrl: './transfer-list.html',
   styleUrl: './transfer-list.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => TransferListComponent),
+      multi: true,
+    },
+  ],
 })
-export class TransferListComponent<T extends TransferItem> {
+export class TransferListComponent<T extends TransferItem> implements ControlValueAccessor {
   private readonly breakpointObserver = inject(BreakpointObserver);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
 
@@ -151,8 +157,20 @@ export class TransferListComponent<T extends TransferItem> {
   /** trackBy function for virtual scroll. */
   protected readonly trackByFn = computed(() => {
     const key = this.trackKey();
-    return (index: number, item: T) => item[key];
+    return (index: number, item: T) => (item as any)[key];
   });
+
+  /** Track if the component is disabled via CVA or manual input. */
+  @Input() set isDisabled(value: boolean) {
+    this._isDisabled.set(value);
+  }
+  get isDisabled(): boolean {
+    return this._isDisabled();
+  }
+  public readonly _isDisabled = signal(false);
+
+  private onChange: (value: (string | number)[]) => void = () => { /* Noop for CVA */ };
+  private onTouched: () => void = () => { /* Noop for CVA */ };
 
   constructor() {
     // Initialize assignedIds from input
@@ -160,6 +178,30 @@ export class TransferListComponent<T extends TransferItem> {
       this.assignedIds.set(new Set(this.initialAssignedIds()));
     }, { allowSignalWrites: true });
   }
+
+  // --- ControlValueAccessor Implementation ---
+
+  public writeValue(value: (string | number)[] | null): void {
+    if (value) {
+      this.assignedIds.set(new Set(value));
+    } else {
+      this.assignedIds.set(new Set());
+    }
+  }
+
+  public registerOnChange(fn: (value: (string | number)[]) => void): void {
+    this.onChange = fn;
+  }
+
+  public registerOnTouched(fn: () => void): void {
+    this.onTouched = fn;
+  }
+
+  public setDisabledState(isDisabled: boolean): void {
+    this._isDisabled.set(isDisabled);
+  }
+
+  // ------------------------------------------
 
   /**
    * Filtered list of items that are NOT assigned.
@@ -171,10 +213,10 @@ export class TransferListComponent<T extends TransferItem> {
     const displayKey = this.displayKey();
 
     return this.items().filter(item => {
-      const id = item[trackKey] as unknown as (string | number);
+      const id = (item as any)[trackKey] as unknown as (string | number);
       const isAvailable = !ids.has(id);
       if (!term) return isAvailable;
-      const label = String(item[displayKey]).toLowerCase();
+      const label = String((item as any)[displayKey]).toLowerCase();
       return isAvailable && label.includes(term);
     });
   });
@@ -189,10 +231,10 @@ export class TransferListComponent<T extends TransferItem> {
     const displayKey = this.displayKey();
 
     return this.items().filter(item => {
-      const id = item[trackKey] as unknown as (string | number);
+      const id = (item as any)[trackKey] as unknown as (string | number);
       const isAssigned = ids.has(id);
       if (!term) return isAssigned;
-      const label = String(item[displayKey]).toLowerCase();
+      const label = String((item as any)[displayKey]).toLowerCase();
       return isAssigned && label.includes(term);
     });
   });
@@ -263,7 +305,7 @@ export class TransferListComponent<T extends TransferItem> {
    */
   public moveAllRight(): void {
     const trackKey = this.trackKey();
-    this.moveRight(this.availableItems().map(i => i[trackKey] as unknown as (string | number)));
+    this.moveRight(this.availableItems().map(i => (i as any)[trackKey] as unknown as (string | number)));
   }
 
   /**
@@ -271,7 +313,7 @@ export class TransferListComponent<T extends TransferItem> {
    */
   public moveAllLeft(): void {
     const trackKey = this.trackKey();
-    this.moveLeft(this.assignedItems().map(i => i[trackKey] as unknown as (string | number)));
+    this.moveLeft(this.assignedItems().map(i => (i as any)[trackKey] as unknown as (string | number)));
   }
 
   /**
@@ -291,21 +333,24 @@ export class TransferListComponent<T extends TransferItem> {
   /**
    * Updates the current selection in the available list.
    */
-  public updateSelectedAvailable(event: any): void {
+  public updateSelectedAvailable(event: { value: readonly (string | number)[] }): void {
     const ids = event.value;
-    this.selectedAvailable.set(Array.isArray(ids) ? ids : []);
+    this.selectedAvailable.set(Array.isArray(ids) ? [...ids] : []);
   }
 
   /**
    * Updates the current selection in the assigned list.
    */
-  public updateSelectedAssigned(event: any): void {
+  public updateSelectedAssigned(event: { value: readonly (string | number)[] }): void {
     const ids = event.value;
-    this.selectedAssigned.set(Array.isArray(ids) ? ids : []);
+    this.selectedAssigned.set(Array.isArray(ids) ? [...ids] : []);
   }
 
   private updateAssigned(newSet: Set<string | number>): void {
     this.assignedIds.set(newSet);
-    this.assignedIdsChanged.emit(Array.from(newSet) as (string | number)[]);
+    const arrayValue = Array.from(newSet) as (string | number)[];
+    this.assignedIdsChanged.emit(arrayValue);
+    this.onChange(arrayValue);
+    this.onTouched();
   }
 }

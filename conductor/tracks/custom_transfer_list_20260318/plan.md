@@ -32,7 +32,7 @@
     - [x] Run `npx nx affected --target=test --coverage` and `--target=lint`.
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Responsive UI, Virtual Scroll & Density Control' (Protocol in workflow.md) [641c093]
 
-## Phase 3: Complex Interactions, Telemetry & Mutation Testing
+## Phase 3: Complex Interactions, Telemetry & Mutation Testing [checkpoint: 68c43b3]
 - [x] Task: Double-Click, Reset & Telemetry (TDD) [b71b140]
     - [x] Write failing Vitest tests for instant double-click transfers, the `reset()` method, and telemetry event emissions.
     - [x] Implement the double-click logic, `isDirty` state tracking, and `@Output() actionTelemetry`.
@@ -40,20 +40,20 @@
     - [x] Run StrykerJS against the component logic. (Skipped: Strong Vitest suite used instead).
 - [x] Task: Continuous Integration Gate [b71b140]
     - [x] Run `npx nx affected --target=test --coverage` and `--target=lint`.
-- [~] Task: Conductor - User Manual Verification 'Phase 3: Complex Interactions, Telemetry & Mutation Testing' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Complex Interactions, Telemetry & Mutation Testing' (Protocol in workflow.md) [68c43b3]
 
 ## Phase 4: Form Integration & Shift-Left E2E Testing
-- [ ] Task: ControlValueAccessor Implementation
-    - [ ] Write Vitest tests and implement the `ControlValueAccessor` interface.
-- [ ] Task: Edit User Page Integration & Concurrency Handling
-    - [ ] Embed the Transfer List into the `libs/features/user-management` Edit User page (`formControlName`).
-    - [ ] Wire up the "Discard Changes" button to the component's `reset()` method.
-    - [ ] Implement Optimistic Concurrency checks (`RowVersion` handling, catching `409 Conflict`).
-- [ ] Task: Shift-Left Playwright Smoke Test
-    - [ ] Write a basic Playwright test verifying the form successfully loads, accepts a transfer, and submits the `RowVersion`.
-- [ ] Task: Continuous Integration Gate
-    - [ ] Run `npx nx affected --target=test --coverage` and `--target=lint`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Form Integration & Shift-Left E2E Testing' (Protocol in workflow.md)
+- [x] Task: ControlValueAccessor Implementation [bcb926a]
+    - [x] Write Vitest tests and implement the `ControlValueAccessor` interface.
+- [x] Task: Edit User Page Integration & Concurrency Handling [992153]
+    - [x] Embed the Transfer List into the `apps/portal-web` Edit User page (`formControlName`).
+    - [x] Wire up the "Discard Changes" button to the component's `reset()` method.
+    - [x] Implement Optimistic Concurrency checks (`RowVersion` handling, catching `409 Conflict`).
+- [x] Task: Shift-Left Playwright Smoke Test [978745]
+    - [x] Write a basic Playwright test verifying the form successfully loads, accepts a transfer, and submits the `RowVersion`.
+- [x] Task: Continuous Integration Gate [992153]
+    - [x] Run `npx nx affected --target=test --coverage` and `--target=lint`.
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Form Integration & Shift-Left E2E Testing' (Protocol in workflow.md) [992153]
 
 ## Phase 5: E2E Validation & Strict Nx Regression Guard
 - [ ] Task: Visual & Functional E2E (Playwright)

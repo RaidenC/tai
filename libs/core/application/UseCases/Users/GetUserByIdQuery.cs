@@ -15,7 +15,9 @@ public record UserDetailDto(
   string LastName,
   string Status,
   string? Institution,
-  uint RowVersion);
+  uint RowVersion,
+  IEnumerable<Guid> PrivilegeIds,
+  string Debug = "DEBUG");
 
 public record GetUserByIdQuery(string Id) : IRequest<UserDetailDto?>;
 
@@ -33,6 +35,7 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDet
     }
 
     var email = !string.IsNullOrWhiteSpace(user.Email) ? user.Email : (!string.IsNullOrWhiteSpace(user.UserName) ? user.UserName : "No Email");
+    var privilegeIds = await _identityService.GetUserPrivilegesAsync(request.Id, cancellationToken);
 
     return new UserDetailDto(
       user.Id,
@@ -41,6 +44,8 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDet
       user.LastName ?? "No Last Name",
       user.Status.ToString(),
       "Tai Portal", // Institution placeholder
-      user.RowVersion);
+      user.RowVersion,
+      privilegeIds.Select(p => p.Value),
+      "RUNNING_NEW_CODE");
   }
 }

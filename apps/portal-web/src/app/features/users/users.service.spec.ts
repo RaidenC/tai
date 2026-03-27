@@ -42,7 +42,7 @@ describe('UsersService', () => {
   });
 
   it('should fetch user by ID', () => {
-    const mockUser: UserDetail = { id: '1', firstName: 'John', lastName: 'Doe', email: 'john@tai.com', status: 'Active', rowVersion: 1, institution: 'Tai' };
+    const mockUser: UserDetail = { id: '1', firstName: 'John', lastName: 'Doe', email: 'john@tai.com', status: 'Active', rowVersion: 1, institution: 'Tai', privilegeIds: [] };
 
     service.getUserById('1').subscribe(user => {
       expect(user).toEqual(mockUser);

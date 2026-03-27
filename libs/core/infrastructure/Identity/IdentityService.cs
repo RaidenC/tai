@@ -13,9 +13,11 @@ namespace Tai.Portal.Core.Infrastructure.Identity;
 
 public class IdentityService : IIdentityService {
   private readonly UserManager<ApplicationUser> _userManager;
+  private readonly Persistence.PortalDbContext _context;
 
-  public IdentityService(UserManager<ApplicationUser> userManager) {
+  public IdentityService(UserManager<ApplicationUser> userManager, Persistence.PortalDbContext context) {
     _userManager = userManager;
+    _context = context;
   }
 
   public async Task<(bool Success, string[] Errors)> CreateUserAsync(ApplicationUser user, string password, CancellationToken cancellationToken = default) {
@@ -102,5 +104,27 @@ public class IdentityService : IIdentityService {
     }
 
     return await query.CountAsync(cancellationToken);
+  }
+
+  public async Task<IEnumerable<PrivilegeId>> GetUserPrivilegesAsync(string userId, CancellationToken cancellationToken = default) {
+    return await _context.UserPrivileges
+      .Where(up => up.UserId == userId)
+      .Select(up => up.PrivilegeId)
+      .ToListAsync(cancellationToken);
+  }
+
+  public async Task<bool> UpdateUserPrivilegesAsync(string userId, IEnumerable<PrivilegeId> privilegeIds, CancellationToken cancellationToken = default) {
+    var currentPrivileges = await _context.UserPrivileges
+      .Where(up => up.UserId == userId)
+      .ToListAsync(cancellationToken);
+
+    _context.UserPrivileges.RemoveRange(currentPrivileges);
+
+    foreach (var privilegeId in privilegeIds) {
+      _context.UserPrivileges.Add(new UserPrivilege(userId, privilegeId));
+    }
+
+    await _context.SaveChangesAsync(cancellationToken);
+    return true;
   }
 }

@@ -19,6 +19,7 @@ export interface User {
  */
 export interface UserDetail extends User {
   institution?: string;
+  privilegeIds: string[];
 }
 
 /**
@@ -76,7 +77,7 @@ export class UsersService {
    * Updates an existing user profile.
    * Requires RowVersion (xmin) in the If-Match header for concurrency safety.
    */
-  public updateUser(id: string, user: Partial<User>, rowVersion: number): Observable<void> {
+  public updateUser(id: string, user: Partial<UserDetail>, rowVersion: number): Observable<void> {
     const headers = new HttpHeaders().set('If-Match', `"${rowVersion}"`);
     return this.http.put<void>(`${this.baseUrl}/${id}`, user, { headers });
   }
