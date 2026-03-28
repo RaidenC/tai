@@ -65,11 +65,15 @@ export class PrivilegesService {
     return this.http.get<Privilege>(`${this.apiUrl}/${id}`);
   }
 
-  updatePrivilege(id: string, privilege: Partial<Privilege>, isStepUpVerified = false): Observable<Privilege> {
+  updatePrivilege(id: string, privilege: Partial<Privilege>, isStepUpVerified = false): Observable<any> {
     let headers = {};
     if (isStepUpVerified) {
       headers = { 'X-Step-Up-Verified': 'true' };
     }
-    return this.http.put<Privilege>(`${this.apiUrl}/${id}`, privilege, { headers });
+    // We use observe: 'response' so the store can check the X-Step-Up-Required header.
+    return this.http.put<Privilege>(`${this.apiUrl}/${id}`, privilege, { 
+      headers,
+      observe: 'response' 
+    });
   }
 }

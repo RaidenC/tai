@@ -46,12 +46,6 @@ export class PrivilegesStore {
 
   /**
    * Filtered Privileges
-   * 
-   * Requirement: Automatically filter out privileges belonging to Apps/Modules ("Tiles") 
-   * that are not enabled in the current Tenant's Configuration.
-   * 
-   * JUNIOR RATIONALE: The filtering is now handled safely on the backend via the 
-   * 'modules' query parameter, ensuring our server-side pagination counts are accurate.
    */
   public readonly filteredPrivileges = computed(() => this._privileges());
 
@@ -112,20 +106,34 @@ export class PrivilegesStore {
 
     this.privilegesService.updatePrivilege(id, data, isStepUpVerified)
       .subscribe({
-        next: (updatedPrivilege) => {
-          this._selectedPrivilege.set(updatedPrivilege);
+        next: (response: any) => {
+          this._selectedPrivilege.set(response.body);
           this._status.set('Success');
           // Refresh catalog in background
           this.loadPrivileges();
         },
         error: (err: HttpErrorResponse) => {
-          if (err.status === 403 && err.headers.get('X-Step-Up-Required') === 'true') {
+          console.error('[PrivilegesStore] Update failed:', err);
+          
+          // Case-insensitive header check
+          const stepUpHeader = err.headers.get('X-Step-Up-Required') || err.headers.get('x-step-up-required');
+          console.log('[PrivilegesStore] Step-Up Header Value:', stepUpHeader);
+          
+          if (err.status === 403 && stepUpHeader === 'true') {
             this._status.set('StepUpRequired');
           } else {
             this._status.set('Error');
-            this._errorMessage.set(err.error?.detail || 'Failed to update privilege.');
+            // Extract error message safely regardless of whether it's a string or object
+            const message = err.error?.detail || (typeof err.error === 'string' ? err.error : null) || 'Failed to update privilege.';
+            this._errorMessage.set(message);
           }
         }
       });
+  }
+
+  public reset(): void {
+    this._status.set('Idle');
+    this._errorMessage.set(null);
+    this._selectedPrivilege.set(null);
   }
 }

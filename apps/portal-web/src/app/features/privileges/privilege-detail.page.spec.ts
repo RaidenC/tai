@@ -35,6 +35,7 @@ describe('PrivilegeDetailPage', () => {
       selectedPrivilege: signal<Privilege | null>(null),
       isLoading: signal(false),
       isError: signal(false),
+      isStepUpRequired: signal(false),
       status: signal('Idle'),
       errorMessage: signal(null),
       loadPrivilege: vi.fn(),
