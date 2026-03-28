@@ -52,7 +52,7 @@ describe('HasPrivilegeDirective', () => {
     fixture.detectChanges();
     const content = fixture.debugElement.query(By.css('#content'));
     expect(content).not.toBeNull();
-    expect(content.nativeElement.textContent).toBe('Authorized Content');
+    expect(content.nativeElement.textContent.trim()).toBe('Authorized Content');
   });
 
   it('should remove content if privilege is revoked', () => {
