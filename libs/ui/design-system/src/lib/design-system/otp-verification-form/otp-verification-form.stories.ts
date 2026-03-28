@@ -7,9 +7,9 @@ import { CommonModule } from '@angular/common';
 
 /**
  * Storybook Configuration: OtpVerificationFormComponent
- * 
- * Audit Proof: This story demonstrates that the OTP verification UI 
- * strictly enforces the 6-digit numeric pattern required for 
+ *
+ * Audit Proof: This story demonstrates that the OTP verification UI
+ * strictly enforces the 6-digit numeric pattern required for
  * identity activation.
  */
 const meta: Meta<OtpVerificationFormComponent> = {
@@ -30,7 +30,7 @@ export const Default: Story = {};
 
 /**
  * OTP Verification Invariant Audit:
- * This test verifies that the verification path is only enabled 
+ * This test verifies that the verification path is only enabled
  * when a complete 6-digit numeric code is provided.
  */
 export const VerificationAudit: Story = {
@@ -46,7 +46,9 @@ export const VerificationAudit: Story = {
     await userEvent.type(codeInput, '12345', { delay: 20 });
     await userEvent.tab();
     await waitFor(() => {
-      expect(canvas.getByText(/Enter the 6-digit code provided/i)).toBeInTheDocument();
+      expect(
+        canvas.getByText(/Enter the 6-digit code provided/i),
+      ).toBeInTheDocument();
     });
     await expect(verifyBtn).toBeDisabled();
 

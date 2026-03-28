@@ -1,6 +1,11 @@
 import { Component, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
+import {
+  ReactiveFormsModule,
+  FormGroup,
+  FormControl,
+  Validators,
+} from '@angular/forms';
 import { SecureInputComponent } from '../secure-input/secure-input';
 
 @Component({

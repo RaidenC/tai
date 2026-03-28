@@ -16,10 +16,10 @@ describe('SidebarComponent', () => {
           provide: ActivatedRoute,
           useValue: {
             params: of({}),
-            snapshot: { paramMap: { get: () => '1' } }
-          }
-        }
-      ]
+            snapshot: { paramMap: { get: () => '1' } },
+          },
+        },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(SidebarComponent);
@@ -34,7 +34,7 @@ describe('SidebarComponent', () => {
   it('should render menu items', () => {
     fixture.componentRef.setInput('menuItems', [
       { label: 'Dashboard', link: '/dashboard' },
-      { label: 'Settings', link: '/settings' }
+      { label: 'Settings', link: '/settings' },
     ]);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
@@ -49,7 +49,9 @@ describe('SidebarComponent', () => {
     fixture.componentRef.setInput('collapsed', true);
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('.sidebar')?.classList.contains('collapsed')).toBe(true);
+    expect(
+      compiled.querySelector('.sidebar')?.classList.contains('collapsed'),
+    ).toBe(true);
     expect(compiled.querySelector('.sidebar-header')).toBeNull();
   });
 });

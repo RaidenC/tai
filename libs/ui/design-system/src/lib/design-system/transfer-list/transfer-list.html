@@ -1,17 +1,27 @@
-<div class="transfer-list-container flex flex-col gap-4 p-4 border border-gray-200 rounded-lg bg-gray-50" 
-     [class.density-compact]="density() === 'compact'">
-  <div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-stretch w-full">
+<div
+  class="transfer-list-container flex flex-col gap-4 p-4 border border-gray-200 rounded-lg bg-gray-50"
+  [class.density-compact]="density() === 'compact'"
+>
+  <div
+    class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-4 items-stretch w-full"
+  >
     <!-- Available List -->
-    <div class="flex-1 flex flex-col bg-white border border-gray-300 rounded shadow-sm overflow-hidden min-h-[400px]">
-      <div class="p-3 border-b border-gray-200 font-bold bg-gray-50 text-xs uppercase tracking-wider flex justify-between items-center">
+    <div
+      class="flex-1 flex flex-col bg-white border border-gray-300 rounded shadow-sm overflow-hidden min-h-[400px]"
+    >
+      <div
+        class="p-3 border-b border-gray-200 font-bold bg-gray-50 text-xs uppercase tracking-wider flex justify-between items-center"
+      >
         <span>{{ i18n().availableTitle }}</span>
-        <span class="text-[10px] text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">
+        <span
+          class="text-[10px] text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full"
+        >
           {{ availableItems().length }} / {{ totalAvailableCount() }}
         </span>
       </div>
       <div class="p-2 border-b border-gray-100">
-        <input 
-          type="text" 
+        <input
+          type="text"
           [placeholder]="i18n().searchPlaceholder"
           (input)="updateSearchAvailable(searchInputAvailable.value)"
           #searchInputAvailable
@@ -19,92 +29,115 @@
           class="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-50 disabled:bg-gray-100"
         />
       </div>
-      
-      <cdk-virtual-scroll-viewport 
+
+      <cdk-virtual-scroll-viewport
         id="available-list"
-        [itemSize]="density() === 'compact' ? 32 : 44" 
+        [itemSize]="density() === 'compact' ? 32 : 44"
         class="flex-1 h-64 outline-none custom-scrollbar"
         cdkListbox
         cdkListboxMultiple
         [cdkListboxValue]="selectedAvailable()"
         [cdkListboxDisabled]="_isDisabled()"
-        (cdkListboxValueChange)="updateSelectedAvailable($event)">
-        <ul class="m-0 p-0 list-none outline-none" aria-labelledby="available-title">
-          <li *cdkVirtualFor="let item of availableItems(); trackBy: trackByFn()"
-              [cdkOption]="item[trackKey()]"
-              [class.bg-blue-100]="selectedAvailable().includes($any(item[trackKey()]))"
-              [class.p-1.5]="density() === 'compact'"
-              [class.p-2.5]="density() === 'comfortable'"
-              class="text-sm cursor-pointer rounded-sm hover:bg-blue-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 mx-1 my-0.5 flex items-center"
-              [style.view-transition-name]="'item-' + item[trackKey()]"
-              (dblclick)="!_isDisabled() && moveRight([$any(item[trackKey()])])">
-            <ng-container *ngTemplateOutlet="itemTemplate() || defaultItemTemplate; context: { $implicit: item }"></ng-container>
+        (cdkListboxValueChange)="updateSelectedAvailable($event)"
+      >
+        <ul
+          class="m-0 p-0 list-none outline-none"
+          aria-labelledby="available-title"
+        >
+          <li
+            *cdkVirtualFor="let item of availableItems(); trackBy: trackByFn()"
+            [cdkOption]="item[trackKey()]"
+            [class.bg-blue-100]="selectedAvailable().includes($any(item[trackKey()]))"
+            [class.p-1.5]="density() === 'compact'"
+            [class.p-2.5]="density() === 'comfortable'"
+            class="text-sm cursor-pointer rounded-sm hover:bg-blue-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 mx-1 my-0.5 flex items-center"
+            [style.view-transition-name]="'item-' + item[trackKey()]"
+            (dblclick)="!_isDisabled() && moveRight([$any(item[trackKey()])])"
+          >
+            <ng-container
+              *ngTemplateOutlet="itemTemplate() || defaultItemTemplate; context: { $implicit: item }"
+            ></ng-container>
           </li>
           @if (availableItems().length === 0) {
-            <li class="p-8 text-sm text-gray-400 italic text-center">{{ i18n().noItemsAvailable }}</li>
+          <li class="p-8 text-sm text-gray-400 italic text-center">
+            {{ i18n().noItemsAvailable }}
+          </li>
           }
         </ul>
       </cdk-virtual-scroll-viewport>
     </div>
 
     <!-- Actions -->
-    <div class="flex flex-none flex-row md:flex-col gap-2 justify-center py-4 md:py-10 px-2">
-      <button 
-        type="button" 
-        (click)="moveAllRight()" 
-        class="p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-400 hover:text-blue-600 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95" 
+    <div
+      class="flex flex-none flex-row md:flex-col gap-2 justify-center py-4 md:py-10 px-2"
+    >
+      <button
+        type="button"
+        (click)="moveAllRight()"
+        class="p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-400 hover:text-blue-600 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
         [title]="i18n().moveAllRight"
-        [disabled]="availableItems().length === 0 || _isDisabled()"> 
+        [disabled]="availableItems().length === 0 || _isDisabled()"
+      >
         <span>{{ isSmallScreen() ? 'vv' : '>>' }}</span>
       </button>
-      <button 
-        type="button" 
-        (click)="moveSelectedRight()" 
-        class="p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-500 hover:text-blue-700 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed font-bold transition-all active:scale-95" 
+      <button
+        type="button"
+        (click)="moveSelectedRight()"
+        class="p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-500 hover:text-blue-700 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed font-bold transition-all active:scale-95"
         [title]="i18n().moveSelectedRight"
-        [disabled]="selectedAvailable().length === 0 || _isDisabled()"> 
+        [disabled]="selectedAvailable().length === 0 || _isDisabled()"
+      >
         <span>{{ isSmallScreen() ? 'v' : '>' }}</span>
       </button>
-      <button 
-        type="button" 
-        (click)="moveSelectedLeft()" 
-        class="p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-500 hover:text-blue-700 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed font-bold transition-all active:scale-95" 
+      <button
+        type="button"
+        (click)="moveSelectedLeft()"
+        class="p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-500 hover:text-blue-700 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed font-bold transition-all active:scale-95"
         [title]="i18n().moveSelectedLeft"
-        [disabled]="selectedAssigned().length === 0 || _isDisabled()"> 
+        [disabled]="selectedAssigned().length === 0 || _isDisabled()"
+      >
         <span>{{ isSmallScreen() ? '^' : '<' }}</span>
       </button>
-      <button 
-        type="button" 
-        (click)="moveAllLeft()" 
-        class="p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-400 hover:text-blue-600 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95" 
+      <button
+        type="button"
+        (click)="moveAllLeft()"
+        class="p-2 border border-gray-300 rounded hover:bg-white hover:border-blue-400 hover:text-blue-600 shadow-sm text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
         [title]="i18n().moveAllLeft"
-        [disabled]="assignedItems().length === 0 || _isDisabled()"> 
+        [disabled]="assignedItems().length === 0 || _isDisabled()"
+      >
         <span>{{ isSmallScreen() ? '^^' : '<<' }}</span>
       </button>
 
       <div class="border-t border-gray-200 my-2"></div>
 
-      <button 
-        type="button" 
-        (click)="reset()" 
-        class="p-2 border border-red-100 bg-red-50 text-red-600 rounded hover:bg-red-100 hover:border-red-400 shadow-sm disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed transition-all active:scale-95 flex items-center justify-center text-[10px] font-bold uppercase tracking-widest" 
+      <button
+        type="button"
+        (click)="reset()"
+        class="p-2 border border-red-100 bg-red-50 text-red-600 rounded hover:bg-red-100 hover:border-red-400 shadow-sm disabled:opacity-30 disabled:grayscale disabled:cursor-not-allowed transition-all active:scale-95 flex items-center justify-center text-[10px] font-bold uppercase tracking-widest"
         [title]="i18n().reset"
-        [disabled]="!isDirty() || _isDisabled()"> 
+        [disabled]="!isDirty() || _isDisabled()"
+      >
         <span>{{ 'Reset' }}</span>
       </button>
     </div>
 
     <!-- Assigned List -->
-    <div class="flex-1 flex flex-col bg-white border border-gray-300 rounded shadow-sm overflow-hidden min-h-[400px]">
-      <div class="p-3 border-b border-gray-200 font-bold bg-gray-50 text-xs uppercase tracking-wider flex justify-between items-center">
+    <div
+      class="flex-1 flex flex-col bg-white border border-gray-300 rounded shadow-sm overflow-hidden min-h-[400px]"
+    >
+      <div
+        class="p-3 border-b border-gray-200 font-bold bg-gray-50 text-xs uppercase tracking-wider flex justify-between items-center"
+      >
         <span>{{ i18n().assignedTitle }}</span>
-        <span class="text-[10px] text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">
+        <span
+          class="text-[10px] text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full"
+        >
           {{ assignedItems().length }} / {{ totalAssignedCount() }}
         </span>
       </div>
       <div class="p-2 border-b border-gray-100">
-        <input 
-          type="text" 
+        <input
+          type="text"
           [placeholder]="i18n().searchPlaceholder"
           (input)="updateSearchAssigned(searchInputAssigned.value)"
           #searchInputAssigned
@@ -112,29 +145,39 @@
           class="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all disabled:opacity-50 disabled:bg-gray-100"
         />
       </div>
-      
-      <cdk-virtual-scroll-viewport 
+
+      <cdk-virtual-scroll-viewport
         id="assigned-list"
-        [itemSize]="density() === 'compact' ? 32 : 44" 
+        [itemSize]="density() === 'compact' ? 32 : 44"
         class="flex-1 h-64 outline-none custom-scrollbar"
         cdkListbox
         cdkListboxMultiple
         [cdkListboxValue]="selectedAssigned()"
         [cdkListboxDisabled]="_isDisabled()"
-        (cdkListboxValueChange)="updateSelectedAssigned($event)">
-        <ul class="m-0 p-0 list-none outline-none" aria-labelledby="assigned-title">
-          <li *cdkVirtualFor="let item of assignedItems(); trackBy: trackByFn()"
-              [cdkOption]="item[trackKey()]"
-              [class.bg-blue-100]="selectedAssigned().includes($any(item[trackKey()]))"
-              [class.p-1.5]="density() === 'compact'"
-              [class.p-2.5]="density() === 'comfortable'"
-              class="text-sm cursor-pointer rounded-sm hover:bg-blue-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 mx-1 my-0.5 flex items-center"
-              [style.view-transition-name]="'item-' + item[trackKey()]"
-              (dblclick)="!_isDisabled() && moveLeft([$any(item[trackKey()])])">
-            <ng-container *ngTemplateOutlet="itemTemplate() || defaultItemTemplate; context: { $implicit: item }"></ng-container>
+        (cdkListboxValueChange)="updateSelectedAssigned($event)"
+      >
+        <ul
+          class="m-0 p-0 list-none outline-none"
+          aria-labelledby="assigned-title"
+        >
+          <li
+            *cdkVirtualFor="let item of assignedItems(); trackBy: trackByFn()"
+            [cdkOption]="item[trackKey()]"
+            [class.bg-blue-100]="selectedAssigned().includes($any(item[trackKey()]))"
+            [class.p-1.5]="density() === 'compact'"
+            [class.p-2.5]="density() === 'comfortable'"
+            class="text-sm cursor-pointer rounded-sm hover:bg-blue-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 mx-1 my-0.5 flex items-center"
+            [style.view-transition-name]="'item-' + item[trackKey()]"
+            (dblclick)="!_isDisabled() && moveLeft([$any(item[trackKey()])])"
+          >
+            <ng-container
+              *ngTemplateOutlet="itemTemplate() || defaultItemTemplate; context: { $implicit: item }"
+            ></ng-container>
           </li>
           @if (assignedItems().length === 0) {
-            <li class="p-8 text-sm text-gray-400 italic text-center">{{ i18n().noItemsAssigned }}</li>
+          <li class="p-8 text-sm text-gray-400 italic text-center">
+            {{ i18n().noItemsAssigned }}
+          </li>
           }
         </ul>
       </cdk-virtual-scroll-viewport>

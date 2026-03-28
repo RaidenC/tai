@@ -7,3 +7,11 @@
  * Content-Security-Policy: default-src 'self' and style-src 'self' 
  * without needing unsafe-inline exceptions.
  */
+
+.password-mask {
+  -webkit-text-security: disc;
+}
+
+.error-state {
+  @apply border-red-600 focus:ring-red-600/10;
+}

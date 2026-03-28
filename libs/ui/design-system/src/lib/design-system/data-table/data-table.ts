@@ -1,4 +1,12 @@
-import { Component, input, output, ChangeDetectionStrategy, signal, computed, effect } from '@angular/core';
+import {
+  Component,
+  input,
+  output,
+  ChangeDetectionStrategy,
+  signal,
+  computed,
+  effect,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkTableModule } from '@angular/cdk/table';
 import { CdkMenuModule } from '@angular/cdk/menu';
@@ -35,10 +43,10 @@ export interface TableColumnDef<T> {
 
 /**
  * DataTableComponent
- * 
+ *
  * A reusable, headless DataTable component built using @angular/cdk/table.
  * It focuses on structural integrity, accessibility, and clean Tailwind 4.0 styling.
- * 
+ *
  * Features:
  * 1. Server-side sorting, filtering, and pagination support via signals.
  * 2. Declarative Row Actions (TableActionDef).
@@ -76,31 +84,40 @@ export class DataTableComponent<T> {
   /** Emitted when a row action is triggered. */
   public readonly actionTriggered = output<{ actionId: string; row: T }>();
   /** Emitted when sorting is changed. */
-  public readonly sortChanged = output<{ columnId: string; direction: 'asc' | 'desc' }>();
+  public readonly sortChanged = output<{
+    columnId: string;
+    direction: 'asc' | 'desc';
+  }>();
   /** Emitted when the page is changed. */
   public readonly pageChanged = output<number>();
 
   /** Current sort state. */
-  protected readonly sortState = signal<{ columnId: string; direction: 'asc' | 'desc' } | null>(null);
+  protected readonly sortState = signal<{
+    columnId: string;
+    direction: 'asc' | 'desc';
+  } | null>(null);
 
   constructor() {
     // Synchronize internal sortState with inputs (driven by URL)
-    effect(() => {
-      const colId = this.sortColumnId();
-      const dir = this.sortDirection();
-      if (colId && dir) {
-        this.sortState.set({ columnId: colId, direction: dir });
-      } else {
-        this.sortState.set(null);
-      }
-    }, { allowSignalWrites: true });
+    effect(
+      () => {
+        const colId = this.sortColumnId();
+        const dir = this.sortDirection();
+        if (colId && dir) {
+          this.sortState.set({ columnId: colId, direction: dir });
+        } else {
+          this.sortState.set(null);
+        }
+      },
+      { allowSignalWrites: true },
+    );
   }
 
   /**
    * IDs of the columns to be displayed, including the 'actions' column if provided.
    */
   public readonly displayedColumns = computed(() => {
-    const cols = this.columns().map(c => c.id);
+    const cols = this.columns().map((c) => c.id);
     if (this.actions().length > 0) {
       cols.push('actions');
     }
@@ -120,14 +137,17 @@ export class DataTableComponent<T> {
    * Handles column sorting.
    */
   public toggleSort(columnId: string): void {
-    const column = this.columns().find(c => c.id === columnId);
+    const column = this.columns().find((c) => c.id === columnId);
     if (!column?.sortable) return;
 
     const currentState = this.sortState();
     let newState: { columnId: string; direction: 'asc' | 'desc' } | null = null;
 
     if (currentState?.columnId === columnId) {
-      newState = { columnId, direction: currentState.direction === 'asc' ? 'desc' : 'asc' };
+      newState = {
+        columnId,
+        direction: currentState.direction === 'asc' ? 'desc' : 'asc',
+      };
     } else {
       newState = { columnId, direction: 'asc' };
     }
@@ -156,7 +176,9 @@ export class DataTableComponent<T> {
   /**
    * Calculates total number of pages.
    */
-  protected readonly totalPages = computed(() => Math.ceil(this.totalCount() / this.pageSize()));
+  protected readonly totalPages = computed(() =>
+    Math.ceil(this.totalCount() / this.pageSize()),
+  );
 
   /**
    * Determines if an action is visible for a specific row.

@@ -1,14 +1,19 @@
 import { Component, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
+import {
+  ReactiveFormsModule,
+  FormGroup,
+  FormControl,
+  Validators,
+} from '@angular/forms';
 import { SecureInputComponent } from '../secure-input/secure-input';
 
 /**
  * LoginFormComponent
- * 
+ *
  * Persona: Frontend Security Architect.
  * Context: Composition of secure identity inputs into a strictly typed reactive form.
- * 
+ *
  * Features:
  * 1. Strongly typed FormGroup model.
  * 2. Composition of SecureInputComponent for identity isolation.
@@ -48,7 +53,9 @@ export class LoginFormComponent {
   public onSubmit(): void {
     if (this.loginForm.valid) {
       // getRawValue() ensures we get the non-nullable strings as defined in the model.
-      this.submitted.emit(this.loginForm.getRawValue() as Required<typeof this.loginForm.value>);
+      this.submitted.emit(
+        this.loginForm.getRawValue() as Required<typeof this.loginForm.value>,
+      );
     }
   }
 }

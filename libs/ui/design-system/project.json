@@ -1,67 +1,67 @@
 {
-    "name": "design-system",
-    "$schema": "../../node_modules/nx/schemas/project-schema.json",
-    "sourceRoot": "libs/ui/design-system/src",
-    "prefix": "lib",
-    "projectType": "library",
-    "release": {
-        "version": {
-            "manifestRootsToUpdate": ["dist/{projectRoot}"],
-            "currentVersionResolver": "git-tag",
-            "fallbackCurrentVersionResolver": "disk"
-        }
-    },
-    "tags": ["scope:ui", "type:feature"],
-    "targets": {
-        "build": {
-            "executor": "@nx/angular:package",
-            "outputs": ["{workspaceRoot}/dist/{projectRoot}"],
-            "options": {
-                "project": "libs/ui/design-system/ng-package.json",
-                "tsConfig": "libs/ui/design-system/tsconfig.lib.json"
-            },
-            "configurations": {
-                "production": {
-                    "tsConfig": "libs/ui/design-system/tsconfig.lib.prod.json"
-                },
-                "development": {}
-            },
-            "defaultConfiguration": "production"
-        },
-        "nx-release-publish": {
-            "options": {
-                "packageRoot": "dist/{projectRoot}"
-            }
-        },
-        "test": {
-            "executor": "@nx/angular:unit-test",
-            "options": {
-                "watch": false,
-                "coverage": true
-            }
-        },
-        "lint": {
-            "executor": "@nx/eslint:lint"
-        },
-        "storybook": {
-            "executor": "@storybook/angular:start-storybook",
-            "options": {
-                "port": 6006,
-                "configDir": "libs/ui/design-system/.storybook",
-                "compodoc": false,
-                "tsConfig": "libs/ui/design-system/.storybook/tsconfig.json",
-                "browserTarget": "portal-web:build"
-            }
-        },
-        "build-storybook": {
-            "executor": "@storybook/angular:build-storybook",
-            "options": {
-                "configDir": "libs/ui/design-system/.storybook",
-                "outputDir": "dist/storybook/design-system",
-                "compodoc": false,
-                "tsConfig": "libs/ui/design-system/.storybook/tsconfig.json",
-                "browserTarget": "portal-web:build"
-            }
-        }
+  "name": "design-system",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/ui/design-system/src",
+  "prefix": "lib",
+  "projectType": "library",
+  "release": {
+    "version": {
+      "manifestRootsToUpdate": ["dist/{projectRoot}"],
+      "currentVersionResolver": "git-tag",
+      "fallbackCurrentVersionResolver": "disk"
     }
+  },
+  "tags": ["scope:ui", "type:feature"],
+  "targets": {
+    "build": {
+      "executor": "@nx/angular:package",
+      "outputs": ["{workspaceRoot}/dist/{projectRoot}"],
+      "options": {
+        "project": "libs/ui/design-system/ng-package.json",
+        "tsConfig": "libs/ui/design-system/tsconfig.lib.json"
+      },
+      "configurations": {
+        "production": {
+          "tsConfig": "libs/ui/design-system/tsconfig.lib.prod.json"
+        },
+        "development": {}
+      },
+      "defaultConfiguration": "production"
+    },
+    "nx-release-publish": {
+      "options": {
+        "packageRoot": "dist/{projectRoot}"
+      }
+    },
+    "test": {
+      "executor": "@nx/angular:unit-test",
+      "options": {
+        "watch": false,
+        "coverage": true
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    },
+    "storybook": {
+      "executor": "@storybook/angular:start-storybook",
+      "options": {
+        "port": 6006,
+        "configDir": "libs/ui/design-system/.storybook",
+        "compodoc": false,
+        "tsConfig": "libs/ui/design-system/.storybook/tsconfig.json",
+        "browserTarget": "portal-web:build"
+      }
+    },
+    "build-storybook": {
+      "executor": "@storybook/angular:build-storybook",
+      "options": {
+        "configDir": "libs/ui/design-system/.storybook",
+        "outputDir": "dist/storybook/design-system",
+        "compodoc": false,
+        "tsConfig": "libs/ui/design-system/.storybook/tsconfig.json",
+        "browserTarget": "portal-web:build"
+      }
+    }
+  }
 }

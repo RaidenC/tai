@@ -39,7 +39,9 @@ describe('PendingApprovalsTileComponent', () => {
     const approveSpy = vi.fn();
     component.approved.subscribe(approveSpy);
 
-    const approveButtons = fixture.debugElement.queryAll(By.css('.approve-button'));
+    const approveButtons = fixture.debugElement.queryAll(
+      By.css('.approve-button'),
+    );
     approveButtons[0].nativeElement.click();
 
     expect(approveSpy).toHaveBeenCalledWith(mockUsers[0].id);

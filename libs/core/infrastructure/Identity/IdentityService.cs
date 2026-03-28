@@ -120,7 +120,7 @@ public class IdentityService : IIdentityService {
 
     _context.UserPrivileges.RemoveRange(currentPrivileges);
 
-    foreach (var privilegeId in privilegeIds) {
+    foreach (var privilegeId in privilegeIds.Distinct()) {
       _context.UserPrivileges.Add(new UserPrivilege(userId, privilegeId));
     }
 

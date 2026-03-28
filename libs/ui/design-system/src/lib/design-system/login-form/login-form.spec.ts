@@ -28,7 +28,8 @@ describe('LoginFormComponent', () => {
   });
 
   it('should enable the submit button only when the form is valid', async () => {
-    const submitBtn = fixture.debugElement.query(By.css('.submit-button')).nativeElement as HTMLButtonElement;
+    const submitBtn = fixture.debugElement.query(By.css('.submit-button'))
+      .nativeElement as HTMLButtonElement;
     expect(submitBtn.disabled).toBe(true);
 
     component.loginForm.controls.email.setValue('admin@tai.com');

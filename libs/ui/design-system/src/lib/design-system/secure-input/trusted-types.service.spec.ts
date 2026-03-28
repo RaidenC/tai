@@ -7,7 +7,7 @@ describe('TrustedTypesService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [TrustedTypesService]
+      providers: [TrustedTypesService],
     });
     service = TestBed.inject(TrustedTypesService);
   });

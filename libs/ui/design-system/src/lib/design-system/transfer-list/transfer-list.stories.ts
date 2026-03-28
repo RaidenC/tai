@@ -18,10 +18,18 @@ type Story = StoryObj<TransferListComponent<TransferItem>>;
 
 const MOCK_ITEMS = [
   { id: 1, name: 'User Management', description: 'Manage users and roles' },
-  { id: 2, name: 'System Configuration', description: 'Configure system settings' },
+  {
+    id: 2,
+    name: 'System Configuration',
+    description: 'Configure system settings',
+  },
   { id: 3, name: 'Security Audit', description: 'View security logs' },
   { id: 4, name: 'API Access', description: 'Manage API keys' },
-  { id: 5, name: 'Database Management', description: 'Manage database connections' },
+  {
+    id: 5,
+    name: 'Database Management',
+    description: 'Manage database connections',
+  },
   { id: 6, name: 'Email Services', description: 'Configure SMTP' },
   { id: 7, name: 'Storage Settings', description: 'Manage S3 buckets' },
 ];

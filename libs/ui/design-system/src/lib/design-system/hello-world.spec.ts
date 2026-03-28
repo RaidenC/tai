@@ -21,13 +21,17 @@ describe('HelloWorldComponent', () => {
 
   it('should render "Hello, World!" by default', () => {
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, World!');
+    expect(compiled.querySelector('h1')?.textContent).toContain(
+      'Hello, World!',
+    );
   });
 
   it('should render the name when input is set', () => {
     fixture.componentRef.setInput('name', 'Tester');
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, Tester!');
+    expect(compiled.querySelector('h1')?.textContent).toContain(
+      'Hello, Tester!',
+    );
   });
 });

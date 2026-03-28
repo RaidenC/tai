@@ -20,10 +20,10 @@ export interface ConfirmationDialogData {
 
 /**
  * ConfirmationDialogComponent
- * 
+ *
  * A reusable, accessible confirmation dialog built using @angular/cdk/dialog.
  * Styled with Tailwind CSS 4.0.
- * 
+ *
  * Features:
  * 1. Accessible using CDK primitives.
  * 2. Tailwind 4.0 styling for modern aesthetics.

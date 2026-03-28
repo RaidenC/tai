@@ -3,14 +3,19 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { BehaviorSubject } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { HasPrivilegeDirective, PrivilegeChecker } from './has-privilege.directive';
+import {
+  HasPrivilegeDirective,
+  PrivilegeChecker,
+} from './has-privilege.directive';
 
 @Component({
   standalone: true,
   imports: [HasPrivilegeDirective],
   template: `
-    <div id="content" *taiHasPrivilege="'Test.Privilege'">Authorized Content</div>
-  `
+    <div id="content" *taiHasPrivilege="'Test.Privilege'">
+      Authorized Content
+    </div>
+  `,
 })
 class TestComponent {}
 
@@ -22,14 +27,14 @@ describe('HasPrivilegeDirective', () => {
   beforeEach(() => {
     privilegeSubject = new BehaviorSubject<boolean>(false);
     privilegeCheckerMock = {
-      hasPrivilege: vi.fn().mockReturnValue(privilegeSubject.asObservable())
+      hasPrivilege: vi.fn().mockReturnValue(privilegeSubject.asObservable()),
     };
 
     TestBed.configureTestingModule({
       imports: [TestComponent, HasPrivilegeDirective],
       providers: [
-        { provide: PrivilegeChecker, useValue: privilegeCheckerMock }
-      ]
+        { provide: PrivilegeChecker, useValue: privilegeCheckerMock },
+      ],
     });
 
     fixture = TestBed.createComponent(TestComponent);
@@ -66,7 +71,7 @@ describe('HasPrivilegeDirective', () => {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [TestComponent, HasPrivilegeDirective],
-      providers: [] // No PrivilegeChecker
+      providers: [], // No PrivilegeChecker
     });
     const newFixture = TestBed.createComponent(TestComponent);
     newFixture.detectChanges();
