@@ -71,7 +71,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 6: Product Documentation & Knowledge Base Delivery' (Protocol in workflow.md) [ceab1f6]
 
 ## Phase 7: Review Fixes
-- [x] Task: Apply review suggestions [284daff]
+- [x] Task: Apply review suggestions [d79003c]
     - [x] Address missing backend tests for `UpdateUserCommand`.
     - [x] Prevent PK violations in `UpdateUserPrivilegesAsync` via `.Distinct()`.
     - [x] Implement `LiveAnnouncer` for accessibility in `TransferListComponent`.
