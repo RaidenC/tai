@@ -28,8 +28,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\domain\Tai.Portal.Core.Domain.csproj" />
-    <ProjectReference Include="..\application\Tai.Portal.Core.Application.csproj" />
+    <ProjectReference Include="../domain/Tai.Portal.Core.Domain.csproj" />
+    <ProjectReference Include="../application/Tai.Portal.Core.Application.csproj" />
   </ItemGroup>
 
 </Project>

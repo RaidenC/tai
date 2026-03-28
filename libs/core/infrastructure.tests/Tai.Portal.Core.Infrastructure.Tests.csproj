@@ -28,7 +28,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../infrastructure/Tai.Portal.Core.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\..\apps\portal-api\portal-api.csproj" />
+    <ProjectReference Include="../../../apps/portal-api/portal-api.csproj" />
   </ItemGroup>
 
 </Project>
