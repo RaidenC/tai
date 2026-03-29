@@ -466,8 +466,10 @@ namespace Tai.Portal.Core.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Tai.Portal.Core.Domain.Entities.AuditEntry", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Action")
                         .IsRequired()
@@ -489,18 +491,19 @@ namespace Tai.Portal.Core.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
 
-                    b.Property<DateTimeOffset>("Timestamp")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<string>("UserId")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.HasKey("Id");
+                    b.HasKey("Id", "Timestamp");
 
                     b.HasIndex("TenantId", "Timestamp")
                         .IsDescending(false, true)
                         .HasDatabaseName("IX_AuditLogs_TenantId_TimestampDesc");
+
+                    b.HasIndex("TenantId", "UserId", "Timestamp")
+                        .IsDescending(false, false, true)
+                        .HasDatabaseName("IX_AuditLogs_TenantId_UserId_TimestampDesc");
 
                     b.ToTable("AuditLogs");
                 });

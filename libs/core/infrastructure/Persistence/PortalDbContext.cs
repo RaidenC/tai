@@ -145,7 +145,9 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
 
     // Configure AuditEntry
     builder.Entity<AuditEntry>(b => {
-      b.HasKey(a => a.Id);
+      // Partitioning Requirement: The partition key (Timestamp) must be part of the Primary Key.
+      b.HasKey(a => new { a.Id, a.Timestamp });
+
       b.Property(a => a.TenantId).HasConversion(
           tenantId => tenantId.Value,
           value => new TenantId(value));
@@ -154,6 +156,15 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
       b.Property(a => a.UserId).IsRequired();
       b.Property(a => a.ResourceId).IsRequired();
       b.Property(a => a.Timestamp).IsRequired();
+
+      // Supporting the fast "Claim Check" lookups by Id alone
+      b.HasIndex(a => a.Id)
+       .HasDatabaseName("IX_AuditLogs_Id");
+
+      // Index for contextual dashboard lookups (Tenant + User + Chronological)
+      b.HasIndex(a => new { a.TenantId, a.UserId, a.Timestamp })
+       .IsDescending(false, false, true)
+       .HasDatabaseName("IX_AuditLogs_TenantId_UserId_TimestampDesc");
 
       // Satisfies the global query filter AND typical chronological sorting
       b.HasIndex(a => new { a.TenantId, a.Timestamp })
