@@ -95,10 +95,10 @@ export class TransferListComponent<T extends TransferItem>
   private readonly breakpointObserver = inject(BreakpointObserver);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
 
-  /** The full list of available items. */
+  /** IDs of items that are available. */
   public readonly items = input.required<T[]>();
-  /** IDs of items that are initially assigned. */
-  public readonly initialAssignedIds = input<(string | number)[]>([]);
+  /** IDs of items that are manually assigned (e.g. in read-only mode). */
+  public readonly manualIds = input<(string | number)[] | undefined>(undefined);
   /** Key to use for displaying the item label. */
   public readonly displayKey = input<keyof T>('name' as keyof T);
   /** Key to use for tracking item identity. */
@@ -124,7 +124,7 @@ export class TransferListComponent<T extends TransferItem>
   }>();
 
   /** Detects if the screen is small (mobile/vertical layout). */
-  protected readonly isSmallScreen = toSignal(
+  public readonly isSmallScreen = toSignal(
     this.breakpointObserver
       .observe([Breakpoints.XSmall, Breakpoints.Small])
       .pipe(map((result) => result.matches)),
@@ -149,12 +149,12 @@ export class TransferListComponent<T extends TransferItem>
   private readonly searchTermAssigned$ = new Subject<string>();
 
   /** Debounced search term for the available list. */
-  protected readonly searchTermAvailable = toSignal(
+  public readonly searchTermAvailable = toSignal(
     this.searchTermAvailable$.pipe(debounceTime(300), distinctUntilChanged()),
     { initialValue: '' },
   );
   /** Debounced search term for the assigned list. */
-  protected readonly searchTermAssigned = toSignal(
+  public readonly searchTermAssigned = toSignal(
     this.searchTermAssigned$.pipe(debounceTime(300), distinctUntilChanged()),
     { initialValue: '' },
   );
@@ -162,10 +162,13 @@ export class TransferListComponent<T extends TransferItem>
   /** IDs of items currently in the 'assigned' bucket. */
   public readonly assignedIds = signal<Set<string | number>>(new Set());
 
+  /** Tracks the initial value provided via writeValue for dirty checking. */
+  private readonly initialValue = signal<Set<string | number>>(new Set());
+
   /** Returns true if the current assigned items differ from the initial state. */
   public readonly isDirty = computed(() => {
     const current = this.assignedIds();
-    const initial = new Set(this.initialAssignedIds());
+    const initial = this.initialValue();
     if (current.size !== initial.size) return true;
     for (const id of current) {
       if (!initial.has(id)) return true;
@@ -174,12 +177,12 @@ export class TransferListComponent<T extends TransferItem>
   });
 
   /** IDs of currently selected items in the available list. */
-  protected readonly selectedAvailable = signal<(string | number)[]>([]);
+  public readonly selectedAvailable = signal<(string | number)[]>([]);
   /** IDs of currently selected items in the assigned list. */
-  protected readonly selectedAssigned = signal<(string | number)[]>([]);
+  public readonly selectedAssigned = signal<(string | number)[]>([]);
 
   /** trackBy function for virtual scroll. */
-  protected readonly trackByFn = computed(() => {
+  public readonly trackByFn = computed(() => {
     const key = this.trackKey();
     return (index: number, item: T) => (item as any)[key];
   });
@@ -201,10 +204,14 @@ export class TransferListComponent<T extends TransferItem>
   };
 
   constructor() {
-    // Initialize assignedIds from input
+    // Sync from manualIds input (for read-only or non-form usage)
     effect(
       () => {
-        this.assignedIds.set(new Set(this.initialAssignedIds()));
+        const ids = this.manualIds();
+        if (ids !== undefined) {
+          this.assignedIds.set(new Set(ids));
+          this.initialValue.set(new Set(ids));
+        }
       },
       { allowSignalWrites: true },
     );
@@ -213,11 +220,9 @@ export class TransferListComponent<T extends TransferItem>
   // --- ControlValueAccessor Implementation ---
 
   public writeValue(value: (string | number)[] | null): void {
-    if (value) {
-      this.assignedIds.set(new Set(value));
-    } else {
-      this.assignedIds.set(new Set());
-    }
+    const newSet = value ? new Set(value) : new Set<(string | number)>();
+    this.assignedIds.set(newSet);
+    this.initialValue.set(new Set(newSet));
   }
 
   public registerOnChange(fn: (value: (string | number)[]) => void): void {
@@ -336,7 +341,7 @@ export class TransferListComponent<T extends TransferItem>
    * Resets the component to its initial state.
    */
   public reset(): void {
-    const initial = new Set(this.initialAssignedIds());
+    const initial = new Set(this.initialValue());
     this.updateAssigned(initial);
     this.actionTelemetry.emit({ action: 'reset' });
   }

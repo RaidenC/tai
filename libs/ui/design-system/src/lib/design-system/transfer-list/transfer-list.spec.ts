@@ -17,7 +17,7 @@ interface TestItem extends TransferItem {
   template: `
     <tai-transfer-list
       [items]="items()"
-      [initialAssignedIds]="assignedIds()"
+      [manualIds]="assignedIds()"
       [displayKey]="'name'"
       [trackKey]="'id'"
       (assignedIdsChanged)="onChanged($event)"

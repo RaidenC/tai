@@ -25,11 +25,7 @@
     [attr.autocomplete]="type() === 'password' ? 'new-password' : (type() === 'email' ? 'email' : 'off')"
     (input)="onInput($event)"
     (blur)="onBlur()"
-    class="secure-input-field px-4 py-3 text-base text-gray-900 bg-white border border-gray-300 rounded-md shadow-sm transition-all duration-200 ease-in-out outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-600/10 placeholder:text-gray-400 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-    [class.error]="errorMessage() && isTouched()"
-    [class.secure-password-input]="type() === 'password'"
-    [class.error-state]="errorMessage() && isTouched()"
-    [class.password-mask]="type() === 'password'"
+    [class]="inputClasses()"
     aria-invalid="false"
   />
 

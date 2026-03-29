@@ -57,11 +57,30 @@ export class SecureInputComponent implements ControlValueAccessor {
   protected readonly isTouched = signal<boolean>(false);
 
   /**
+   * Computed Input Classes:
+   * Consolidates dynamic styling logic to keep the template clean 
+   * and avoid Prettier formatting issues with complex attribute bindings.
+   */
+  public readonly inputClasses = computed(() => {
+    const base =
+      'secure-input-field px-4 py-3 text-base text-gray-900 bg-white border border-gray-300 rounded-md shadow-sm transition-all duration-200 ease-in-out outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-600/10 placeholder:text-gray-400 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed w-full';
+
+    const error =
+      this.errorMessage() && this.isTouched()
+        ? ' border-red-600 focus:ring-red-600/10'
+        : '';
+
+    const password = this.type() === 'password' ? ' secure-password-input password-mask' : '';
+
+    return `${base}${error}${password}`;
+  });
+
+  /**
    * Trusted Types Integration:
    * Ensures that dynamic error messages are sanitized before being
    * bound to the [innerHTML] sink, preventing DOM-based XSS.
    */
-  protected readonly trustedErrorMessage = computed(() => {
+  public readonly trustedErrorMessage = computed(() => {
     return this.ttService.createTrustedHTML(this.errorMessage());
   });
 

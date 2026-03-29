@@ -37,7 +37,7 @@ const MOCK_ITEMS = [
 export const Default: Story = {
   args: {
     items: MOCK_ITEMS,
-    initialAssignedIds: [1, 2],
+    manualIds: [1, 2],
     displayKey: 'name',
     trackKey: 'id',
     density: 'comfortable',
@@ -59,7 +59,7 @@ export const LargeDataset: Story = {
       name: `Permission Item ${i + 1}`,
       description: `Description for item ${i + 1}`,
     })),
-    initialAssignedIds: [10, 20, 30, 40, 50],
+    manualIds: [10, 20, 30, 40, 50],
   },
 };
 
@@ -69,7 +69,7 @@ export const CustomTemplate: Story = {
     template: `
       <tai-transfer-list
         [items]="items"
-        [initialAssignedIds]="initialAssignedIds"
+        [manualIds]="manualIds"
         [displayKey]="displayKey"
         [trackKey]="trackKey"
         [density]="density"
