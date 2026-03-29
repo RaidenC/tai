@@ -1,8 +1,19 @@
 import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
 import { CommonModule } from '@angular/common';
-import { DataTableComponent, TableColumnDef, TableActionDef } from './data-table';
+import {
+  DataTableComponent,
+  TableColumnDef,
+  TableActionDef,
+} from './data-table';
 import { CdkTableModule } from '@angular/cdk/table';
-import { expect, fn, userEvent, within, waitFor, screen } from '@storybook/test';
+import {
+  expect,
+  fn,
+  userEvent,
+  within,
+  waitFor,
+  screen,
+} from '@storybook/test';
 
 /**
  * Test data interface for DataTable stories.
@@ -18,17 +29,21 @@ interface TestData {
  * Sample column definitions.
  */
 const columns: TableColumnDef<TestData>[] = [
-  { id: 'name', header: 'Name', cell: row => row.name, sortable: true },
-  { id: 'email', header: 'Email', cell: row => row.email, sortable: true },
-  { id: 'status', header: 'Status', cell: row => row.status }
+  { id: 'name', header: 'Name', cell: (row) => row.name, sortable: true },
+  { id: 'email', header: 'Email', cell: (row) => row.email, sortable: true },
+  { id: 'status', header: 'Status', cell: (row) => row.status },
 ];
 
 /**
  * Sample action definitions.
  */
 const actions: TableActionDef<TestData>[] = [
-  { id: 'approve', label: 'Approve', visible: row => row.status === 'Pending' },
-  { id: 'edit', label: 'Edit' }
+  {
+    id: 'approve',
+    label: 'Approve',
+    visible: (row) => row.status === 'Pending',
+  },
+  { id: 'edit', label: 'Edit' },
 ];
 
 /**
@@ -42,10 +57,10 @@ const data: TestData[] = [
 
 /**
  * Storybook Configuration: DataTableComponent
- * 
- * Audit Proof: This story demonstrates a robust, accessible DataTable component 
- * capable of handling large datasets with server-side pagination, sorting, 
- * and row actions. It strictly enforces a "dumb" presentation pattern, 
+ *
+ * Audit Proof: This story demonstrates a robust, accessible DataTable component
+ * capable of handling large datasets with server-side pagination, sorting,
+ * and row actions. It strictly enforces a "dumb" presentation pattern,
  * delegating all business logic to its container via emitted events.
  */
 const meta: Meta<DataTableComponent<TestData>> = {
@@ -83,30 +98,30 @@ export const Default: Story = {};
 
 /**
  * Loading State Audit:
- * Verifies that the table displays a consistent, non-distracting loading 
+ * Verifies that the table displays a consistent, non-distracting loading
  * overlay during server-side data fetching.
  */
 export const Loading: Story = {
   args: {
-    loading: true
-  }
+    loading: true,
+  },
 };
 
 /**
  * Empty State Audit:
- * Verifies that the table provides a clear, actionable message when 
+ * Verifies that the table provides a clear, actionable message when
  * no records match the current criteria.
  */
 export const Empty: Story = {
   args: {
     data: [],
-    totalCount: 0
-  }
+    totalCount: 0,
+  },
 };
 
 /**
  * Interaction & Accessibility Audit:
- * Verifies that row actions, sorting triggers, and pagination controls 
+ * Verifies that row actions, sorting triggers, and pagination controls
  * are interactive and correctly update the UI state.
  */
 export const InteractionAudit: Story = {
@@ -119,10 +134,10 @@ export const InteractionAudit: Story = {
 
     // 2. Audit Sorting Trigger (Visual & Logic)
     const nameSortBtn = canvas.getByTestId('sort-button-name');
-    
+
     // Initial state: bidirectional arrow
     await expect(nameSortBtn).toHaveTextContent('↕');
-    
+
     // Click to sort ASC
     await userEvent.click(nameSortBtn);
     await waitFor(() => {
@@ -138,7 +153,7 @@ export const InteractionAudit: Story = {
     // 3. Audit Conditional Row Actions (Dropdown)
     const row2Trigger = canvas.getByTestId('action-menu-trigger-2');
     await userEvent.click(row2Trigger);
-    
+
     // Check for 'Approve Registration' in the menu (Portal-web uses this label)
     // Note: Storybook uses the component directly, so we use the labels from the story's data
     const approveBtn = await screen.findByTestId('action-approve');
@@ -148,9 +163,9 @@ export const InteractionAudit: Story = {
     // 4. Audit Pagination
     const nextBtn = canvas.getByTestId('pagination-prev');
     await expect(nextBtn).toBeDisabled(); // On page 1
-    
+
     const nextBtnEnabled = canvas.getByTestId('pagination-next');
     await expect(nextBtnEnabled).toBeEnabled();
     await userEvent.click(nextBtnEnabled);
-  }
+  },
 };

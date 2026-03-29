@@ -11,7 +11,7 @@ type Story = StoryObj<SidebarComponent>;
 
 /**
  * UI Invariant Audit: Primary Expanded State
- * Proves that all menu items are correctly rendered with visible labels, 
+ * Proves that all menu items are correctly rendered with visible labels,
  * ensuring a complete and accessible navigation experience for bank staff.
  */
 export const Primary: Story = {
@@ -25,7 +25,7 @@ export const Primary: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    
+
     // Proves that the exact number of intended navigation tiles are rendered
     const menuItems = canvas.getAllByRole('menuitem');
     await expect(menuItems.length).toBe(3);
@@ -39,7 +39,7 @@ export const Primary: Story = {
 
 /**
  * UI Invariant Audit: Collapsed State
- * Proves that labels are hidden in the collapsed state to preserve 
+ * Proves that labels are hidden in the collapsed state to preserve
  * dashboard real estate while maintaining structural navigation tiles.
  */
 export const Collapsed: Story = {
@@ -53,7 +53,7 @@ export const Collapsed: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    
+
     // Proves that menu items still exist for icon-only navigation
     const menuItems = canvas.getAllByRole('menuitem');
     await expect(menuItems.length).toBe(3);

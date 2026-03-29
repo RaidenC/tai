@@ -1,7 +1,15 @@
-import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  input,
+  output,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SidebarComponent, MenuItem } from '../sidebar/sidebar.component';
-import { UserProfileComponent, UserProfile } from '../user-profile/user-profile.component';
+import {
+  UserProfileComponent,
+  UserProfile,
+} from '../user-profile/user-profile.component';
 
 @Component({
   selector: 'tai-app-shell',

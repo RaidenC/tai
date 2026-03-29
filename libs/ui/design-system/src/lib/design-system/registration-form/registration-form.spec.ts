@@ -37,7 +37,7 @@ describe('RegistrationFormComponent', () => {
     const emailControl = component.registrationForm.get('email');
     emailControl?.setValue('invalid-email');
     expect(emailControl?.errors?.['email']).toBeTruthy();
-    
+
     emailControl?.setValue('valid@example.com');
     expect(emailControl?.errors).toBeNull();
   });
@@ -46,7 +46,7 @@ describe('RegistrationFormComponent', () => {
     const passwordControl = component.registrationForm.get('password');
     passwordControl?.setValue('short');
     expect(passwordControl?.errors?.['minlength']).toBeTruthy();
-    
+
     passwordControl?.setValue('longenoughpassword');
     expect(passwordControl?.errors).toBeNull();
   });
@@ -59,9 +59,9 @@ describe('RegistrationFormComponent', () => {
       email: 'customer@example.com',
       firstName: 'John',
       lastName: 'Doe',
-      password: 'SecurePassword123!'
+      password: 'SecurePassword123!',
     };
-    
+
     component.registrationForm.setValue(userData);
     component.onSubmit();
 

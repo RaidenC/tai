@@ -5,9 +5,9 @@ import { CommonModule } from '@angular/common';
 
 /**
  * Storybook Configuration: PendingApprovalsTileComponent
- * 
- * Audit Proof: This story demonstrates the administrative approval 
- * interface, ensuring that Tenant Admins can clearly identify 
+ *
+ * Audit Proof: This story demonstrates the administrative approval
+ * interface, ensuring that Tenant Admins can clearly identify
  * pending users and trigger the secondary approval action.
  */
 const meta: Meta<PendingApprovalsTileComponent> = {
@@ -41,7 +41,7 @@ export const Empty: Story = {
 
 /**
  * Approval Action Audit:
- * This test verifies that the approval interface correctly 
+ * This test verifies that the approval interface correctly
  * triggers the approval event for a specific user ID.
  */
 export const ApprovalAudit: Story = {
@@ -60,8 +60,8 @@ export const ApprovalAudit: Story = {
     // 2. Audit Action Interaction
     await userEvent.click(approveBtn);
 
-    // Verification: In Storybook interaction tests, we verify the visual 
-    // and semantic state. The event emission itself is captured 
+    // Verification: In Storybook interaction tests, we verify the visual
+    // and semantic state. The event emission itself is captured
     // in unit tests, but here we prove the UI is clickable and responsive.
     await expect(approveBtn).toBeInTheDocument();
   },

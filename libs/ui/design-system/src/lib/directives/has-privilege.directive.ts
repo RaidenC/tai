@@ -1,4 +1,12 @@
-import { Directive, Input, TemplateRef, ViewContainerRef, inject, OnInit, OnDestroy } from '@angular/core';
+import {
+  Directive,
+  Input,
+  TemplateRef,
+  ViewContainerRef,
+  inject,
+  OnInit,
+  OnDestroy,
+} from '@angular/core';
 import { Subject, takeUntil } from 'rxjs';
 
 /**
@@ -11,15 +19,15 @@ export abstract class PrivilegeChecker {
 
 /**
  * HasPrivilegeDirective
- * 
+ *
  * Structural directive that conditionally includes a template based on user privileges.
- * 
+ *
  * Usage:
  * <div *hasPrivilege="'Portal.Users.Create'">...</div>
  */
 @Directive({
   selector: '[taiHasPrivilege]',
-  standalone: true
+  standalone: true,
 })
 export class HasPrivilegeDirective implements OnInit, OnDestroy {
   private templateRef = inject(TemplateRef<unknown>);
@@ -51,9 +59,10 @@ export class HasPrivilegeDirective implements OnInit, OnDestroy {
       return;
     }
 
-    this.privilegeChecker.hasPrivilege(this._privilege)
+    this.privilegeChecker
+      .hasPrivilege(this._privilege)
       .pipe(takeUntil(this.destroy$))
-      .subscribe(hasPrivilege => {
+      .subscribe((hasPrivilege) => {
         if (hasPrivilege && !this._hasView) {
           this.viewContainer.createEmbeddedView(this.templateRef);
           this._hasView = true;

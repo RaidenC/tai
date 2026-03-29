@@ -27,13 +27,13 @@ describe('OtpVerificationFormComponent', () => {
 
   it('should require a 6-digit code', () => {
     const otpControl = component.otpForm.get('code');
-    
+
     otpControl?.setValue('12345');
     expect(otpControl?.errors?.['pattern']).toBeTruthy();
-    
+
     otpControl?.setValue('1234567');
     expect(otpControl?.errors?.['pattern']).toBeTruthy();
-    
+
     otpControl?.setValue('123456');
     expect(otpControl?.errors).toBeNull();
   });

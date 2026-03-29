@@ -6,7 +6,7 @@ import { CommonModule } from '@angular/common';
 
 /**
  * Storybook Configuration: SecureInputComponent
- * 
+ *
  * Compliance Checklist (SOC 2 / PCI DSS):
  * [X] Strict DOM Control (No Angular Material)
  * [X] Strict CSP Compatibility (No Inline Styles)
@@ -61,11 +61,11 @@ export const PasswordState: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const input = canvas.getByLabelText('Password');
-    
+
     // Security Proof: Verify autocomplete attribute prevents stealer malware extraction.
     expect(input).toHaveAttribute('autocomplete', 'new-password');
     expect(input).toHaveAttribute('type', 'password');
-    
+
     await userEvent.type(input, 'Secret123!');
     // The UI should use CSS masking (-webkit-text-security) to hide characters visually.
   },
@@ -79,16 +79,18 @@ export const ErrorVisible: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const input = canvas.getByLabelText('Invalid Input');
-    
+
     // Simulate user interaction to trigger "touched" state and show error.
     await userEvent.click(input);
     await userEvent.tab();
-    
+
     const errorMsg = canvas.getByRole('alert');
     expect(errorMsg).toBeTruthy();
-    
+
     // Verify Trusted Types mitigation (HTML is rendered safely).
-    expect(errorMsg.innerHTML).toContain('<strong>XSS Attempt</strong> Blocked');
+    expect(errorMsg.innerHTML).toContain(
+      '<strong>XSS Attempt</strong> Blocked',
+    );
   },
 };
 

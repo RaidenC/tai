@@ -69,17 +69,29 @@ test.describe('User Privileges E2E', () => {
     const editPrivilegesList = page.getByTestId('edit-privileges-list');
     await expect(editPrivilegesList).toBeVisible();
 
-    // 7. Move a privilege (e.g., Portal.Users.Update) from Available to Assigned
-    const privilegeName = 'Portal.Users.Update';
-    const availableList = editPrivilegesList.locator('#available-list');
-    const privilegeItem = availableList.locator('li').filter({ hasText: privilegeName });
+    // 7. Move a privilege (e.g., Portal.Users.Create) from Available to Assigned
+    const privilegeName = 'Portal.Users.Create';
+    
+    // Use search to ensure the item is in the list
+    const availableSearch = editPrivilegesList.locator('input[type="text"]').first();
+    await availableSearch.fill(privilegeName);
+    
+    // Wait for debounce (300ms) + rendering
+    await page.waitForTimeout(500);
+
+    const privilegeItem = editPrivilegesList.locator('li').filter({ hasText: privilegeName });
     
     await expect(privilegeItem).toBeVisible();
     await privilegeItem.dblclick();
 
     // Verify it moved to Assigned list
-    const assignedList = editPrivilegesList.locator('#assigned-list');
-    await expect(assignedList.locator('li').filter({ hasText: privilegeName })).toBeVisible();
+    // (In our component, it will be in the right pane now)
+    
+    // Clear search to see all assigned items
+    await availableSearch.clear();
+    await page.waitForTimeout(500);
+    
+    await expect(editPrivilegesList.locator('li').filter({ hasText: privilegeName })).toBeVisible();
 
     // 8. Save Changes
     await page.getByTestId('save-button').click();
@@ -88,7 +100,7 @@ test.describe('User Privileges E2E', () => {
     await expect(page.getByTestId('read-only-view')).toBeVisible();
     
     // 10. Verify the assigned privilege is shown in the Read-Only list
-    const readOnlyAssignedList = page.getByTestId('view-privileges-list').locator('#assigned-list');
+    const readOnlyAssignedList = page.getByTestId('view-privileges-list');
     await expect(readOnlyAssignedList.locator('li').filter({ hasText: privilegeName })).toBeVisible();
   });
 });

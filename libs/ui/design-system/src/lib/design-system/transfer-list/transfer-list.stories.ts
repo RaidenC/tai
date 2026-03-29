@@ -18,10 +18,18 @@ type Story = StoryObj<TransferListComponent<TransferItem>>;
 
 const MOCK_ITEMS = [
   { id: 1, name: 'User Management', description: 'Manage users and roles' },
-  { id: 2, name: 'System Configuration', description: 'Configure system settings' },
+  {
+    id: 2,
+    name: 'System Configuration',
+    description: 'Configure system settings',
+  },
   { id: 3, name: 'Security Audit', description: 'View security logs' },
   { id: 4, name: 'API Access', description: 'Manage API keys' },
-  { id: 5, name: 'Database Management', description: 'Manage database connections' },
+  {
+    id: 5,
+    name: 'Database Management',
+    description: 'Manage database connections',
+  },
   { id: 6, name: 'Email Services', description: 'Configure SMTP' },
   { id: 7, name: 'Storage Settings', description: 'Manage S3 buckets' },
 ];
@@ -29,7 +37,7 @@ const MOCK_ITEMS = [
 export const Default: Story = {
   args: {
     items: MOCK_ITEMS,
-    initialAssignedIds: [1, 2],
+    manualIds: [1, 2],
     displayKey: 'name',
     trackKey: 'id',
     density: 'comfortable',
@@ -51,7 +59,7 @@ export const LargeDataset: Story = {
       name: `Permission Item ${i + 1}`,
       description: `Description for item ${i + 1}`,
     })),
-    initialAssignedIds: [10, 20, 30, 40, 50],
+    manualIds: [10, 20, 30, 40, 50],
   },
 };
 
@@ -61,7 +69,7 @@ export const CustomTemplate: Story = {
     template: `
       <tai-transfer-list
         [items]="items"
-        [initialAssignedIds]="initialAssignedIds"
+        [manualIds]="manualIds"
         [displayKey]="displayKey"
         [trackKey]="trackKey"
         [density]="density"

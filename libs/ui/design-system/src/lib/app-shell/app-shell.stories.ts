@@ -31,7 +31,7 @@ export const Primary: Story = {
   }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    
+
     // Check if sidebar and header elements are present
     const sidebar = canvas.getByRole('navigation');
     await expect(sidebar).toBeInTheDocument();
@@ -43,7 +43,9 @@ export const Primary: Story = {
     await expect(mainContent).toBeInTheDocument();
 
     // Verify interaction on nested components (User Profile initials)
-    const userProfileTrigger = canvas.getByRole('button', { name: /User Profile/i });
+    const userProfileTrigger = canvas.getByRole('button', {
+      name: /User Profile/i,
+    });
     await expect(userProfileTrigger).toHaveTextContent('JD');
 
     // Verify sidebar items

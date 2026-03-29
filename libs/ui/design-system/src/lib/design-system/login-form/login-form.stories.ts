@@ -7,9 +7,9 @@ import { CommonModule } from '@angular/common';
 
 /**
  * Storybook Configuration: LoginFormComponent
- * 
- * Audit Proof: This story demonstrates that the login form strictly enforces 
- * identity invariants and utilizes hardware-safe input attributes before 
+ *
+ * Audit Proof: This story demonstrates that the login form strictly enforces
+ * identity invariants and utilizes hardware-safe input attributes before
  * allowing any data transmission.
  */
 const meta: Meta<LoginFormComponent> = {
@@ -31,8 +31,8 @@ export const Default: Story = {};
 /**
  * Security & Validation Audit:
  * This test mathematically proves that the UI handles validation securely.
- * It verifies that sensitive fields use correct autocomplete attributes 
- * to prevent stealer log extraction and ensures the submit path is 
+ * It verifies that sensitive fields use correct autocomplete attributes
+ * to prevent stealer log extraction and ensures the submit path is
  * locked behind reactive validation.
  */
 export const ValidationAudit: Story = {
@@ -53,7 +53,9 @@ export const ValidationAudit: Story = {
     await userEvent.type(emailInput, 'invalid-identity', { delay: 20 });
     await userEvent.tab();
     await waitFor(() => {
-      expect(canvas.getByText(/A valid corporate email is required/i)).toBeInTheDocument();
+      expect(
+        canvas.getByText(/A valid corporate email is required/i),
+      ).toBeInTheDocument();
     });
     await expect(submitBtn).toBeDisabled();
 
@@ -64,10 +66,13 @@ export const ValidationAudit: Story = {
     await userEvent.tab();
 
     // Verification: Proves that only when security criteria are met, the UI unlocks
-    await waitFor(() => {
-      expect(submitBtn).not.toBeDisabled();
-    }, { timeout: 3000 });
-    
+    await waitFor(
+      () => {
+        expect(submitBtn).not.toBeDisabled();
+      },
+      { timeout: 3000 },
+    );
+
     // Proves the UI is ready for submission
     await expect(submitBtn).toBeEnabled();
   },

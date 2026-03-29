@@ -1,8 +1,25 @@
-import { Component, input, output, ChangeDetectionStrategy, signal, computed, effect, contentChild, TemplateRef, inject, forwardRef, Input } from '@angular/core';
+import {
+  Component,
+  input,
+  output,
+  ChangeDetectionStrategy,
+  signal,
+  computed,
+  effect,
+  contentChild,
+  TemplateRef,
+  inject,
+  forwardRef,
+  Input,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkListboxModule } from '@angular/cdk/listbox';
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import { FormsModule, ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import {
+  FormsModule,
+  ControlValueAccessor,
+  NG_VALUE_ACCESSOR,
+} from '@angular/forms';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, map } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -47,10 +64,10 @@ const DEFAULT_I18N: TransferListI18n = {
 
 /**
  * TransferListComponent
- * 
+ *
  * A highly reusable, accessible (WCAG 2.1 AA) "Transfer List" component.
  * It allows users to efficiently move items between an "Available" list and an "Assigned" list.
- * 
+ *
  * Features:
  * 1. Generic Typing <T extends TransferItem>.
  * 2. Signal-based inputs and state management.
@@ -72,14 +89,16 @@ const DEFAULT_I18N: TransferListI18n = {
     },
   ],
 })
-export class TransferListComponent<T extends TransferItem> implements ControlValueAccessor {
+export class TransferListComponent<T extends TransferItem>
+  implements ControlValueAccessor
+{
   private readonly breakpointObserver = inject(BreakpointObserver);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
 
-  /** The full list of available items. */
+  /** IDs of items that are available. */
   public readonly items = input.required<T[]>();
-  /** IDs of items that are initially assigned. */
-  public readonly initialAssignedIds = input<(string | number)[]>([]);
+  /** IDs of items that are manually assigned (e.g. in read-only mode). */
+  public readonly manualIds = input<(string | number)[] | undefined>(undefined);
   /** Key to use for displaying the item label. */
   public readonly displayKey = input<keyof T>('name' as keyof T);
   /** Key to use for tracking item identity. */
@@ -90,7 +109,8 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
   public readonly i18n = input<TransferListI18n>(DEFAULT_I18N);
 
   /** Optional custom template for items. */
-  public readonly itemTemplate = contentChild<TemplateRef<unknown>>('itemTemplate');
+  public readonly itemTemplate =
+    contentChild<TemplateRef<unknown>>('itemTemplate');
 
   /** Emitted when the set of assigned IDs changes. */
   public readonly assignedIdsChanged = output<(string | number)[]>();
@@ -104,16 +124,20 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
   }>();
 
   /** Detects if the screen is small (mobile/vertical layout). */
-  protected readonly isSmallScreen = toSignal(
-    this.breakpointObserver.observe([Breakpoints.XSmall, Breakpoints.Small]).pipe(map(result => result.matches)),
-    { initialValue: false }
+  public readonly isSmallScreen = toSignal(
+    this.breakpointObserver
+      .observe([Breakpoints.XSmall, Breakpoints.Small])
+      .pipe(map((result) => result.matches)),
+    { initialValue: false },
   );
 
   /** Total number of items that are NOT assigned. */
   public readonly totalAvailableCount = computed(() => {
     const ids = this.assignedIds();
     const trackKey = this.trackKey();
-    return this.items().filter(item => !ids.has(item[trackKey] as unknown as (string | number))).length;
+    return this.items().filter(
+      (item) => !ids.has(item[trackKey] as unknown as string | number),
+    ).length;
   });
 
   /** Total number of items that ARE assigned. */
@@ -125,23 +149,26 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
   private readonly searchTermAssigned$ = new Subject<string>();
 
   /** Debounced search term for the available list. */
-  protected readonly searchTermAvailable = toSignal(
+  public readonly searchTermAvailable = toSignal(
     this.searchTermAvailable$.pipe(debounceTime(300), distinctUntilChanged()),
-    { initialValue: '' }
+    { initialValue: '' },
   );
   /** Debounced search term for the assigned list. */
-  protected readonly searchTermAssigned = toSignal(
+  public readonly searchTermAssigned = toSignal(
     this.searchTermAssigned$.pipe(debounceTime(300), distinctUntilChanged()),
-    { initialValue: '' }
+    { initialValue: '' },
   );
 
   /** IDs of items currently in the 'assigned' bucket. */
   public readonly assignedIds = signal<Set<string | number>>(new Set());
 
+  /** Tracks the initial value provided via writeValue for dirty checking. */
+  private readonly initialValue = signal<Set<string | number>>(new Set());
+
   /** Returns true if the current assigned items differ from the initial state. */
   public readonly isDirty = computed(() => {
     const current = this.assignedIds();
-    const initial = new Set(this.initialAssignedIds());
+    const initial = this.initialValue();
     if (current.size !== initial.size) return true;
     for (const id of current) {
       if (!initial.has(id)) return true;
@@ -150,12 +177,12 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
   });
 
   /** IDs of currently selected items in the available list. */
-  protected readonly selectedAvailable = signal<(string | number)[]>([]);
+  public readonly selectedAvailable = signal<(string | number)[]>([]);
   /** IDs of currently selected items in the assigned list. */
-  protected readonly selectedAssigned = signal<(string | number)[]>([]);
+  public readonly selectedAssigned = signal<(string | number)[]>([]);
 
   /** trackBy function for virtual scroll. */
-  protected readonly trackByFn = computed(() => {
+  public readonly trackByFn = computed(() => {
     const key = this.trackKey();
     return (index: number, item: T) => (item as any)[key];
   });
@@ -169,24 +196,33 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
   }
   public readonly _isDisabled = signal(false);
 
-  private onChange: (value: (string | number)[]) => void = () => { /* Noop for CVA */ };
-  private onTouched: () => void = () => { /* Noop for CVA */ };
+  private onChange: (value: (string | number)[]) => void = () => {
+    /* Noop for CVA */
+  };
+  private onTouched: () => void = () => {
+    /* Noop for CVA */
+  };
 
   constructor() {
-    // Initialize assignedIds from input
-    effect(() => {
-      this.assignedIds.set(new Set(this.initialAssignedIds()));
-    }, { allowSignalWrites: true });
+    // Sync from manualIds input (for read-only or non-form usage)
+    effect(
+      () => {
+        const ids = this.manualIds();
+        if (ids !== undefined) {
+          this.assignedIds.set(new Set(ids));
+          this.initialValue.set(new Set(ids));
+        }
+      },
+      { allowSignalWrites: true },
+    );
   }
 
   // --- ControlValueAccessor Implementation ---
 
   public writeValue(value: (string | number)[] | null): void {
-    if (value) {
-      this.assignedIds.set(new Set(value));
-    } else {
-      this.assignedIds.set(new Set());
-    }
+    const newSet = value ? new Set(value) : new Set<(string | number)>();
+    this.assignedIds.set(newSet);
+    this.initialValue.set(new Set(newSet));
   }
 
   public registerOnChange(fn: (value: (string | number)[]) => void): void {
@@ -212,8 +248,8 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
     const trackKey = this.trackKey();
     const displayKey = this.displayKey();
 
-    return this.items().filter(item => {
-      const id = (item as any)[trackKey] as unknown as (string | number);
+    return this.items().filter((item) => {
+      const id = (item as any)[trackKey] as unknown as string | number;
       const isAvailable = !ids.has(id);
       if (!term) return isAvailable;
       const label = String((item as any)[displayKey]).toLowerCase();
@@ -230,8 +266,8 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
     const trackKey = this.trackKey();
     const displayKey = this.displayKey();
 
-    return this.items().filter(item => {
-      const id = (item as any)[trackKey] as unknown as (string | number);
+    return this.items().filter((item) => {
+      const id = (item as any)[trackKey] as unknown as string | number;
       const isAssigned = ids.has(id);
       if (!term) return isAssigned;
       const label = String((item as any)[displayKey]).toLowerCase();
@@ -245,16 +281,28 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
   public moveRight(ids: (string | number)[]): void {
     if (ids.length === 0) return;
     const current = new Set(this.assignedIds());
-    ids.forEach(id => current.add(id));
+    ids.forEach((id) => current.add(id));
     this.updateAssigned(current);
     // Clear selection after move
     this.selectedAvailable.set([]);
 
-    // Telemetry
+    // Telemetry and Announcement
     if (ids.length === 1) {
-      this.actionTelemetry.emit({ action: 'transfer_single', direction: 'to_assigned', id: ids[0] });
+      this.actionTelemetry.emit({
+        action: 'transfer_single',
+        direction: 'to_assigned',
+        id: ids[0],
+      });
+      this.liveAnnouncer.announce(
+        `${this.i18n().moveSelectedRight} successful`,
+      );
     } else {
-      this.actionTelemetry.emit({ action: 'transfer_bulk', direction: 'to_assigned', count: ids.length });
+      this.actionTelemetry.emit({
+        action: 'transfer_bulk',
+        direction: 'to_assigned',
+        count: ids.length,
+      });
+      this.liveAnnouncer.announce(`Moved ${ids.length} items to assigned list`);
     }
   }
 
@@ -264,16 +312,28 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
   public moveLeft(ids: (string | number)[]): void {
     if (ids.length === 0) return;
     const current = new Set(this.assignedIds());
-    ids.forEach(id => current.delete(id));
+    ids.forEach((id) => current.delete(id));
     this.updateAssigned(current);
     // Clear selection after move
     this.selectedAssigned.set([]);
 
-    // Telemetry
+    // Telemetry and Announcement
     if (ids.length === 1) {
-      this.actionTelemetry.emit({ action: 'transfer_single', direction: 'to_available', id: ids[0] });
+      this.actionTelemetry.emit({
+        action: 'transfer_single',
+        direction: 'to_available',
+        id: ids[0],
+      });
+      this.liveAnnouncer.announce(`${this.i18n().moveSelectedLeft} successful`);
     } else {
-      this.actionTelemetry.emit({ action: 'transfer_bulk', direction: 'to_available', count: ids.length });
+      this.actionTelemetry.emit({
+        action: 'transfer_bulk',
+        direction: 'to_available',
+        count: ids.length,
+      });
+      this.liveAnnouncer.announce(
+        `Moved ${ids.length} items to available list`,
+      );
     }
   }
 
@@ -281,7 +341,7 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
    * Resets the component to its initial state.
    */
   public reset(): void {
-    const initial = new Set(this.initialAssignedIds());
+    const initial = new Set(this.initialValue());
     this.updateAssigned(initial);
     this.actionTelemetry.emit({ action: 'reset' });
   }
@@ -305,7 +365,11 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
    */
   public moveAllRight(): void {
     const trackKey = this.trackKey();
-    this.moveRight(this.availableItems().map(i => (i as any)[trackKey] as unknown as (string | number)));
+    this.moveRight(
+      this.availableItems().map(
+        (i) => (i as any)[trackKey] as unknown as string | number,
+      ),
+    );
   }
 
   /**
@@ -313,7 +377,11 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
    */
   public moveAllLeft(): void {
     const trackKey = this.trackKey();
-    this.moveLeft(this.assignedItems().map(i => (i as any)[trackKey] as unknown as (string | number)));
+    this.moveLeft(
+      this.assignedItems().map(
+        (i) => (i as any)[trackKey] as unknown as string | number,
+      ),
+    );
   }
 
   /**
@@ -333,7 +401,9 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
   /**
    * Updates the current selection in the available list.
    */
-  public updateSelectedAvailable(event: { value: readonly (string | number)[] }): void {
+  public updateSelectedAvailable(event: {
+    value: readonly (string | number)[];
+  }): void {
     const ids = event.value;
     this.selectedAvailable.set(Array.isArray(ids) ? [...ids] : []);
   }
@@ -341,7 +411,9 @@ export class TransferListComponent<T extends TransferItem> implements ControlVal
   /**
    * Updates the current selection in the assigned list.
    */
-  public updateSelectedAssigned(event: { value: readonly (string | number)[] }): void {
+  public updateSelectedAssigned(event: {
+    value: readonly (string | number)[];
+  }): void {
     const ids = event.value;
     this.selectedAssigned.set(Array.isArray(ids) ? [...ids] : []);
   }

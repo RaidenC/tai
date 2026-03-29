@@ -111,10 +111,9 @@ import { PrivilegesStore } from '../privileges/privileges.store';
 
                 <div class="md:col-span-2 mt-8">
                   <h3 class="text-lg font-bold text-gray-900 mb-4">Assigned Privileges</h3>
-                  <h1 data-testid="test-marker">RENDERED</h1>
                   <tai-transfer-list
                     [items]="privilegesStore.privileges()"
-                    [initialAssignedIds]="user.privilegeIds || []"
+                    [manualIds]="user.privilegeIds || []"
                     [displayKey]="'name'"
                     [trackKey]="'id'"
                     [isDisabled]="true"

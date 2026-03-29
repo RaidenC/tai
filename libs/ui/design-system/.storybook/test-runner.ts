@@ -19,9 +19,13 @@ const config: TestRunnerConfig = {
     });
 
     // 2. CSP Guardrail: No inline styles (no [style] attribute in #storybook-root)
-    const inlineStylesCount = await page.locator('#storybook-root [style]').count();
+    const inlineStylesCount = await page
+      .locator('#storybook-root [style]')
+      .count();
     if (inlineStylesCount > 0) {
-      throw new Error(`CSP Violation: Found ${inlineStylesCount} elements with inline styles. Inline styles are prohibited by SWBC Zero-Trust architecture.`);
+      throw new Error(
+        `CSP Violation: Found ${inlineStylesCount} elements with inline styles. Inline styles are prohibited by SWBC Zero-Trust architecture.`,
+      );
     }
   },
 };

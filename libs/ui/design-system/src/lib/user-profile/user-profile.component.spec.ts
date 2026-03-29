@@ -39,7 +39,10 @@ describe('UserProfileComponent', () => {
   });
 
   it('should render avatar if provided', () => {
-    fixture.componentRef.setInput('user', { name: 'John Doe', avatar: 'path/to/avatar.png' });
+    fixture.componentRef.setInput('user', {
+      name: 'John Doe',
+      avatar: 'path/to/avatar.png',
+    });
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
     const img = compiled.querySelector('img');

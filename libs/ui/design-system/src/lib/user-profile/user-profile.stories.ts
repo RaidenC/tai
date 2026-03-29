@@ -18,7 +18,7 @@ export const Primary: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    
+
     // 1. Audit Identity Invariant: Initials Derivation
     // Proves that 'John Doe' is correctly transformed into 'JD' in the UI.
     const trigger = canvas.getByRole('button');

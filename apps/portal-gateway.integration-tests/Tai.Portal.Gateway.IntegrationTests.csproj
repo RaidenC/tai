@@ -25,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\portal-gateway\Tai.Portal.Gateway.csproj" />
+    <ProjectReference Include="../portal-gateway/Tai.Portal.Gateway.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,14 +1,19 @@
 import { Component, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
+import {
+  ReactiveFormsModule,
+  FormGroup,
+  FormControl,
+  Validators,
+} from '@angular/forms';
 import { SecureInputComponent } from '../secure-input/secure-input';
 
 /**
  * RegistrationFormComponent
- * 
+ *
  * Persona: Frontend Security Architect.
  * Context: Self-service registration for the TAI Portal.
- * 
+ *
  * Features:
  * 1. Strongly typed Reactive Form for user registration.
  * 2. Integration with SecureInputComponent for secure, CSP-compliant inputs.
@@ -47,14 +52,19 @@ export class RegistrationFormComponent {
   /**
    * Emits the form data when valid and submitted.
    */
-  public readonly submitted = output<Required<typeof this.registrationForm.value>>();
+  public readonly submitted =
+    output<Required<typeof this.registrationForm.value>>();
 
   /**
    * Handles form submission.
    */
   public onSubmit(): void {
     if (this.registrationForm.valid) {
-      this.submitted.emit(this.registrationForm.getRawValue() as Required<typeof this.registrationForm.value>);
+      this.submitted.emit(
+        this.registrationForm.getRawValue() as Required<
+          typeof this.registrationForm.value
+        >,
+      );
     }
   }
 }

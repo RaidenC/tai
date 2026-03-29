@@ -4,8 +4,12 @@
     Ensures that the input field is correctly associated with its description 
     for screen readers (Accessibility / Compliance).
   -->
-  <label [for]="id()" class="secure-input-label text-sm font-semibold text-gray-700 mb-2">{{ label() }}</label>
-  
+  <label
+    [for]="id()"
+    class="secure-input-label text-sm font-semibold text-gray-700 mb-2"
+    >{{ label() }}</label
+  >
+
   <!-- 
     The Input Element:
     Avoiding Angular Material to maintain 100% control over the DOM.
@@ -21,12 +25,7 @@
     [attr.autocomplete]="type() === 'password' ? 'new-password' : (type() === 'email' ? 'email' : 'off')"
     (input)="onInput($event)"
     (blur)="onBlur()"
-    class="secure-input-field px-4 py-3 text-base text-gray-900 bg-white border border-gray-300 rounded-md shadow-sm transition-all duration-200 ease-in-out outline-none focus:border-blue-600 focus:ring-3 focus:ring-blue-600/10 placeholder:text-gray-400 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-    [class.error]="errorMessage() && isTouched()"
-    [class.secure-password-input]="type() === 'password'"
-    [class.border-red-600]="errorMessage() && isTouched()"
-    [class.focus:ring-red-600/10]="errorMessage() && isTouched()"
-    [class.[-webkit-text-security:disc]]="type() === 'password'"
+    [class]="inputClasses()"
     aria-invalid="false"
   />
 
@@ -36,11 +35,11 @@
     before being bound to [innerHTML] to prevent DOM-based XSS attacks.
   -->
   @if (errorMessage() && isTouched()) {
-    <div
-      class="error-message mt-2 text-xs text-red-600 font-medium"
-      [innerHTML]="trustedErrorMessage()"
-      aria-live="polite"
-      role="alert"
-    ></div>
+  <div
+    class="error-message mt-2 text-xs text-red-600 font-medium"
+    [innerHTML]="trustedErrorMessage()"
+    aria-live="polite"
+    role="alert"
+  ></div>
   }
 </div>

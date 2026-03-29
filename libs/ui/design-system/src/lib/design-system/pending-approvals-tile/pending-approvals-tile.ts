@@ -9,10 +9,10 @@ export interface PendingUser {
 
 /**
  * PendingApprovalsTileComponent
- * 
+ *
  * Persona: Tenant Admin Auditor.
  * Context: Administrative dashboard for identity verification (Four-Eyes Principle).
- * 
+ *
  * Features:
  * 1. Reactive list of users awaiting approval via Signal Inputs.
  * 2. Semantic action triggers for secondary approval flow.
