@@ -7,14 +7,14 @@
 - [x] Task: Write xUnit TDD tests verifying domain event instantiation. dad0be1
 - [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md) dad0be1
 
-## Phase 2: Database Schema, Partitioning & Indexing (Infrastructure)
+## Phase 2: Database Schema, Partitioning & Indexing (Infrastructure) [checkpoint: 8fe67ba]
 *Objective: Prepare the high-performance storage layer with optimized read paths.*
-- [ ] Task: Implement the Audit Log Entity in `libs/core/infrastructure`.
-- [ ] Task: Create EF Core Migration with raw SQL for PostgreSQL Table Partitioning by date.
-- [ ] Task: Implement a composite index on `(TenantId, UserId, Date)` to support rapid dashboard querying.
-- [ ] Task: Ensure the `Id` field is indexed globally across partitions to support the fast "Claim Check" lookups.
-- [ ] Task: Write Integration Test (using TestContainers) to verify bulk inserts and query execution plans.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
+- [x] Task: Implement the Audit Log Entity in `libs/core/infrastructure`. 8fe67ba
+- [x] Task: Create EF Core Migration with raw SQL for PostgreSQL Table Partitioning by date. 8fe67ba
+- [x] Task: Implement a composite index on `(TenantId, UserId, Date)` to support rapid dashboard querying. 8fe67ba
+- [x] Task: Ensure the `Id` field is indexed globally across partitions to support the fast "Claim Check" lookups. 8fe67ba
+- [x] Task: Write Integration Test (using TestContainers) to verify bulk inserts and query execution plans. 8fe67ba
+- [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md) 8fe67ba
 
 ## Phase 3: The Event Consumer & API Endpoint (Backend Logic)
 *Objective: Build the background processor and the secure "Claim Check" retrieval endpoint.*
