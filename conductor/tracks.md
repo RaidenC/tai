@@ -10,6 +10,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [x] **Track: Custom Transfer list for assigning privileges**
-*Link: [./tracks/custom_transfer_list_20260318/](./tracks/custom_transfer_list_20260318/)*
-
+- [ ] **Track: The "Real-Time Security Notifications & Audit Dashboard" (Highly Recommended) Build the real-time event pipeline that tracks security events (e.g., MFA failures, new IP access) and pushes them to the frontend.**
+*Link: [./tracks/real_time_security_notifications_20260329/](./tracks/real_time_security_notifications_20260329/)*
