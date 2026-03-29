@@ -1,11 +1,11 @@
 # Implementation Plan: Real-Time Security Notifications & Audit Dashboard
 
-## Phase 1: Domain Models & Event Abstraction (Pure C#)
+## Phase 1: Domain Models & Event Abstraction (Pure C#) [checkpoint: dad0be1]
 *Objective: Define the data structures and interfaces.*
-- [ ] Task: Define `SecurityEventBase` and specific domain events (LoginAnomaly, PrivilegeChange) in `libs/core/domain`.
-- [ ] Task: Define `IEventBus` interface in `libs/core/application`.
-- [ ] Task: Write xUnit TDD tests verifying domain event instantiation.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
+- [x] Task: Define `SecurityEventBase` and specific domain events (LoginAnomaly, PrivilegeChange) in `libs/core/domain`. dad0be1
+- [x] Task: Define `IEventBus` interface in `libs/core/application`. dad0be1
+- [x] Task: Write xUnit TDD tests verifying domain event instantiation. dad0be1
+- [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md) dad0be1
 
 ## Phase 2: Database Schema, Partitioning & Indexing (Infrastructure)
 *Objective: Prepare the high-performance storage layer with optimized read paths.*
