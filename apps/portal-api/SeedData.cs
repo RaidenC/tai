@@ -279,6 +279,49 @@ public static class SeedData {
             } catch (OpenIddictExceptions.ConcurrencyException) {
               // Concurrency is fine
             }
+
+            // Register DocViewer client for OIDC authentication
+            var docviewerClient = manager.FindByClientIdAsync("docviewer").GetAwaiter().GetResult();
+            var docviewerDescriptor = new OpenIddictApplicationDescriptor {
+              ClientId = "docviewer",
+              DisplayName = "DocViewer Application",
+              ClientType = ClientTypes.Public,
+              Permissions =
+                {
+                    Permissions.Endpoints.Authorization,
+                    Permissions.Endpoints.Logout,
+                    Permissions.Endpoints.Token,
+                    Permissions.GrantTypes.AuthorizationCode,
+                    Permissions.GrantTypes.RefreshToken,
+                    Permissions.ResponseTypes.Code,
+                    Permissions.Scopes.Email,
+                    Permissions.Scopes.Profile,
+                    Permissions.Scopes.Roles,
+                },
+              RedirectUris =
+                {
+                    new Uri("http://localhost:5173"),
+                    new Uri("http://localhost:5173/callback"),
+                    new Uri("http://localhost:5173/silent-renew"),
+                },
+              PostLogoutRedirectUris =
+                {
+                    new Uri("http://localhost:5173"),
+                }
+            };
+
+            try {
+              if (docviewerClient is null) {
+                manager.CreateAsync(docviewerDescriptor).GetAwaiter().GetResult();
+                Console.WriteLine(" [SEED] Registered docviewer OIDC client");
+              } else {
+                manager.UpdateAsync(docviewerClient, docviewerDescriptor).GetAwaiter().GetResult();
+                Console.WriteLine(" [SEED] Updated docviewer OIDC client");
+              }
+            } catch (OpenIddictExceptions.ConcurrencyException) {
+              // Concurrency is fine
+            }
+
             Console.WriteLine($" [SEED] OpenIddict checked/updated in {oidcSw.ElapsedMilliseconds}ms");
 
             using (var command = connection.CreateCommand()) {
