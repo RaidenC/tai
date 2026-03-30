@@ -14,7 +14,7 @@
 - [x] Task: Implement a composite index on `(TenantId, UserId, Date)` to support rapid dashboard querying. 8fe67ba
 - [x] Task: Ensure the `Id` field is indexed globally across partitions to support the fast "Claim Check" lookups. 8fe67ba
 - [x] Task: Write Integration Test (using TestContainers) to verify bulk inserts and query execution plans. 8fe67ba
-- [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md) 8fe67ba
+- [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md) 834d81a
 
 ## Phase 3: The Event Consumer & API Endpoint (Backend Logic)
 *Objective: Build the background processor and the secure "Claim Check" retrieval endpoint.*
