@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Tai.Portal.Core.Domain.ValueObjects;
@@ -12,9 +13,11 @@ using Tai.Portal.Core.Infrastructure.Persistence;
 namespace Tai.Portal.Core.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(PortalDbContext))]
-    partial class PortalDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260329223950_AddPartitionedAuditLogs")]
+    partial class AddPartitionedAuditLogs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -496,9 +499,6 @@ namespace Tai.Portal.Core.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id", "Timestamp");
-
-                    b.HasIndex("Id")
-                        .HasDatabaseName("IX_AuditLogs_Id");
 
                     b.HasIndex("TenantId", "Timestamp")
                         .IsDescending(false, true)
