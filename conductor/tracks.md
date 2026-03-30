@@ -10,5 +10,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: The "Real-Time Security Notifications & Audit Dashboard" (Highly Recommended) Build the real-time event pipeline that tracks security events (e.g., MFA failures, new IP access) and pushes them to the frontend.**
+- [~] **Track: The "Real-Time Security Notifications & Audit Dashboard" (Highly Recommended) Build the real-time event pipeline that tracks security events (e.g., MFA failures, new IP access) and pushes them to the frontend.**
 *Link: [./tracks/real_time_security_notifications_20260329/](./tracks/real_time_security_notifications_20260329/)*
