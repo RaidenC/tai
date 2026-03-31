@@ -22,6 +22,48 @@ C# is a strongly-typed, object-oriented language running on .NET 8. Key concepts
 - **Value types** (`struct`, `int`, `double`, `record struct`) are stored on the stack (when not boxed) and copied by value.
 - **Reference types** (`class`, `delegate`, `interface`) are stored on the heap and copied by reference.
 
+**Stack vs Heap — The Real Story:**
+
+| Aspect | Stack | Heap |
+|--------|-------|------|
+| Storage | Sequential, LIFO | Random, managed by GC |
+| Speed | Very fast (pointer arithmetic) | Slower (allocation + GC) |
+| Size | Small, limited (MB range) | Large (GB range) |
+| Lifetime | Scope-bound | GC-managed |
+| Resizing | Expensive (copy) | Cheap (new allocation) |
+
+**Memory Layout Visualization:**
+```csharp
+// STACK (local variables)
+void ProcessUser() {
+    int id = 1;           // 4 bytes on stack
+    TenantId tid = Guid.NewGuid();  // 16 bytes inline on stack
+    
+    // HEAP (reference types)
+    var user = new ApplicationUser();  // user pointer on stack, object on heap
+}
+```
+
+**Boxing and Unboxing (The Performance Killer):**
+
+```csharp
+int number = 42;          // Value type on stack
+object boxed = number;    // Boxing: copies to heap (~40 bytes overhead)
+int unboxed = (int)boxed; // Unboxing: copies back to stack
+
+// THIS IS EXPENSIVE - AVOID IN LOOPS
+List<object> list = new();
+for (int i = 0; i < 10000; i++) {
+    list.Add(i);  // BOXING every iteration - 10000 heap allocations!
+}
+
+// CORRECT: Use generic collection
+List<int> list = new();
+for (int i = 0; i < 10000; i++) {
+    list.Add(i);  // No boxing - stack/heap once
+}
+```
+
 **Real Example from tai-portal** — Value Object as `record struct`:
 
 ```csharp
@@ -45,13 +87,53 @@ public readonly record struct TenantId {
 - Stack allocation efficiency
 - Pattern: Use for IDs, money amounts, coordinates
 
+**When to Use Each:**
+
+| Use `struct` when... | Use `class` when... |
+|---------------------|---------------------|
+| Small (≤16 bytes) | Larger objects |
+| Immutable | Need inheritance |
+| Frequent copying OK | Need reference semantics |
+| Mathematical primitives | Complex behavior |
+| No null needed | Null is valid |
+
+**Common Pitfall:**
+```csharp
+// BAD - struct in a class is still on heap (as part of the class)
+public class User {
+    public TenantId Id;  // Embedded in User object on heap
+    public string Name;
+}
+
+// GOOD - use class for entities with multiple fields
+public class User {
+    public Guid Id;  // Still on heap as part of User
+    public string Name;
+}
+```
+
 **Interview Tip:** If you say "structs go on the stack," clarify that's true for local variables. When used as class fields or in collections, they're heap-allocated.
 
 ---
 
-### 2. Init-Only Properties (C# 9+)
+### 2. Init-Only Properties (C# 9+) & Immutability
 
-Allows setting properties only during object construction, then they're immutable.
+**The Problem:** Traditional C# properties are mutable after construction:
+```csharp
+var user = new ApplicationUser();
+user.Email = "hacked@example.com";  // Can change anytime!
+```
+
+**Init Solution:** Set once at construction, then immutable:
+
+```csharp
+public class User {
+    public string Name { get; init; }
+}
+
+var user = new User { Name = "John" };
+user.Name = "Jane";  // COMPILE ERROR: can't set after init
+```
 
 **Real Example from tai-portal:**
 
@@ -65,26 +147,130 @@ public TenantId TenantId {
 }
 ```
 
+**Key Points:**
+- `init` = can only set during object construction (constructor or object initializer)
+- After construction, property is read-only
+- Unlike `private set`, allows object initializer syntax
+
 **C# 14 Bonus:** The `field` keyword refers to the compiler-synthesized backing store:
 
 ```csharp
 // C# 14 syntax - direct field access in accessor
 public override string? Email {
   get;
-  set => field = value?.Trim().ToLowerInvariant();  // normalization
+  set => field = value?.Trim().ToLowerInvariant();  // normalization on set
 }
 ```
+
+**Immutability Patterns:**
+
+```csharp
+// Pattern 1: Traditional immutable class
+public sealed class Money {
+    public decimal Amount { get; }
+    public string Currency { get; }
+    
+    public Money(decimal amount, string currency) {
+        Amount = amount;
+        Currency = currency;
+    }
+}
+
+// Pattern 2: Record (C# 9+)
+public record Money(decimal Amount, string Currency);
+
+// Pattern 3: Record struct (C# 10+)
+public readonly record struct Money(decimal Amount, string Currency);
+```
+
+**Why Immutability Matters:**
+
+| Benefit | Explanation |
+|---------|-------------|
+| Thread Safety | No locking needed - can't be modified |
+| Predictability | Same input = same output |
+| Caching Safe | Can cache without worry |
+| Refactoring Safe | No hidden state changes |
+| Debugging Easier | Objects don't change unexpectedly |
+
+**With Expression (Records):**
+
+```csharp
+var original = new Money(100, "USD");
+var doubled = original with { Amount = 200 };  // Copy + modify
+
+// Deep copy with records
+var copy = original with { };  // Exact copy
+```
+
+**Gotchas:**
+
+```csharp
+// PROBLEM: Internal array still mutable!
+public readonly struct ImmutableWrapper {
+    private readonly List<string> _items = new();
+    public IReadOnlyList<string> Items => _items.AsReadOnly();
+    
+    public void Add(string item) => _items.Add(item);  // MUTABLE!
+}
+
+// SOLUTION: Defensive copy on every read
+public struct SafeWrapper {
+    private readonly List<string> _items;
+    public SafeWrapper() => _items = new();
+    
+    public IReadOnlyList<string> Items => _items.ToList().AsReadOnly();
+}
+```
+
+**Interview Tip:** When asked about immutability, mention:
+1. Thread safety (no locks needed)
+2. Predictability (no hidden state changes)
+3. `init` vs `readonly` vs `record`
+4. Defensive copies for mutable fields
 
 ---
 
 ### 3. Async/Await Under the Hood
 
+**The Basics:**
 `async/await` is syntactic sugar that the compiler transforms into a **state machine**.
 
 **What happens:**
 1. Compiler generates a state machine class
 2. `await` suspends execution, returns control to caller
 3. When the Task completes, continuation runs
+
+**Generated State Machine (Conceptual):**
+
+```csharp
+// What you write:
+public async Task<string> GetDataAsync() {
+    var result = await FetchAsync();
+    return result.ToUpper();
+}
+
+// What the compiler generates (simplified):
+public class GetDataAsyncStateMachine : IAsyncStateMachine {
+    private AsyncTaskMethodBuilder<string> _builder;
+    private Task<string> _fetchTask;
+    private int _state;
+    private string _result;
+    
+    public void MoveNext() {
+        switch (_state) {
+            case 0:  // Start
+                _fetchTask = FetchAsync();
+                _builder.AwaitUnsafeOnCompleted(ref _fetchTask, this);
+                return;
+            case 1:  // After await
+                _result = _fetchTask.Result.ToUpper();
+                _builder.SetResult(_result);
+                return;
+        }
+    }
+}
+```
 
 **Real Example from tai-portal:**
 
@@ -113,15 +299,142 @@ public async Task<IEnumerable<PrivilegeDto>> GetPrivilegesAsync(
 - `Task` represents async work
 - `await` doesn't block thread—it yields control
 - Always use `CancellationToken`
+
+**Common Mistakes:**
+
+```csharp
+// BAD: .Result blocks the thread
+public User GetUserSync(Guid id) {
+    return _userService.GetByIdAsync(id).Result;  // DEADLOCK RISK!
+}
+
+// BAD: Fire and forget without await
+public void UpdateUser(User user) {
+    _context.SaveChangesAsync();  // Task created but not awaited - data loss!
+}
+
+// GOOD: Proper async all the way
+public async Task<User> GetUserAsync(Guid id) {
+    return await _userService.GetByIdAsync(id);
+}
+
+// GOOD: Fire and forget with warning
+public async Task UpdateUser(User user) {
+    _ = _context.SaveChangesAsync();  // Intentional fire-and-forget
+    // OR
+    _ = Task.Run(() => _emailService.SendWelcome(user.Email));  // Background
+}
+```
+
+**ConfigureAwait:**
+
+```csharp
+// In library code - AVOID capturing SyncContext (better performance)
+public async Task<User> GetUserAsync(Guid id) {
+    var user = await _context.Users
+        .FirstOrDefaultAsync(u => u.Id == id)
+        .ConfigureAwait(false);  // Don't resume on UI thread
+    
+    return user;  // Continues on thread pool
+}
+
+// In UI code - WANT to resume on UI thread
+public async void OnLoad() {
+    var users = await _api.GetUsersAsync().ConfigureAwait(true);  // Back to UI thread
+    this.UserList = users;  // Safe to update UI
+}
+```
+
+**When to Use Async:**
+
+| Scenario | Use Async? |
+|----------|------------|
+| I/O Bound (DB, Network, File) | ✅ Yes |
+| CPU Bound (Computation) | ❌ No - use `Task.Run` |
+| Simple calculations | ❌ No |
+| Web API controllers | ✅ Yes |
+| Background workers | ✅ Yes |
+
+**Performance Implications:**
+
+```csharp
+// EACH async method has overhead:
+// - State machine allocation
+// - Task allocation
+// - Context switches
+
+// DON'T do this:
+public async Task<Product> GetProduct(int id) => await _cache.GetAsync(id);
+
+// DO: Return cached value synchronously if available
+public Task<Product> GetProductAsync(int id) {
+    if (_cache.TryGetValue(id, out var cached)) {
+        return Task.FromResult(cached);  // Synchronous completion
+    }
+    return FetchAndCacheAsync(id);
+}
+```
+
+**Interview Questions to Know:**
+
+1. **What happens when you await a Task?**
+   - If complete: continue immediately
+   - If not complete: yield control, schedule continuation
+
+2. **What's the difference between Task and Task<T>?**
+   - `Task` - async operation with no return value
+   - `Task<T>` - async operation returning T
+
+3. **What does ConfigureAwait(false) do?**
+   - Don't resume on captured SynchronizationContext
+   - Better performance in library code
+
+4. **How do you handle exceptions in async code?**
+   ```csharp
+   try {
+       await riskyOperation();
+   }
+   catch (SpecificException ex) {
+       // Handle specific
+   }
+   ```
+
+5. **What's a deadlock and how do you avoid it?**
+   - Deadlock: Thread waiting on Task that needs same thread
+   - Solution: Use async/await all the way, or `ConfigureAwait(false)`
+- Always use `CancellationToken`
 - Don't use `.Result` or `.Wait()` (deadlock risk)
 
 ---
 
 ### 4. LINQ (Language Integrated Query)
 
-Two syntaxes:
-- **Query syntax:** `from x in list where x > 5 select x`
-- **Method syntax:** `list.Where(x => x > 5)`
+LINQ provides declarative data querying in C#. Two syntaxes are available:
+
+**Query Syntax (SQL-like):**
+```csharp
+var results = from p in privileges
+              where p.Name.Contains("admin")
+              orderby p.Name
+              select p.Name;
+```
+
+**Method Syntax (Lambda):**
+```csharp
+var results = privileges
+    .Where(p => p.Name.Contains("admin"))
+    .OrderBy(p => p.Name)
+    .Select(p => p.Name);
+```
+
+**When to Use Each:**
+
+| Query Syntax | Method Syntax |
+|-------------|---------------|
+| Complex multi-join queries | Simple filtering |
+| More readable (SQL devs) | Chaining transformations |
+| Less common | More idiomatic C# |
+| Only with `IEnumerable` | Works with both |
 
 **Real Example from tai-portal:**
 
@@ -131,41 +444,275 @@ var results = await _context.Privileges
   .Where(p => p.Name.Contains(search) || p.Description.Contains(search))  // IQueryable
   .OrderBy(p => p.Name)
   .Skip(skip).Take(take)
-  .Select(p => new PrivilegeDto(p.Id.Value, p.Name, ...))
+  .Select(p => new PrivilegeDto(p.Id.Value, p.Name, p.Description, p.Module, p.RiskLevel, p.IsActive, p.RowVersion, p.JitSettings))
   .ToListAsync(cancellationToken);
 ```
 
 **Deferred vs Immediate Execution:**
-- `Where`, `Select`, `OrderBy` → **Deferred** (not executed until enumerated)
-- `ToList()`, `ToArray()`, `First()`, `Count()` → **Immediate**
+
+| Operator | Type | Example |
+|----------|------|---------|
+| `Where`, `Select`, `SelectMany` | Deferred | `.Where(x => x > 5)` |
+| `OrderBy`, `OrderByDescending` | Deferred | `.OrderBy(x => x.Name)` |
+| `Take`, `Skip`, `SkipWhile` | Deferred | `.Take(10)` |
+| `ToList`, `ToArray` | Immediate | `.ToList()` |
+| `Count`, `Sum`, `Average` | Immediate | `.Count()` |
+| `First`, `FirstOrDefault` | Immediate | `.FirstOrDefault()` |
+| `Single`, `SingleOrDefault` | Immediate | `.Single()` |
+
+**Why This Matters:**
+
+```csharp
+// PROBLEM: Multiple enumeration - inefficient!
+var query = users.Where(u => u.Active);  // Not executed yet
+var count = query.Count();               // Executes query #1
+var list = query.Take(10).ToList();      // Executes query #2 (expensive!)
+
+// SOLUTION: Enumerate once
+var query = users.Where(u => u.Active).ToList();  // Single query
+var count = query.Count;  // In-memory, no DB call
+var list = query.Take(10);
+```
+
+**Common LINQ Operators:**
+
+```csharp
+// Filtering
+users.Where(u => u.Active)
+
+// Projection
+users.Select(u => new { u.Id, u.Name })
+
+// Ordering
+users.OrderBy(u => u.Name)
+     .ThenByDescending(u => u.CreatedAt)
+
+// Set Operations
+users.Union(otherUsers)       // Unique union
+users.Concat(otherUsers)     // All (including duplicates)
+users.Intersection(other)    // Common elements
+users.Except(other)          // In first, not second
+
+// Partitioning
+users.Skip(10).Take(5)       // Pagination
+
+// Element Operations
+users.First()                // Throws if empty
+users.FirstOrDefault()       // Null if empty
+users.Single()              // Throws if not exactly one
+users.ElementAt(5)           // By index
+
+// Aggregation
+users.Count()
+users.Sum(u => u.Age)
+users.Average(u => u.Age)
+users.Max(u => u.Age)
+users.Min(u => u.Age)
+
+// Partitioning with predicate
+users.SkipWhile(u => !u.Active)  // Skip until first active
+users.TakeWhile(u => u.Active)   // Take until first inactive
+```
+
+**Quantifiers (Return bool):**
+
+```csharp
+users.Any()                    // Any elements?
+users.Any(u => u.Active)       // Any active?
+users.All(u => u.Active)        // All active?
+users.Contains(user)           // Contains specific?
+```
+
+**Generation:**
+
+```csharp
+Enumerable.Range(1, 100)           // 1-100
+Enumerable.Repeat("x", 5)           // ["x","x","x","x","x"]
+Enumerable.Empty<string>()          // Empty sequence
+```
+
+**Gotchas and Performance:**
+
+```csharp
+// N+1 Query Problem - DON'T DO THIS
+foreach (var user in users) {
+    var orders = _context.Orders.Where(o => o.UserId == user.Id).ToList();
+}
+
+// SOLUTION: Use Include/Eager Loading
+var usersWithOrders = _context.Users
+    .Include(u => u.Orders)  // Single query with JOIN
+    .ToList();
+
+// Or use Projections
+var userOrders = _context.Users
+    .Select(u => new { u.Name, OrderCount = u.Orders.Count() })
+    .ToList();
+
+// Case Sensitivity - Database matters!
+users.Where(u => u.Name.Contains("john"))   // SQL: LIKE '%john%' (case varies by DB)
+users.Where(u => u.Name.ToLower().Contains("john"))  // Forces in-memory!
+
+// Better: Use EF.Functions
+users.Where(u => EF.Functions.Like(u.Name, "%john%"))
+```
+
+**IQueryable vs IEnumerable:**
+
+```csharp
+// IEnumerable<T> - In-memory processing
+IEnumerable<User> memoryUsers = users;
+var filtered = memoryUsers.Where(u => u.Active);  // Filters in RAM
+
+// IQueryable<T> - Expression tree (translates to SQL)
+IQueryable<User> dbUsers = _context.Users;
+var filtered = dbUsers.Where(u => u.Active);  // Builds SQL WHERE
+
+// CRITICAL: Don't mix!
+IQueryable<User> query = _context.Users;
+// .ToList() triggers execution - everything after runs in memory
+var list = query.Where(u => u.Active).ToList();  
+// This .Where runs in C#, not SQL!
+list = list.Where(u => u.Name.StartsWith("A"));
+```
 
 ---
 
 ### 5. Pattern Matching & Switch Expressions (C# 8+)
 
-**Traditional switch:**
-```csharp
-string result;
-if (privilege.RiskLevel == RiskLevel.High) result = "High risk";
-else if (privilege.RiskLevel == RiskLevel.Medium) result = "Medium risk";
-else result = "Low risk";
-```
+**The Evolution:**
 
-**Switch expression (C# 8+):**
 ```csharp
-var result = privilege.RiskLevel switch {
-  RiskLevel.High => "High risk",
-  RiskLevel.Medium => "Medium risk",
-  RiskLevel.Low => "Low risk",
-  _ => "Unknown"
+// OLD: Verbose if-else chain
+string GetRiskDescription(RiskLevel level) {
+    if (level == RiskLevel.High) return "High risk";
+    else if (level == RiskLevel.Medium) return "Medium risk";
+    else if (level == RiskLevel.Low) return "Low risk";
+    else return "Unknown";
+}
+
+// C# 8+: Switch expression (single expression)
+string GetRiskDescription(RiskLevel level) => level switch {
+    RiskLevel.High => "High risk",
+    RiskLevel.Medium => "Medium risk",
+    RiskLevel.Low => "Low risk",
+    _ => "Unknown"
 };
 ```
 
-**Pattern matching with `is`:**
+**Switch Expression Features:**
+
 ```csharp
-if (obj is ApplicationUser user && user.Status == UserStatus.Active) {
-  // use user with compile-time guarantee it's ApplicationUser
+// Property patterns
+user switch {
+    { Status: UserStatus.Active, TenantId: { Value: var tid } } => tid.ToString(),
+    { Status: UserStatus.PendingApproval } => "Pending",
+    _ => "Other"
+};
+
+// Type patterns (before C# 10)
+object obj = GetData();
+string result = obj switch {
+    string s => s.ToUpper(),
+    int i => i.ToString(),
+    null => "NULL!",
+    _ => "Unknown"
+};
+
+// C# 10+ Relational patterns
+int score = 85;
+string grade = score switch {
+    >= 90 => "A",
+    >= 80 => "B",
+    >= 70 => "C",
+    >= 60 => "D",
+    _ => "F"
+};
+
+// Logical patterns
+string categorize = score switch {
+    < 0 or > 100 => "Invalid",
+    >= 90 and <= 100 => "Excellent",
+    _ => "Normal"
+};
+```
+
+**Pattern Matching with `is`:**
+
+```csharp
+// Basic type check with cast
+if (obj is string str) {
+    // str is in scope, compiler knows it's string
+    Console.WriteLine(str.Length);
 }
+
+// With relational conditions
+if (user is { Status: UserStatus.Active, Age: var age } && age >= 18) {
+    // Match AND additional condition
+}
+
+// Nullable patterns
+string? maybe = GetString();
+if (maybe is { } someValue) {  // Matches non-null
+    Console.WriteLine(someValue);
+}
+
+// Tuple patterns
+(int x, int y) point = (5, 10);
+string location = point switch {
+    (0, 0) => "Origin",
+    (var a, 0) when a > 0 => $"Positive X axis at {a}",  // with guard
+    (0, var b) => $"Y axis at {b}",
+    _ => "Somewhere else"
+};
+```
+
+**Real Example from tai-portal:**
+
+```csharp
+// In ApplicationUser entity
+public void Approve(TenantAdminId approvedBy) {
+    if (Status != UserStatus.PendingApproval) {
+        throw new InvalidOperationException($"User account cannot be approved in state {Status}");
+    }
+    if (Id == (string)approvedBy) {
+        throw new InvalidOperationException("Users cannot approve their own accounts.");
+    }
+    Status = UserStatus.PendingVerification;
+    ApprovedBy = approvedBy;
+    _domainEvents.Add(new UserApprovedEvent(Id, approvedBy));
+}
+```
+
+**Guard Clauses (with `when`):**
+
+```csharp
+// Add conditions with 'when'
+var message = user switch {
+    { Status: UserStatus.Active } => "Welcome back!",
+    { Status: UserStatus.PendingApproval } when user.CreatedAt < DateTime.Now.AddDays(-7) => 
+        "Your pending application is being reviewed",
+    { Status: UserStatus.PendingApproval } => "Please wait for approval",
+    _ => "Contact support"
+};
+```
+
+**Common Interview Patterns:**
+
+```csharp
+// Null check (old way)
+if (obj != null && obj is SomeType t) { }
+
+// Null check (new way)
+if (obj is SomeType t) { }  // is already handles null!
+
+// Switch on multiple values
+var category = (age, creditScore) switch {
+    (< 18, _) => "Minor",
+    (_, >= 750) => "Premium",
+    (_, >= 500) => "Standard",
+    _ => "Basic"
+};
 ```
 
 ---
