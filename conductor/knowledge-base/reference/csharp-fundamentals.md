@@ -242,6 +242,159 @@ builder.Services.AddMemoryCache();
 
 ---
 
+### 9. Access Modifiers
+
+C# has five access modifiers defining visibility:
+
+| Modifier | Same Assembly | Derived Class | Same Class |
+|----------|---------------|---------------|------------|
+| `public` | ✅ | ✅ | ✅ |
+| `private` | ❌ | ❌ | ✅ |
+| `protected` | ❌ | ✅ | ✅ |
+| `internal` | ✅ | ❌ | ✅ |
+| `protected internal` | ✅ | ✅ | ❌ |
+| `private protected` | ✅ (if same type) | ✅ (if derived) | ✅ |
+
+**Real Example from tai-portal:**
+
+```csharp
+// libs/core/domain/Entities/ApplicationUser.cs
+
+// protected - accessible to derived classes
+protected ApplicationUser() { }  // EF Core requirement - not public
+
+// public - accessible everywhere
+public TenantId TenantId { get; init; }
+
+// private - only within ApplicationUser
+private readonly List<IDomainEvent> _domainEvents = new();
+```
+
+**Best Practice:**
+- Default to `private`, increase visibility only when needed
+- Use `internal` for assembly-level implementation details
+- `protected` for extensibility points in base classes
+
+---
+
+### 10. Generics
+
+Generics provide **compile-time type safety** without runtime overhead.
+
+**Generic Method:**
+```csharp
+public T FindById<T>(Guid id) where T : class, IEntity {
+  return _context.Set<T>().Find(id);
+}
+```
+
+**Generic Constraint (`where`):**
+- `where T : class` — reference type
+- `where T : struct` — value type
+- `where T : new()` — parameterless constructor
+- `where T : IEntity` — implements interface
+- `where T : BaseClass` — derives from class
+
+**Real Example — Generic Repository Pattern:**
+
+```csharp
+// libs/core/infrastructure/Persistence/PortalDbContext.cs
+public class PortalDbContext : DbContext {
+  // DbSet is generic - type-safe table access
+  public DbSet<ApplicationUser> Users => Set<ApplicationUser>();
+  public DbSet<Privilege> Privileges => Set<Privilege>();
+  public DbSet<Tenant> Tenants => Set<Tenant>();
+}
+```
+
+**Covariance and Contravariance (C# 4+):**
+```csharp
+// Covariance (out) - can return derived where base expected
+IEnumerable<Derived> derived = ...;
+IEnumerable<Base> base = derived;  // IEnumerable is covariant
+
+// Contravariance (in) - can pass base where derived expected
+Action<Base> baseAction = ...;
+Action<Derived> derivedAction = baseAction;  // Action is contravariant
+```
+
+---
+
+### 11. Exception Handling
+
+**Best Practices:**
+1. Don't catch exceptions you can't handle
+2. Use specific exception types, not `Exception`
+3. Always use `finally` for cleanup
+4. Throw specific exceptions with meaningful messages
+
+**Real Example from tai-portal:**
+
+```csharp
+// libs/core/infrastructure/Persistence/Services/PrivilegeService.cs
+public async Task<PrivilegeDto> UpdatePrivilegeAsync(...) {
+  var privilege = await _context.Privileges
+    .FirstOrDefaultAsync(p => p.Id == new PrivilegeId(id), cancellationToken);
+
+  if (privilege == null) 
+    throw new KeyNotFoundException($"Privilege with ID {id} not found.");  // Specific
+
+  if (privilege.RowVersion != rowVersion) {
+    throw new DbUpdateConcurrencyException("Concurrency conflict detected.");
+  }
+
+  // ... update logic
+  
+  await _context.SaveChangesAsync(cancellationToken);
+  
+  // Force reload for latest RowVersion
+  await _context.Entry(privilege).ReloadAsync(cancellationToken);
+}
+```
+
+**Custom Exceptions:**
+
+```csharp
+// libs/core/domain/Exceptions/ConcurrencyException.cs
+public class ConcurrencyException : Exception {
+  public ConcurrencyException(string message) : base(message) { }
+  public ConcurrencyException(string message, Exception inner) : base(message, inner) { }
+}
+```
+
+**Try-Catch-Finally Pattern:**
+```csharp
+try {
+  var result = await riskyOperation();
+}
+catch (KeyNotFoundException ex) {
+  logger.LogWarning(ex, "Entity not found");
+  return NotFound();
+}
+catch (DbUpdateConcurrencyException ex) {
+  logger.LogError(ex, "Concurrency conflict");
+  return Conflict();
+}
+finally {
+  // Always runs - cleanup
+  disposable.Dispose();
+}
+```
+
+**Don't Do This:**
+```csharp
+// BAD - catches everything, hides bugs
+try { ... }
+catch (Exception) { /* ignore */ }
+
+// GOOD - catch specific, let unknown propagate
+try { ... }
+catch (SpecificException ex) { handle(ex); }
+throw;  // re-throw unknown
+```
+
+---
+
 ## Interview Q&A
 
 ### L1: What is the difference between `class` and `struct` in C#?
@@ -396,6 +549,132 @@ void NotifyUser(Notification notification) {
 - Changing `virtual` to `sealed` or vice versa incorrectly
 
 **In tai-portal:** `ApplicationUser : IdentityUser` extends the base while maintaining contract.
+
+---
+
+### L2: What are the different access modifiers in C#?
+
+**Difficulty:** L1 (Junior)
+
+**Question:** Describe the access modifiers in C# and when to use each.
+
+**Answer:**
+- `public` — anywhere, no restrictions
+- `private` — only within same class (default for classes)
+- `protected` — same class + derived classes
+- `internal` — same assembly only (default for classes in explicit internals-visible)
+- `protected internal` — same assembly OR derived classes (union)
+- `private protected` — same assembly AND derived classes (intersection)
+
+**Best practice:** Default to most restrictive (`private`), expose incrementally.
+
+---
+
+### L2: Explain generics in C# and when to use them
+
+**Difficulty:** L2 (Mid-Level)
+
+**Question:** What are generics and when would you use them?
+
+**Answer:**
+Generics provide **type-safe** reusable code without boxing/unboxing:
+
+```csharp
+// Generic method
+T FindById<T>(Guid id) where T : class;
+
+// Generic class
+public class Repository<T> where T : class {
+  private readonly DbContext _context;
+  public DbSet<T> Set => _context.Set<T>();
+}
+```
+
+**Benefits:**
+- Compile-time type safety
+- No runtime casting
+- Better performance (no boxing)
+- Reusable across types
+
+**Constraints (`where`):** Use `where T : class`, `where T : struct`, `where T : new()`, `where T : IEntity`.
+
+---
+
+### L2: What is the difference between throw and throw ex?
+
+**Difficulty:** L2 (Mid-Level)
+
+**Question:** What's wrong with `throw ex;` in a catch block?
+
+**Answer:**
+```csharp
+// BAD - loses stack trace
+catch (Exception ex) {
+  logger.Log(ex);
+  throw ex;  // Stack trace starts HERE
+}
+
+// GOOD - preserves original stack trace
+catch (Exception ex) {
+  logger.Log(ex);
+  throw;  // Original stack trace preserved
+}
+
+// GOOD - wrap with additional context
+catch (Exception ex) {
+  throw new CustomException("Operation failed", ex);  // InnerException preserves original
+}
+```
+
+`throw ex;` resets the stack trace. Use `throw;` to preserve it.
+
+---
+
+### L3: Design a generic repository with CRUD operations
+
+**Difficulty:** L3 (Senior)
+
+**Question:** How would you implement a generic repository pattern in C#?
+
+**Answer:**
+
+```csharp
+public interface IRepository<T> where T : class {
+  Task<T?> GetByIdAsync(Guid id);
+  Task<IEnumerable<T>> GetAllAsync();
+  Task AddAsync(T entity);
+  Task UpdateAsync(T entity);
+  Task DeleteAsync(T entity);
+}
+
+public class Repository<T> : IRepository<T> where T : class {
+  private readonly DbContext _context;
+  private readonly DbSet<T> _dbSet;
+  
+  public Repository(PortalDbContext context) {
+    _context = context;
+    _dbSet = context.Set<T>();
+  }
+  
+  public async Task<T?> GetByIdAsync(Guid id) {
+    return await _dbSet.FindAsync(id);
+  }
+  
+  public async Task<IEnumerable<T>> GetAllAsync() {
+    return await _dbSet.ToListAsync();
+  }
+  
+  public async Task AddAsync(T entity) {
+    await _dbSet.AddAsync(entity);
+    await _context.SaveChangesAsync();
+  }
+}
+```
+
+**Key points:**
+- Generic constraint `where T : class` ensures reference type
+- `DbContext.Set<T>()` provides type-safe access
+- Can add query-specific methods via non-generic repositories
 
 ---
 
