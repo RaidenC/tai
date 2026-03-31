@@ -8,19 +8,27 @@
 - **Logging Implementation:** `LoggingMessageBus.cs` in `libs/core/infrastructure/Services/LoggingMessageBus.cs`.
 - **Audit Logs:** `AuditEntry` in `libs/core/domain/Entities/AuditEntry.cs`.
 
-## Proposed Infrastructure
-- **IEventBus:** New internal abstraction for publishing security-related events for real-time consumption.
-- **SecurityEventBase:** New base class for security-specific domain events to ensure consistency.
-- **Security Hub:** SignalR Hub in `apps/portal-api` to push events to the frontend.
-- **Claim Check Pattern:** Only push event IDs through SignalR; frontend must fetch details via a secure API.
+## Architecture: Two Communication Channels
+
+| Channel | Target | Technology |
+|---------|--------|------------|
+| **Real-Time Push** | Current User (Browser) | SignalR |
+| **Cross-App Events** | Other Apps (DocViewer, HR) | IMessageBus (RabbitMQ/EventBridge) |
+
+## Key Decision: No IEventBus Abstraction
+We do NOT need a separate `IEventBus` abstraction. MediatR handles internal event dispatch perfectly. This is YAGNI - don't create abstractions without multiple implementations.
 
 ## Design Decisions
-- Security events should implement `IDomainEvent` to be dispatchable by the existing MediatR pipeline.
-- `SecurityEventBase` should include `CorrelationId`, `Timestamp`, and `TenantId`.
-- The `IEventBus` will be used to explicitly publish events to the `IHostedService` (likely through an internal queue/bus).
+- Domain events implement `IDomainEvent` to be dispatchable by the existing MediatR pipeline.
+- `SecurityEventBase` includes `CorrelationId`, `Timestamp`, and `TenantId`.
+- MediatR notification handlers do THREE things:
+  1. Write to AuditEntry (DB)
+  2. Push to SignalR (real-time to browser)
+  3. Publish to IMessageBus (other apps)
+- Claim Check Pattern: Only eventId + timestamp go over SignalR; full details fetched via REST.
 
 ## Integration Considerations
 - **YARP:** WebSocket support must be enabled.
 - **Auth:** SignalR hub must use the existing cookie-based auth.
-- **Tenant Isolation:** Events must only be broadcasted to users in the same tenant (or specific groups).
+- **Tenant Isolation:** Events must only be broadcasted to users in the same tenant via SignalR Groups.
 - **Concurrency:** High-volume audit log writes must be handled carefully.
