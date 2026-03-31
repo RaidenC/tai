@@ -3,7 +3,7 @@
 ## Phase 1: Domain Models & Event Abstraction (Pure C#) [checkpoint: dad0be1]
 *Objective: Define the data structures and interfaces.*
 - [x] Task: Define `SecurityEventBase` and specific domain events (LoginAnomaly, PrivilegeChange) in `libs/core/domain`. dad0be1
-- [x] Task: Define `IEventBus` interface in `libs/core/application`. dad0be1
+- [x] Task: MediatR is used for internal event dispatch (no separate IEventBus needed - YAGNI). dad0be1
 - [x] Task: Write xUnit TDD tests verifying domain event instantiation. dad0be1
 - [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md) dad0be1
 
@@ -16,17 +16,20 @@
 - [x] Task: Write Integration Test (using TestContainers) to verify bulk inserts and query execution plans. 8fe67ba
 - [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md) 834d81a
 
-## Phase 3: The Event Consumer & API Endpoint (Backend Logic)
-*Objective: Build the background processor and the secure "Claim Check" retrieval endpoint.*
-- [ ] Task: Implement `SecurityEventConsumer` as an `IHostedService` in `apps/portal-api`.
-- [ ] Task: Create a secure REST endpoint (`GET /api/audit-logs/{id}`) to fetch event details (The Claim Check).
-- [ ] Task: Write Integration Tests verifying the HostedService and the GET endpoint with tenant isolation.
+## Phase 3: MediatR Handlers & Claim Check Endpoint (Backend Logic)
+*Objective: Extend MediatR handlers to push real-time events to SignalR and provide secure detail retrieval.*
+- [x] Task: Create MediatR notification handlers for security events (LoginAnomaly, PrivilegeChange, SecuritySettingChange). 9eb9daf
+- [x] Task: Inject `IRealTimeNotifier` into handlers to push privacy-first payload (eventId, timestamp) to SignalR. 9eb9daf
+- [x] Task: Ensure handlers also publish to IMessageBus for cross-app communication (DocViewer, HR System). 9eb9daf
+- [x] Task: Create REST endpoint (`GET /api/audit-logs/{id}`) to fetch full event details (Claim Check pattern). 9eb9daf
+- [x] Task: Ensure Global Query Filter provides tenant isolation on the GET endpoint. 9eb9daf
+- [ ] Task: Write Integration Tests verifying the handlers push to SignalR and GET endpoint returns correct data.
 - [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
 ## Phase 4: SignalR Hub & Gateway Configuration (API & BFF)
 *Objective: Expose the secure WebSocket endpoint and proxy it through YARP.*
-- [ ] Task: Create `SecurityNotificationHub` in `apps/portal-api`.
-- [ ] Task: Implement Tenant Group mapping in the Hub to ensure isolated broadcast channels.
+- [ ] Task: Enhance existing `NotificationHub` in `apps/portal-api` with Tenant Group mapping for isolated broadcast channels.
+- [ ] Task: Implement `OnConnectedAsync` to add user to SignalR group based on their TenantId.
 - [ ] Task: Update `apps/portal-gateway` (YARP configuration) to support WebSocket upgrade requests for the Hub route.
 - [ ] Task: Write Integration Test verifying authenticated WebSocket connections through the Gateway.
 - [ ] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
