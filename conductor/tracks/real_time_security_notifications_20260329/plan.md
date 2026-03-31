@@ -36,10 +36,10 @@
 
 ## Phase 5: Angular SignalR (Zoneless Performance) & Claim Check
 *Objective: Establish the client connection without causing Change Detection thrashing.*
-- [ ] Task: Implement Angular `SignalRService` with automatic reconnection.
-- [ ] Task: **Front-End Mandate:** Wrap the SignalR connection and event listeners in `NgZone.runOutsideAngular()` to prevent macro-task freezing.
-- [ ] Task: Implement logic: On receiving an Event ID, trigger an HTTP GET to fetch the full details via the BFF.
-- [ ] Task: Write Vitest chaos tests simulating connection drops and verifying the Claim Check flow.
+- [x] Task: Implement Angular `SignalRService` with automatic reconnection.
+- [x] Task: **Front-End Mandate:** Wrap the SignalR connection and event listeners in `NgZone.runOutsideAngular()` to prevent macro-task freezing.
+- [x] Task: Implement logic: On receiving an Event ID, trigger an HTTP GET to fetch the full details via the BFF.
+- [x] Task: Write Vitest chaos tests simulating connection drops and verifying the Claim Check flow.
 - [ ] Task: Conductor - User Manual Verification 'Phase 5' (Protocol in workflow.md)
 
 ## Phase 6: Angular SignalStore & Idempotency (Frontend State)
