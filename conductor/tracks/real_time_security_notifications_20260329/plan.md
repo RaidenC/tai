@@ -28,9 +28,9 @@
 
 ## Phase 4: SignalR Hub & Gateway Configuration (API & BFF)
 *Objective: Expose the secure WebSocket endpoint and proxy it through YARP.*
-- [ ] Task: Enhance existing `NotificationHub` in `apps/portal-api` with Tenant Group mapping for isolated broadcast channels.
-- [ ] Task: Implement `OnConnectedAsync` to add user to SignalR group based on their TenantId.
-- [ ] Task: Update `apps/portal-gateway` (YARP configuration) to support WebSocket upgrade requests for the Hub route.
+- [x] Task: Enhance existing `NotificationHub` in `apps/portal-api` with Tenant Group mapping for isolated broadcast channels. 98535c5
+- [x] Task: Implement `OnConnectedAsync` to add user to SignalR group based on their TenantId. 98535c5
+- [x] Task: Update `apps/portal-gateway` (YARP configuration) to support WebSocket upgrade requests for the Hub route. 98535c5
 - [ ] Task: Write Integration Test verifying authenticated WebSocket connections through the Gateway.
 - [ ] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
 
