@@ -719,183 +719,1028 @@ var category = (age, creditScore) switch {
 
 ### 6. Null Handling
 
+**The Null Problem:**
+`NullReferenceException` is one of the most common runtime errors in C#. Modern C# provides many tools to handle null safely.
+
 **Null-conditional operator (`?.`):**
 ```csharp
+// Old way - verbose and error-prone
+string name = "Unknown";
+if (user != null && user.FirstName != null) {
+    name = user.FirstName;
+}
+
+// Modern - safe and concise
 var name = user?.FirstName ?? "Unknown";  // ?? provides fallback
+```
+
+**Chaining safely:**
+```csharp
+// Each ?. returns null if ANY part is null
+var city = user?.Address?.City ?? "Unknown";
+var length = user?.Name?.Length ?? 0;  // If user or Name is null, returns 0
 ```
 
 **Null-forgiving operator (`!`):**
 ```csharp
 // Tell compiler "this is not null, trust me"
 var list = possibleNullList!;
+
+// WARNING: Only use when YOU know it's not null
+// This will throw at runtime if you're wrong!
 ```
 
 **Pattern matching for null:**
 ```csharp
-if (user is { Status: UserStatus.Active, TenantId: { Value: var tid } }) {
-  // Use tid - compiler knows it's not null
+// OLD: is with null check
+if (user != null && user.Status == UserStatus.Active) {
+    // use user
 }
+
+// NEW: Pattern matching
+if (user is { Status: UserStatus.Active, TenantId: { Value: var tid } }) {
+    // tid is in scope and not null here
+}
+
+// Not pattern
+if (user is not null) { }
+
+// With null-coalescing
+var name = user?.Name is { } nameValue ? nameValue : "Unknown";
+```
+
+**Null-coalescing operators:**
+
+```csharp
+// ?? - Null coalescing
+var name = user?.Name ?? "Unknown";
+
+// ??= - Null coalescing assignment (C# 8+)
+string? name = null;
+name ??= "Default";  // Sets to "Default" if null
+
+// ?[] - Null-conditional index
+var users = new Dictionary<string, User>();
+var user = users?["key"];  // Returns null if users is null OR key not found
+```
+
+**The Problem with Null:**
+
+```csharp
+// DON'T: Null checks everywhere
+public string GetUserName(User? user) {
+    if (user == null) return "Guest";
+    if (user.FirstName == null) return "Guest";
+    if (user.LastName == null) return user.FirstName;
+    return $"{user.FirstName} {user.LastName}";
+}
+
+// DO: Use null-conditional and coalescing
+public string GetUserName(User? user) =>
+    $"{user?.FirstName ?? ""} {user?.LastName ?? ""}".Trim() switch {
+        "" => "Guest",
+        var name => name
+    };
+```
+
+**Nullable Reference Types (C# 8+):**
+
+```csharp
+// Enable in .csproj: <Nullable>enable</Nullable>
+
+// Non-nullable (default) - compiler warns if you assign null
+string name = "John";
+name = null;  // WARNING!
+
+// Nullable - explicitly marked
+string? nullable = null;  // OK
+
+// Null-forgiving when you're sure
+string! definitelyNotNull = GetSomeString();  // Trust me!
+
+// Method contracts
+public void SetName(string? name) {  // Accepts null
+    if (name is null) return;  // Explicit null check
+    Console.WriteLine(name.Length);  // Compiler knows name is not null here
+}
+```
+
+**Common Patterns:**
+
+```csharp
+// Pattern 1: Guard clause
+public void Process(User? user) {
+    if (user is null) return;  // Early return
+    // user is not null from here
+}
+
+// Pattern 2: Let null flow
+var result = user?.Name switch {
+    null => "Guest",
+    { Length: > 10 } => "Long name",  // Pattern with property
+    var n => n
+};
+
+// Pattern 3: Where clause
+var activeUsers = users
+    .Where(u => u is { Status: UserStatus.Active })  // Filter non-null active
+    .ToList();
+
+// Pattern 4: Try pattern (for method returns null)
+if (int.TryParse(input, out var number)) {
+    // number is valid here
+}
+
+// Pattern 5: Null object pattern
+public class NullUser : IUser {
+    public string Name => "Guest";
+    public bool IsAuthenticated => false;
+}
+```
+
+**Avoiding Null Entirely:**
+
+```csharp
+// Use Optional<T> or Maybe<T> pattern (from C# functional libraries)
+public Optional<User> GetUser(Guid id) =>
+    _context.Users.FirstOrDefault(u => u.Id == id);
+
+// Or use OneOf
+public OneOf<User, NotFound, Error> GetUser(Guid id);
+
+// Extension method pattern
+public static class MaybeExtensions {
+    public static TResult IfNotNull<T, TResult>(this T? value, Func<T, TResult> selector)
+        where T : class =>
+        value is null ? default! : selector(value);
+}
+
+var name = user.IfNotNull(u => u.Name);
 ```
 
 ---
 
 ### 7. Records (C# 9+)
 
+Records provide a concise way to create **immutable** reference types with built-in equality, cloning, and formatting.
+
+**The Problem with Classes:**
 ```csharp
-// Traditional class
-public class Person {
-  public string Name { get; init; }
-  public int Age { get; init; }
+// Class - mutable, reference equality
+public class PersonClass {
+    public string Name { get; set; }
+    public int Age { get; set; }
 }
 
-// Record - automatic equality, ToString(), with expression
-public record Person(string Name, int Age);
+var p1 = new PersonClass { Name = "John", Age = 30 };
+var p2 = new PersonClass { Name = "John", Age = 30 };
 
-// With expression (immutable update)
-var older = person with { Age = person.Age + 1 };
+Console.WriteLine(p1 == p2);  // FALSE - different references!
+Console.WriteLine(p1.Equals(p2));  // FALSE - default is reference equality
 ```
 
-**In tai-portal:** `TenantId` uses `readonly record struct` for value semantics + stack efficiency.
+**Record Solution:**
+```csharp
+// Record - immutable, value equality
+public record Person(string Name, int Age);
+
+var p1 = new Person("John", 30);
+var p2 = new Person("John", 30);
+
+Console.WriteLine(p1 == p2);  // TRUE - value equality!
+Console.WriteLine(p1.Equals(p2));  // TRUE
+```
+
+**What Records Provide Automatically:**
+
+```csharp
+// This single line generates:
+public record Person(string Name, int Age);
+
+// Compiler generates:
+public class Person : IEquatable<Person> {
+    // Read-only properties
+    public string Name { get; init; }
+    public int Age { get; init; }
+    
+    // Constructor
+    public Person(string name, int age) => (Name, Age) = (name, age);
+    
+    // Value equality
+    public bool Equals(Person? other) => 
+        other is not null && Name == other.Name && Age == other.Age;
+    
+    public override bool Equals(object? obj) => Equals(obj as Person);
+    
+    // GetHashCode
+    public override int GetHashCode() => HashCode.Combine(Name, Age);
+    
+    // ToString
+    public override string ToString() => $"Person {{ Name = {Name}, Age = {Age} }}";
+    
+    // With expression
+    public Person With(string? Name = null, int? Age = null) => 
+        new Person(Name ?? this.Name, Age ?? this.Age);
+    
+    // Deconstruct
+    public void Deconstruct(out string Name, out int Age) => (Name, Age) = (this.Name, this.Age);
+}
+```
+
+**With Expressions (Immutable Updates):**
+
+```csharp
+var john = new Person("John", 30);
+var olderJohn = john with { Age = 31 };
+var johnCopy = john with { };  // Deep clone
+
+Console.WriteLine(john);  // Person { Name = John, Age = 30 }
+Console.WriteLine(olderJohn);  // Person { Name = John, Age = 31 }
+Console.WriteLine(john == olderJohn);  // FALSE - different values
+Console.WriteLine(john == johnCopy);  // TRUE - same values
+```
+
+**Positional Records (Compact Syntax):**
+
+```csharp
+// Primary constructor parameters become properties
+public record Person(string Name, int Age, string? Email = null);
+
+// Can still add methods
+public record Person(string Name, int Age) {
+    public bool IsAdult => Age >= 18;
+    public string FullInfo => $"{Name} ({Age})";
+}
+```
+
+**Record Struct vs Class:**
+
+| Aspect | `record class` | `record struct` |
+|--------|----------------|------------------|
+| Type | Reference (heap) | Value (stack) |
+| Equality | By values | By values |
+| Mutability | Immutable | Immutable |
+| Use when | Passing between methods | Small data (<16 bytes) |
+
+```csharp
+// In tai-portal: TenantId uses readonly record struct
+public readonly record struct TenantId {
+    public Guid Value { get; }
+    public TenantId(Guid value) => Value = value;
+}
+```
+
+**When to Use Records:**
+
+| Use Records When... | Use Classes When... |
+|---------------------|---------------------|
+| Modeling immutable data | Need mutable state |
+| DTOs / API responses | Entity with tracking |
+| Value objects (Money, Address) | Services with behavior |
+| Comparing by value | Reference identity matters |
+| DDD Value Objects | Domain Entities |
+
+**Inheritance with Records:**
+
+```csharp
+// Record inheritance
+public record Animal(string Name);
+public record Dog(string Name, string Breed) : Animal(Name);
+
+var animal = new Animal("Buddy");
+var dog = new Dog("Rex", "Labrador");
+
+// Derived records include base in equality
+var dog2 = new Dog("Rex", "Labrador");
+Console.WriteLine(dog == dog2);  // TRUE
+```
+
+**Nondestructive Mutation:**
+
+```csharp
+// Perfect for functional-style updates
+public record User(Guid Id, string Name, UserStatus Status);
+
+User CreateUser(Guid id, string name) {
+    return new User(id, name, UserStatus.Pending);
+}
+
+User ActivateUser(User user) {
+    return user with { Status = UserStatus.Active };
+}
+
+// Chain transformations
+var activeUser = CreateUser(Guid.NewGuid(), "John")
+    |> ActivateUser
+    |> (u => u with { Name = u.Name.ToUpper() });
+```
+
+**Common Interview Questions:**
+
+```csharp
+// Q: What's the difference between record and class?
+// A: Records have built-in value equality, ToString(), 
+//    and with expressions. They're immutable by default.
+
+// Q: Can records be mutable?
+// A: Yes, but defeats the purpose. Use 'record class' with 
+//    'set' properties if you need mutability.
+
+// Q: What's 'with' expression?
+// A: Creates a copy with specified properties changed.
+//    Deep clones all properties, then applies overrides.
+```
 
 ---
 
 ### 8. Dependency Injection in .NET
 
-**Constructor injection (most common):**
+**What is DI?**
+Dependency Injection is a technique where an object receives other objects it depends on, rather than creating them. It enables loose coupling and testability.
+
+**The Problem (Tight Coupling):**
+```csharp
+// BAD: Hard-coded dependency
+public class UserService {
+    private readonly PortalDbContext _context = new();  // Can't swap for tests!
+    
+    public async Task<User?> GetUserAsync(Guid id) {
+        return await _context.Users.FindAsync(id);
+    }
+}
+```
+
+**The Solution (DI):**
+```csharp
+// GOOD: Dependencies injected
+public class UserService {
+    private readonly PortalDbContext _context;
+    
+    // DI Container instantiates and injects
+    public UserService(PortalDbContext context) {
+        _context = context;
+    }
+}
+```
+
+**Real Example from tai-portal:**
 
 ```csharp
 // libs/core/infrastructure/Persistence/Services/PrivilegeService.cs
 public class PrivilegeService : IPrivilegeService {
-  private readonly PortalDbContext _context;
-  private readonly IMemoryCache _cache;
-  
-  public PrivilegeService(PortalDbContext context, IMemoryCache cache) {
-    _context = context;
-    _cache = cache;
-  }
+    private readonly PortalDbContext _context;
+    private readonly IMemoryCache _cache;
+    
+    // Constructor injection - DI container provides these
+    public PrivilegeService(PortalDbContext context, IMemoryCache cache) {
+        _context = context;
+        _cache = cache;
+    }
 }
 ```
 
-**Register in DI container (Program.cs):**
+**DI Container Methods in .NET:**
+
 ```csharp
-builder.Services.AddScoped<IPrivilegeService, PrivilegeService>();
-builder.Services.AddMemoryCache();
+// Program.cs
+var builder = WebApplication.CreateBuilder(args);
+
+// 1. AddSingleton - One instance for app lifetime
+builder.Services.AddSingleton<IConfigService, ConfigService>();
+// Same instance everywhere, even across requests
+
+// 2. AddScoped - One instance per HTTP request
+builder.Services.AddScoped<IUserService, UserService>();
+// New instance per request, shared within that request
+
+// 3. AddTransient - New instance every time
+builder.Services.AddTransient<IEmailService, EmailService>();
+// Fresh instance each time it's requested
+
+// 4. TryAdd - Only add if not already registered
+builder.Services.TryAddSingleton<IService, MyService>();
+
+// 5. Add - Generic (same as above)
+builder.Services.AddSingleton<ConfigService>();
 ```
 
-**Lifetimes:**
-- `AddSingleton` — one instance for app lifetime
-- `AddScoped` — one instance per request
-- `AddTransient` — new instance each time
+**Lifetime Decision Guide:**
+
+| Lifetime | Use When | Example |
+|----------|----------|---------|
+| Singleton | Stateless, shared state | Config, Logging, Caching |
+| Scoped | Per-request state | DbContext, UserContext |
+| Transient | Stateful, lightweight | DTOs, View Models |
+
+**Real Example - Matching Lifetimes:**
+
+```csharp
+// DbContext should be Scoped (not Singleton!)
+// Why: DbContext tracks changes, should be per-request
+builder.Services.AddDbContext<PortalDbContext>(options =>
+    options.UseNpgsql(connectionString));
+
+// Good: DbContext is scoped by default with AddDbContext
+// Each HTTP request gets its own context instance
+
+// Bad: Don't do this!
+builder.Services.AddSingleton<PortalDbContext>();  // WRONG! 
+// Would share state across all requests!
+```
+
+**Constructor Injection Patterns:**
+
+```csharp
+// Basic
+public class Service {
+    public Service(IDependency dep) { }
+}
+
+// Multiple
+public class Service {
+    public Service(IDependency1 d1, IDependency2 d2, IDependency3 d3) { }
+}
+
+// Optional (C# 8+)
+public class Service {
+    public Service(IDependency dep, ILogger<Service>? logger = null) { }
+}
+
+// Primary constructor (C# 12+)
+public class Service(IDependency dep) {
+    public void DoSomething() => dep.Operation();
+}
+```
+
+**Property Injection:**
+
+```csharp
+// For optional dependencies
+public class ReportGenerator {
+    [Dependency]
+    public ILogger<ReportGenerator>? Logger { get; set; }
+}
+```
+
+**Service Locator Pattern (Anti-pattern):**
+
+```csharp
+// AVOID - Hidden dependency, harder to test
+public class BadService {
+    public void DoSomething() {
+        var service = ServiceLocator.GetService<IDependency>();
+    }
+}
+
+// PREFERRED - Explicit constructor
+public class GoodService {
+    private readonly IDependency _dep;
+    public GoodService(IDependency dep) => _dep = dep;
+}
+```
+
+**Testing with DI:**
+
+```csharp
+// Integration test with real DI
+[Fact]
+public async Task GetPrivilege_ReturnsPrivilege() {
+    // Arrange
+    using var scope = _factory.Services.CreateScope();
+    var service = scope.ServiceProvider.GetRequiredService<IPrivilegeService>();
+    
+    // Act
+    var result = await service.GetPrivilegeByIdAsync(Guid.NewGuid(), default);
+    
+    // Assert
+    Assert.NotNull(result);
+}
+
+// Unit test with mocks
+[Fact]
+public async Task GetPrivileges_UsesCache() {
+    // Arrange
+    var mockCache = new Mock<IMemoryCache>();
+    var mockContext = new Mock<PortalDbContext>();
+    
+    var service = new PrivilegeService(mockContext.Object, mockCache.Object);
+    
+    // Act & Assert
+    await service.GetPrivilegesAsync(0, 10, null, null, default);
+    
+    // Verify cache was called
+    mockCache.Verify(c => c.GetOrCreateAsync(It.IsAny<string>(), It.IsAny<Func<ICacheEntry, Task<PrivilegeDto>>>()), Times.Once);
+}
+```
+
+**Disposing:**
+```csharp
+public class Service : IDisposable {
+    private readonly HttpClient _httpClient;
+    private bool _disposed;
+    
+    public Service(HttpClient httpClient) => _httpClient = httpClient;
+    
+    public void Dispose() {
+        if (_disposed) return;
+        _httpClient.Dispose();
+        _disposed = true;
+    }
+}
+
+// With IAsyncDisposable (C# 8+)
+public class AsyncService : IAsyncDisposable {
+    private readonly Stream _stream;
+    
+    public async ValueTask DisposeAsync() {
+        await _stream.DisposeAsync();
+    }
+}
+```
+
+**Common Interview Questions:**
+
+1. **What's the difference between AddSingleton, AddScoped, AddTransient?**
+   - Singleton: One instance for app lifetime
+   - Scoped: One instance per HTTP request
+   - Transient: New instance each time
+
+2. **Why use interfaces with DI?**
+   - Enables testing with mocks
+   - Allows different implementations
+   - Reduces coupling
+
+3. **What's constructor injection vs property injection?**
+   - Constructor: Required dependencies, explicit
+   - Property: Optional dependencies, implicit
+
+4. **How do you handle circular dependencies?**
+   - Refactor to use interfaces
+   - Use Lazy<T> for delayed resolution
+   - Consider if design needs redesign
 
 ---
 
 ### 9. Access Modifiers
 
-C# has five access modifiers defining visibility:
+Access modifiers control **visibility** of types and members. This is crucial for encapsulation and API design.
 
-| Modifier | Same Assembly | Derived Class | Same Class |
-|----------|---------------|---------------|------------|
-| `public` | ✅ | ✅ | ✅ |
-| `private` | ❌ | ❌ | ✅ |
-| `protected` | ❌ | ✅ | ✅ |
-| `internal` | ✅ | ❌ | ✅ |
-| `protected internal` | ✅ | ✅ | ❌ |
-| `private protected` | ✅ (if same type) | ✅ (if derived) | ✅ |
+**All Access Modifiers in C#:**
 
-**Real Example from tai-portal:**
+| Modifier | Same Assembly | Derived Class (Same Asm) | Derived Class (Other Asm) | Same Class |
+|----------|---------------|---------------------------|---------------------------|-------------|
+| `public` | ✅ | ✅ | ✅ | ✅ |
+| `private` | ❌ | ❌ | ❌ | ✅ |
+| `protected` | ❌ | ✅ | ✅ | ✅ |
+| `internal` | ✅ | ❌ | ❌ | ✅ |
+| `protected internal` | ✅ | ✅ | ✅ | ❌ |
+| `private protected` | ✅ | ✅ | ❌ | ✅ |
+
+**Visual Diagram:**
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        MyAssembly.dll                               │
+│  ┌──────────────────────────────────────────────────────────────┐ │
+│  │ class MyClass                                                │ │
+│  │   public     → accessible everywhere                          │ │
+│  │   private    → only in MyClass                                │ │
+│  │   protected  → MyClass + derived classes in THIS assembly    │ │
+│  │   internal   → anywhere in THIS assembly                     │ │
+│  │   protected internal → protected OR internal                │ │
+│  │   private protected → protected AND internal                │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Real Examples from tai-portal:**
 
 ```csharp
 // libs/core/domain/Entities/ApplicationUser.cs
 
-// protected - accessible to derived classes
-protected ApplicationUser() { }  // EF Core requirement - not public
+// protected - accessible to derived classes (IdentityUser is base)
+protected ApplicationUser() { }  // EF Core requirement - can't be public
 
-// public - accessible everywhere
+// public - accessible everywhere (API surface)
 public TenantId TenantId { get; init; }
 
 // private - only within ApplicationUser
 private readonly List<IDomainEvent> _domainEvents = new();
+
+// internal - same assembly only
+internal static class UserConstants {
+    internal const int MaxNameLength = 100;
+}
 ```
 
-**Best Practice:**
-- Default to `private`, increase visibility only when needed
-- Use `internal` for assembly-level implementation details
-- `protected` for extensibility points in base classes
+**When to Use Each:**
+
+```csharp
+// PRIVATE - Default for implementation details
+class OrderService {
+    private readonly IOrderRepository _repository;  // Internal implementation
+    private int _internalCounter;  // Helper field
+    
+    private void ValidateOrder(Order order) { }  // Private helper
+}
+
+// PROTECTED - For extensibility points
+abstract class BaseController {
+    protected abstract void OnActionExecuting();  // For subclasses to override
+    
+    protected void Log(string message) { }  // For subclasses to use
+}
+
+// INTERNAL - For assembly-level implementation
+internal class DatabaseMigrator { }  // Not exposed outside assembly
+internal static class Constants { }  // Shared within assembly
+
+// PUBLIC - For API surface / contracts
+public interface IUserService { }  // Public contracts
+public class UserDto { }  // Public DTOs
+```
+
+**Common Interview Questions:**
+
+1. **What is the default access modifier for a class?**
+   - Class: `internal` (in top-level)
+   - Class member: `private`
+
+2. **What is the difference between `protected internal` and `private protected`?**
+   - `protected internal`: Accessible if protected OR internal (union)
+   - `private protected`: Accessible if protected AND internal (intersection)
+
+3. **Why is encapsulation important?**
+   - Hides implementation details
+   - Allows internal changes without breaking users
+   - Reduces coupling
+   - Makes testing easier
+
+**Anti-Patterns to Avoid:**
+
+```csharp
+// BAD: Public fields
+public class User {
+    public string Name;  // Can't validate, can't notify changes
+}
+
+// GOOD: Private with property
+public class User {
+    private string _name;
+    public string Name {
+        get => _name;
+        init {
+            if (string.IsNullOrWhiteSpace(value))
+                throw new ArgumentException("Name required");
+            _name = value;
+        }
+    }
+}
+
+// BAD: Exposing internal implementation
+public class UserService {
+    public SqlConnection _connection;  // Never!
+}
+
+// GOOD: Abstract to implementation
+public interface IUserService { }
+public class UserService : IUserService { }  // Implementation hidden
+```
 
 ---
 
 ### 10. Generics
 
-Generics provide **compile-time type safety** without runtime overhead.
+Generics provide **compile-time type safety** without boxing/unboxing overhead. They let you write code that works with any type while still being strongly typed.
+
+**Without Generics (The Problem):**
+
+```csharp
+// Old way: Object-based (no type safety, boxing overhead)
+public class Box {
+    private object _value;
+    public void Set(object value) => _value = value;
+    public object Get() => _value;
+}
+
+var box = new Box();
+box.Set(42);  // BOXING - int to object
+int value = (int)box.Get();  // UNBOXING - object to int
+
+// What if someone does this?
+box.Set("hello");
+int bad = (int)box.Get();  // Runtime exception!
+```
+
+**With Generics (The Solution):**
+
+```csharp
+// Generic class
+public class Box<T> {
+    private T _value;
+    public void Set(T value) => _value = value;
+    public T Get() => _value;
+}
+
+var intBox = new Box<int>();
+intBox.Set(42);  // No boxing!
+int value = intBox.Get();  // No casting, compile-time safe!
+
+var stringBox = new Box<string>();
+stringBox.Set("hello");  // Type-safe!
+```
 
 **Generic Method:**
+
 ```csharp
 public T FindById<T>(Guid id) where T : class, IEntity {
-  return _context.Set<T>().Find(id);
+    return _context.Set<T>().Find(id);
+}
+
+// Usage
+var user = FindById<ApplicationUser>(userId);
+var privilege = FindById<Privilege>(privilegeId);
+```
+
+**Generic Constraints (`where`):**
+
+```csharp
+// Reference type constraint
+public void Process<T>(T item) where T : class { }
+
+// Value type constraint
+public T? FindOrDefault<T>(T?[] array) where T : struct {
+    foreach (var item in array) if (item.HasValue) return item;
+    return null;
+}
+
+// Parameterless constructor
+public T CreateInstance<T>() where T : new() {
+    return new T();
+}
+
+// Interface constraint
+public async Task<List<T>> GetItemsAsync<T>(DbContext context) where T : class {
+    return await context.Set<T>().ToListAsync();
+}
+
+// Base class constraint
+public void Sort<T>(List<T> list) where T : IComparable<T> {
+    list.Sort();
+}
+
+// Combined constraints
+public T Create<T>() where T : class, new(), IInitiable {
+    var instance = new T();
+    instance.Initialize();
+    return instance;
 }
 ```
 
-**Generic Constraint (`where`):**
-- `where T : class` — reference type
-- `where T : struct` — value type
-- `where T : new()` — parameterless constructor
-- `where T : IEntity` — implements interface
-- `where T : BaseClass` — derives from class
-
-**Real Example — Generic Repository Pattern:**
+**Real Examples from tai-portal:**
 
 ```csharp
 // libs/core/infrastructure/Persistence/PortalDbContext.cs
 public class PortalDbContext : DbContext {
-  // DbSet is generic - type-safe table access
-  public DbSet<ApplicationUser> Users => Set<ApplicationUser>();
-  public DbSet<Privilege> Privileges => Set<Privilege>();
-  public DbSet<Tenant> Tenants => Set<Tenant>();
+    // DbSet is generic - type-safe table access
+    public DbSet<ApplicationUser> Users => Set<ApplicationUser>();
+    public DbSet<Privilege> Privileges => Set<Privilege>();
+    public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+}
+
+// Generic Value Object
+public readonly record struct TenantId {
+    public Guid Value { get; }
+    public TenantId(Guid value) => Value = value;
+}
+
+public readonly record struct PrivilegeId {
+    public Guid Value { get; }
+    public PrivilegeId(Guid value) => Value = value;
 }
 ```
 
 **Covariance and Contravariance (C# 4+):**
-```csharp
-// Covariance (out) - can return derived where base expected
-IEnumerable<Derived> derived = ...;
-IEnumerable<Base> base = derived;  // IEnumerable is covariant
 
-// Contravariance (in) - can pass base where derived expected
-Action<Base> baseAction = ...;
-Action<Derived> derivedAction = baseAction;  // Action is contravariant
+```csharp
+// COVARIANCE (out) - Can return derived where base expected
+// Only works with interfaces and delegates, and only for REFERENCE types
+IEnumerable<Derived> derived = new List<Derived>();
+IEnumerable<Base> base = derived;  // WORKS! IEnumerable<T> is covariant
+
+// CONTRAVARIANCE (in) - Can pass base where derived expected  
+// Only works with delegates
+Action<Base> baseAction = (base) => Console.WriteLine(base);
+Action<Derived> derivedAction = baseAction;  // WORKS! Action<T> is contravariant
+
+// IMPORTANT: Arrays are NOT safely covariant
+Derived[] derivedArray = new Derived[10];
+Base[] baseArray = derivedArray;  // Compiles but RUNTIME exception!
+baseArray[0] = new Base();  // ArrayTypeMismatchException!
 ```
+
+**Generic Delegates:**
+
+```csharp
+// Func<T, TResult> - returns TResult
+Func<int, string> intToString = (i) => i.ToString();
+string result = intToString(42);  // "42"
+
+// Predicate<T> - returns bool
+Predicate<string> isLong = (s) => s.Length > 10;
+bool check = isLong("Hello World");  // true
+
+// Action<T> - returns void
+Action<string> log = (msg) => Console.WriteLine(msg);
+log("Hello");
+
+// Custom generic delegate
+public delegate T Factory<out T>();  // Covariant return
+```
+
+**Generic Interfaces:**
+
+```csharp
+// IEquatable<T> - for value equality
+public record Money(decimal Amount, string Currency) : IEquatable<Money> {
+    public bool Equals(Money? other) => 
+        other is not null && Amount == other.Amount && Currency == other.Currency;
+}
+
+// IComparable<T> - for sorting
+public class Person : IComparable<Person> {
+    public string Name { get; }
+    public int CompareTo(Person? other) => 
+        other is null ? 1 : Name.CompareTo(other.Name);
+}
+
+// IRepository<T> - common pattern
+public interface IRepository<T> where T : class {
+    Task<T?> GetByIdAsync(Guid id);
+    Task<IEnumerable<T>> GetAllAsync();
+    Task AddAsync(T entity);
+}
+```
+
+**Common Interview Questions:**
+
+1. **What's the difference between `IEnumerable<T>` and `IList<T>`?**
+   - `IEnumerable<T>`: Read-only enumeration, deferred execution
+   - `IList<T>`: Index-based access, can modify collection
+
+2. **What are generic constraints?**
+   - `class`: Reference type only
+   - `struct`: Value type only
+   - `new()`: Has parameterless constructor
+   - Interface/base class: Must implement/inherit
+
+3. **How do generics improve performance?**
+   - No boxing/unboxing for value types
+   - No runtime type checking
+   - Single implementation, multiple types
+
+4. **What is covariance/contravariance?**
+   - Covariance: `IEnumerable<Derived>` → `IEnumerable<Base>` (out)
+   - Contravariance: `Action<Base>` → `Action<Derived>` (in)
 
 ---
 
 ### 11. Exception Handling
 
-**Best Practices:**
-1. Don't catch exceptions you can't handle
-2. Use specific exception types, not `Exception`
-3. Always use `finally` for cleanup
-4. Throw specific exceptions with meaningful messages
+Exceptions represent **unexpected errors** that disrupt normal program flow. Proper handling is critical for robustness and user experience.
+
+**The Golden Rules:**
+
+1. **Don't catch what you can't handle** — Let exceptions bubble up to code that can
+2. **Catch specific exceptions** — Never catch `Exception` unless re-throwing
+3. **Clean up in finally** — Use `using` or `finally` for resources
+4. **Throw specific exceptions** — Help callers understand what went wrong
 
 **Real Example from tai-portal:**
 
 ```csharp
 // libs/core/infrastructure/Persistence/Services/PrivilegeService.cs
-public async Task<PrivilegeDto> UpdatePrivilegeAsync(...) {
-  var privilege = await _context.Privileges
-    .FirstOrDefaultAsync(p => p.Id == new PrivilegeId(id), cancellationToken);
+public async Task<PrivilegeDto> UpdatePrivilegeAsync(
+    Guid id, string description, RiskLevel riskLevel, 
+    bool isActive, JitSettings jitSettings, uint rowVersion,
+    CancellationToken cancellationToken) {
+    
+    var privilege = await _context.Privileges
+        .FirstOrDefaultAsync(p => p.Id == new PrivilegeId(id), cancellationToken);
 
-  if (privilege == null) 
-    throw new KeyNotFoundException($"Privilege with ID {id} not found.");  // Specific
+    // Specific exception with meaningful message
+    if (privilege == null) 
+        throw new KeyNotFoundException($"Privilege with ID {id} not found.");
 
-  if (privilege.RowVersion != rowVersion) {
-    throw new DbUpdateConcurrencyException("Concurrency conflict detected.");
-  }
+    // Concurrency handling
+    if (privilege.RowVersion != rowVersion) {
+        throw new DbUpdateConcurrencyException("Concurrency conflict detected.");
+    }
 
-  // ... update logic
-  
-  await _context.SaveChangesAsync(cancellationToken);
-  
-  // Force reload for latest RowVersion
-  await _context.Entry(privilege).ReloadAsync(cancellationToken);
+    // Business logic
+    privilege.UpdateMetadata(description, jitSettings);
+    privilege.SetRiskLevel(riskLevel);
+    if (isActive) privilege.Activate(); 
+    else privilege.Deactivate();
+
+    await _context.SaveChangesAsync(cancellationToken);
+    
+    // Force reload to get the latest database-generated RowVersion (xmin)
+    await _context.Entry(privilege).ReloadAsync(cancellationToken);
+
+    InvalidateCache(id);
+
+    return new PrivilegeDto(
+        privilege.Id.Value, privilege.Name, privilege.Description,
+        privilege.Module, privilege.RiskLevel, privilege.IsActive,
+        privilege.RowVersion, privilege.JitSettings);
+}
+```
+
+**Exception Hierarchy:**
+
+```
+SystemException (programmatic)
+├── ArgumentException
+│   ├── ArgumentNullException
+│   └── ArgumentOutOfRangeException
+├── InvalidOperationException
+├── NotImplementedException
+├── NullReferenceException (avoid!)
+├── DivideByZeroException
+└── TimeoutException
+
+ApplicationException (business)
+├── KeyNotFoundException
+├── UnauthorizedAccessException
+├── InvalidOperationException
+└── Custom exceptions...
+```
+
+**Common Patterns:**
+
+```csharp
+// Pattern 1: Guard clause (fail fast)
+public void Process(User user) {
+    if (user == null) 
+        throw new ArgumentNullException(nameof(user));
+    if (!user.IsActive)
+        throw new InvalidOperationException("User is not active");
+    // Proceed with processing
+}
+
+// Pattern 2: Try-parse
+public bool TryParse(string input, out int result) {
+    result = 0;
+    if (int.TryParse(input, out var parsed)) {
+        result = parsed;
+        return true;
+    }
+    return false;
+}
+
+// Pattern 3: Result type (functional approach)
+public record Result<T>(T? Value, string? Error);
+public Result<User> GetUser(Guid id) {
+    var user = _context.Users.Find(id);
+    return user is null 
+        ? new Result<User>(null, "User not found")
+        : new Result<User>(user, null);
+}
+
+// Pattern 4: Exception translation
+try {
+    await _context.SaveChangesAsync();
+}
+catch (DbUpdateException ex) {
+    // Translate to meaningful exception
+    throw new BusinessException("Failed to save user", ex);
+}
+```
+
+**Resource Cleanup:**
+
+```csharp
+// Using statement (preferred)
+public async Task<byte[]> ReadFileAsync(string path) {
+    using var stream = File.OpenRead(path);
+    return await stream.ReadToEndAsync();
+}
+
+// Explicit finally (when using statement not possible)
+Stream? stream = null;
+try {
+    stream = File.OpenRead(path);
+    return await stream.ReadToEndAsync();
+}
+finally {
+    stream?.Dispose();
+}
+
+// IAsyncDisposable (C# 8+)
+public async Task ProcessAsync() {
+    await using var resource = await CreateResourceAsync();
+    // Use resource
 }
 ```
 
@@ -904,41 +1749,96 @@ public async Task<PrivilegeDto> UpdatePrivilegeAsync(...) {
 ```csharp
 // libs/core/domain/Exceptions/ConcurrencyException.cs
 public class ConcurrencyException : Exception {
-  public ConcurrencyException(string message) : base(message) { }
-  public ConcurrencyException(string message, Exception inner) : base(message, inner) { }
+    public ConcurrencyException() { }
+    public ConcurrencyException(string message) : base(message) { }
+    public ConcurrencyException(string message, Exception inner) : base(message, inner) { }
+}
+
+// Domain-specific exception
+public class InsufficientPrivilegesException : Exception {
+    public string UserId { get; }
+    public string RequiredPrivilege { get; }
+    
+    public InsufficientPrivilegesException(string userId, string required)
+        : base($"User {userId} lacks privilege '{required}'") {
+        UserId = userId;
+        RequiredPrivilege = required;
+    }
 }
 ```
 
-**Try-Catch-Finally Pattern:**
+**Anti-Patterns to Avoid:**
+
 ```csharp
+// BAD: Swallowing exceptions
 try {
-  var result = await riskyOperation();
+    await RiskyOperation();
 }
-catch (KeyNotFoundException ex) {
-  logger.LogWarning(ex, "Entity not found");
-  return NotFound();
+catch (Exception) {
+    // Silent failure - bugs hide!
 }
-catch (DbUpdateConcurrencyException ex) {
-  logger.LogError(ex, "Concurrency conflict");
-  return Conflict();
+
+// BAD: Catching Exception without re-throwing
+catch (Exception ex) {
+    Log(ex);
+    // What now? Caller doesn't know something went wrong!
 }
-finally {
-  // Always runs - cleanup
-  disposable.Dispose();
+
+// BAD: throw ex; - loses stack trace
+catch (Exception ex) {
+    Log(ex);
+    throw ex;  // Stack trace resets here!
+}
+
+// GOOD: throw; - preserves original
+catch (Exception ex) {
+    Log(ex);
+    throw;  // Original stack trace maintained
+}
+
+// GOOD: Wrap with context
+catch (Exception ex) {
+    throw new ServiceException("Failed to process user", ex);
 }
 ```
 
-**Don't Do This:**
+**Global Exception Handling:**
+
 ```csharp
-// BAD - catches everything, hides bugs
-try { ... }
-catch (Exception) { /* ignore */ }
+// Program.cs
+var app = builder.Build();
 
-// GOOD - catch specific, let unknown propagate
-try { ... }
-catch (SpecificException ex) { handle(ex); }
-throw;  // re-throw unknown
+// Add exception handling middleware
+app.UseExceptionHandler(errorApp => {
+    errorApp.Run(async context => {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "text/html";
+        await context.Response.WriteAsync("An unexpected error occurred.");
+    });
+});
+
+// Or use exception filter in Web API
+[ExceptionFilter]
+public class ProductsController : ControllerBase { }
 ```
+
+**Common Interview Questions:**
+
+1. **What's the difference between `throw` and `throw ex`?**
+   - `throw` preserves stack trace
+   - `throw ex` resets stack trace
+
+2. **When should you create custom exceptions?**
+   - When domain-specific errors need handling
+   - When you need additional context (properties)
+
+3. **What is a try-finally block?**
+   - Always executes, even if exception thrown
+   - Use for cleanup (close files, release locks)
+
+4. **How do you handle exceptions in async code?**
+   - Same as sync, but use `await`
+   - Don't catch just to log and re-throw
 
 ---
 
