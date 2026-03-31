@@ -8,7 +8,7 @@ Canonical reference notes for technical interview preparation. Built from the ta
 | Topic | Difficulty | Status | Description |
 |-------|------------|--------|-------------|
 | [[CSharp-Fundamentals]] | L1-L3 | 📝 In Progress | C# language features, .NET fundamentals |
-| [[Data-Structures-Algorithms]] | L1-L3 | ⏳ Not Started | Arrays, Lists, Trees, Graphs, Big-O |
+| [[Data-Structures-Algorithms]] | L1-L3 | ✅ Complete | Arrays, Lists, Trees, Graphs, Big-O |
 | [[Design-Patterns]] | L1-L3 | ⏳ Not Started | Creational, Structural, Behavioral patterns |
 
 ### Stage 2: Backend
