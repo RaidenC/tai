@@ -11,6 +11,7 @@ using Tai.Portal.Api;
 
 using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Application.Services;
+using Tai.Portal.Api.Services;
 using Tai.Portal.Core.Application.UseCases.Onboarding;
 using Tai.Portal.Core.Infrastructure.Identity;
 using Tai.Portal.Core.Infrastructure.Middleware;
@@ -55,6 +56,9 @@ builder.Services.AddMediatR(cfg => {
   cfg.RegisterServicesFromAssembly(typeof(PortalDbContext).Assembly);
   cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationPipelineBehavior<,>));
 });
+
+// Register SignalR-based real-time notifier
+builder.Services.AddSingleton<IRealTimeNotifier, SignalRRealTimeNotifier>();
 
 // Configure Npgsql DataSource with dynamic JSON support for JSONB columns
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
