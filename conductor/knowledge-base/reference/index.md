@@ -15,7 +15,7 @@ Canonical reference notes for technical interview preparation. Built from the ta
 | Topic | Difficulty | Status | Description |
 |-------|------------|--------|-------------|
 | [[EFCore-SQL]] | L1-L3 | ✅ Complete | Entity Framework Core, migrations, queries |
-| [[Authentication-Authorization]] | L1-L3 | ⏳ Not Started | OIDC, OAuth2, DPoP, Zero Trust |
+| [[Authentication-Authorization]] | L1-L3 | ✅ Complete | OIDC, OAuth2, DPoP, Zero Trust |
 
 ### Stage 3: Frontend
 | Topic | Difficulty | Status | Description |
