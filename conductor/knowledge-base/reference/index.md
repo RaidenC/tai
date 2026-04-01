@@ -9,12 +9,12 @@ Canonical reference notes for technical interview preparation. Built from the ta
 |-------|------------|--------|-------------|
 | [[CSharp-Fundamentals]] | L1-L3 | 📝 In Progress | C# language features, .NET fundamentals |
 | [[Data-Structures-Algorithms]] | L1-L3 | ✅ Complete | Arrays, Lists, Trees, Graphs, Big-O |
-| [[Design-Patterns]] | L1-L3 | ⏳ Not Started | Creational, Structural, Behavioral patterns |
+| [[Design-Patterns]] | L1-L3 | ✅ Complete | Creational, Structural, Behavioral patterns |
 
 ### Stage 2: Backend
 | Topic | Difficulty | Status | Description |
 |-------|------------|--------|-------------|
-| [[EFCore-SQL]] | L1-L3 | ⏳ Not Started | Entity Framework Core, migrations, queries |
+| [[EFCore-SQL]] | L1-L3 | ✅ Complete | Entity Framework Core, migrations, queries |
 | [[Authentication-Authorization]] | L1-L3 | ⏳ Not Started | OIDC, OAuth2, DPoP, Zero Trust |
 
 ### Stage 3: Frontend
@@ -27,6 +27,8 @@ Canonical reference notes for technical interview preparation. Built from the ta
 ### Stage 4: System
 | Topic | Difficulty | Status | Description |
 |-------|------------|--------|-------------|
+| [[System-Design]] | L2-Staff | ✅ Complete | AI-Native architecture, Outbox, Sagas, Resilience |
+| [[OpenSearch]] | L2-L3 | ✅ Complete | Inverted Index, Sharding, Search Architecture |
 | [[Security-CSP-DPoP]] | L1-L3 | ⏳ Not Started | CSP, DPoP, Zero Trust, security patterns |
 | [[Testing]] | L1-L3 | ⏳ Not Started | Unit, Integration, E2E testing patterns |
 | [[Nx-Monorepo]] | L1-L3 | ⏳ Not Started | Nx workspace, monorepo patterns |
