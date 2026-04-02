@@ -22,7 +22,7 @@ Canonical reference notes for technical interview preparation. Built from the ta
 |-------|------------|--------|-------------|
 | [[Angular-Core]] | L1-L3 | ✅ Complete | DI, Signals, Standalone, Change Detection |
 | [[RxJS-Signals]] | L1-L3 | ✅ Complete | Observables, Operators, Signals, toSignal() bridge, Store pattern |
-| [[SignalR-Realtime]] | L1-L3 | ⏳ Not Started | Real-time communication |
+| [[SignalR-Realtime]] | L1-L3 | ✅ Complete | Hubs, Groups, Claim Check, BFF auth, NgZone optimization |
 
 ### Stage 4: System
 | Topic | Difficulty | Status | Description |
