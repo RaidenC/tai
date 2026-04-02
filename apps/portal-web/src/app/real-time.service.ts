@@ -1,4 +1,5 @@
 import { Injectable, inject, OnDestroy, NgZone } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from './auth.service';
@@ -29,7 +30,20 @@ export class RealTimeService implements OnDestroy {
 
   public readonly connectionStatus$ = this._connectionStatus$.asObservable();
 
+  /**
+   * Backward-compatible observable for security events.
+   * Now backed by NotificationSignalStore but exposes the same API.
+   * Components can subscribe to this, or use store.eventBuffer/store.latestEvent directly.
+   */
+  private readonly _securityEvents$ = new BehaviorSubject<AuditLogDetails | null>(null);
+  public readonly securityEvents$ = this._securityEvents$.asObservable();
+
   constructor() {
+    // Subscribe to store's latestEvent to keep backward-compatible observable in sync
+    toObservable(this.store.latestEvent).subscribe(event => {
+      this._securityEvents$.next(event);
+    });
+
     // Automatically manage connection based on authentication state
     this.authService.isAuthenticated$.subscribe(isAuthenticated => {
       if (isAuthenticated) {

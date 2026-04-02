@@ -65,4 +65,17 @@ describe('NotificationSignalStore', () => {
       expect(store.eventBuffer().length).toBe(0);
     });
   });
+
+  describe('latestEvent', () => {
+    it('should return null when buffer is empty', () => {
+      expect(store.latestEvent()).toBeNull();
+    });
+
+    it('should return the most recent event', () => {
+      store.addEvent({ ...mockEvent, id: 'evt-001' });
+      store.addEvent({ ...mockEvent, id: 'evt-002' });
+      store.addEvent({ ...mockEvent, id: 'evt-003' });
+      expect(store.latestEvent()?.id).toBe('evt-003');
+    });
+  });
 });
