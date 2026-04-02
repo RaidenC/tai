@@ -7,7 +7,7 @@ Canonical reference notes for technical interview preparation. Built from the ta
 ### Stage 1: Foundation
 | Topic | Difficulty | Status | Description |
 |-------|------------|--------|-------------|
-| [[CSharp-Fundamentals]] | L1-L3 | 📝 In Progress | C# language features, .NET fundamentals |
+| [[CSharp-Fundamentals]] | L1-L3 | ✅ Complete | C# language features, .NET fundamentals |
 | [[Data-Structures-Algorithms]] | L1-L3 | ✅ Complete | Arrays, Lists, Trees, Graphs, Big-O |
 | [[Design-Patterns]] | L1-L3 | ✅ Complete | Creational, Structural, Behavioral patterns |
 
@@ -20,8 +20,8 @@ Canonical reference notes for technical interview preparation. Built from the ta
 ### Stage 3: Frontend
 | Topic | Difficulty | Status | Description |
 |-------|------------|--------|-------------|
-| [[Angular-Core]] | L1-L3 | ⏳ Not Started | DI, Lifecycle, Components, Modules |
-| [[RxJS-Signals]] | L1-L3 | ⏳ Not Started | Reactive programming in Angular |
+| [[Angular-Core]] | L1-L3 | ✅ Complete | DI, Signals, Standalone, Change Detection |
+| [[RxJS-Signals]] | L1-L3 | ✅ Complete | Observables, Operators, Signals, toSignal() bridge, Store pattern |
 | [[SignalR-Realtime]] | L1-L3 | ⏳ Not Started | Real-time communication |
 
 ### Stage 4: System
@@ -29,7 +29,7 @@ Canonical reference notes for technical interview preparation. Built from the ta
 |-------|------------|--------|-------------|
 | [[System-Design]] | L2-Staff | ✅ Complete | AI-Native architecture, Outbox, Sagas, Resilience |
 | [[OpenSearch]] | L2-L3 | ✅ Complete | Inverted Index, Sharding, Search Architecture |
-| [[Security-CSP-DPoP]] | L1-L3 | ⏳ Not Started | CSP, DPoP, Zero Trust, security patterns |
+| [[Security-CSP-DPoP]] | L1-L3 | ✅ Complete | CSP, DPoP, Zero Trust, security patterns |
 | [[Testing]] | L1-L3 | ⏳ Not Started | Unit, Integration, E2E testing patterns |
 | [[Nx-Monorepo]] | L1-L3 | ⏳ Not Started | Nx workspace, monorepo patterns |
 
@@ -66,4 +66,4 @@ When adding new notes:
 
 ---
 
-*Last updated: 2026-03-30*
+*Last updated: 2026-04-01*
