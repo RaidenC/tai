@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { AuthService } from './auth.service';
 import { BehaviorSubject } from 'rxjs';
 import { SecurityEventPayload, AuditLogDetails } from './models/security-event.model';
+import { NotificationSignalStore } from './store/notification-signal.store';
 
 /**
  * RealTimeService
@@ -21,18 +22,12 @@ export class RealTimeService implements OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly http = inject(HttpClient);
   private readonly ngZone = inject(NgZone);
+  private readonly store = inject(NotificationSignalStore);
 
   private hubConnection: HubConnection | null = null;
   private readonly _connectionStatus$ = new BehaviorSubject<HubConnectionState>(HubConnectionState.Disconnected);
 
   public readonly connectionStatus$ = this._connectionStatus$.asObservable();
-
-  /**
-   * Subject for security events - components can subscribe to get full event details.
-   * Uses Claim Check: receives event ID from SignalR, fetches full details via REST.
-   */
-  private readonly _securityEvents$ = new BehaviorSubject<AuditLogDetails | null>(null);
-  public readonly securityEvents$ = this._securityEvents$.asObservable();
 
   constructor() {
     // Automatically manage connection based on authentication state
@@ -120,7 +115,7 @@ export class RealTimeService implements OnDestroy {
       next: (details) => {
         // Emit the full details inside Angular zone to trigger change detection
         this.ngZone.run(() => {
-          this._securityEvents$.next(details);
+          this.store.addEvent(details);
         });
       },
       error: (err) => {
