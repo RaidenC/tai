@@ -1,9 +1,11 @@
 import { Injectable, inject, OnDestroy, NgZone } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from './auth.service';
 import { BehaviorSubject } from 'rxjs';
 import { SecurityEventPayload, AuditLogDetails } from './models/security-event.model';
+import { NotificationSignalStore } from './store/notification-signal.store';
 
 /**
  * RealTimeService
@@ -21,6 +23,7 @@ export class RealTimeService implements OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly http = inject(HttpClient);
   private readonly ngZone = inject(NgZone);
+  private readonly store = inject(NotificationSignalStore);
 
   private hubConnection: HubConnection | null = null;
   private readonly _connectionStatus$ = new BehaviorSubject<HubConnectionState>(HubConnectionState.Disconnected);
@@ -28,13 +31,19 @@ export class RealTimeService implements OnDestroy {
   public readonly connectionStatus$ = this._connectionStatus$.asObservable();
 
   /**
-   * Subject for security events - components can subscribe to get full event details.
-   * Uses Claim Check: receives event ID from SignalR, fetches full details via REST.
+   * Backward-compatible observable for security events.
+   * Now backed by NotificationSignalStore but exposes the same API.
+   * Components can subscribe to this, or use store.eventBuffer/store.latestEvent directly.
    */
   private readonly _securityEvents$ = new BehaviorSubject<AuditLogDetails | null>(null);
   public readonly securityEvents$ = this._securityEvents$.asObservable();
 
   constructor() {
+    // Subscribe to store's latestEvent to keep backward-compatible observable in sync
+    toObservable(this.store.latestEvent).subscribe(event => {
+      this._securityEvents$.next(event);
+    });
+
     // Automatically manage connection based on authentication state
     this.authService.isAuthenticated$.subscribe(isAuthenticated => {
       if (isAuthenticated) {
@@ -120,7 +129,7 @@ export class RealTimeService implements OnDestroy {
       next: (details) => {
         // Emit the full details inside Angular zone to trigger change detection
         this.ngZone.run(() => {
-          this._securityEvents$.next(details);
+          this.store.addEvent(details);
         });
       },
       error: (err) => {
