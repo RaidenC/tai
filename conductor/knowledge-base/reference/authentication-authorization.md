@@ -1,7 +1,7 @@
 ---
 title: Authentication & Authorization
 difficulty: L1 | L2 | L3
-lastUpdated: 2026-03-31
+lastUpdated: 2026-04-03
 relatedTopics:
   - Security-CSP-DPoP
   - EFCore-SQL
@@ -56,6 +56,66 @@ Authentication (AuthN) proves *who you are*; Authorization (AuthZ) proves *what 
 - **The Gateway's Role in SSO:** The API Gateway (`portal-gateway`) acts as the traffic cop for this entire flow:
   - **Internal Apps (First-Party):** Often live *behind* the Gateway. The Gateway can act as a true Backend-for-Frontend (BFF), holding the Access Token securely in memory and only issuing a generic session cookie to the browser. It then seamlessly injects the Access Token into API calls, hiding the complexity entirely from the internal UI.
   - **External Apps (Third-Party / Federated Identity):** This is exactly how "Log in with Google" works. If a partner company builds an app, they can add a "Log in with TAI Portal" button. When clicked, the user is redirected to our OpenIddict server. If they are already logged into our internal apps, the SSO cookie bypasses the password screen. OpenIddict shows a Consent Screen (e.g., "Partner App wants to know your email. Allow?"). Upon consent, OpenIddict issues an **ID Token** to the Partner App. The Partner App validates this token and creates its own local login session for the user, completely outsourcing password management to us.
+
+#### 6. Dual-Path Authentication — Why Both Cookie and DPoP
+- **What:** `tai-portal` uses two authentication mechanisms simultaneously: **BFF cookies** for WebSocket (SignalR) connections and **DPoP tokens** for REST API calls. The `NotificationHub` accepts both schemes via `[Authorize(AuthenticationSchemes = "OpenIddict,Identity.Application")]`.
+- **Why:** This is driven by technical constraints, not preference:
+  - **SignalR forces cookies:** The WebSocket upgrade is a single HTTP request initiated by the browser. JavaScript's WebSocket API does not support setting custom `Authorization` or `DPoP` headers on the upgrade handshake. The traditional workaround — `accessTokenFactory` putting the token in the query string (`?access_token=eyJ...`) — exposes tokens in server logs, proxy logs, and browser history. The BFF cookie (`withCredentials: true`) sidesteps this — the browser attaches the HttpOnly cookie automatically, and the token never touches JavaScript.
+  - **REST API calls need DPoP because cookies alone are insufficient:** A cookie proves "this request came from a browser that authenticated" but does not prove *which specific browser* or that the request hasn't been replayed from a different origin. DPoP signs the exact HTTP method + URL + timestamp with the client's non-exportable private key on every call. Even if an attacker intercepts the cookie (via CSRF or network sniffing), they cannot forge the DPoP proof.
+- **How:**
+
+| Channel | Auth Method | Why Not The Other? |
+|---------|------------|-------------------|
+| WebSocket (SignalR) | HttpOnly Cookie (BFF) | Cannot set custom headers on WebSocket upgrade |
+| REST API | DPoP + Bearer Token | Cookie alone lacks sender-constraint proof (FAPI 2.0) |
+
+- **When to use BFF pattern (cookie):**
+  - First-party browser apps that share the gateway's cookie domain
+  - WebSocket/SignalR connections where custom headers are impossible
+  - When you want to hide token complexity from the frontend entirely
+  - When maximum XSS resistance is required — JavaScript cannot read HttpOnly cookies
+
+- **When to use Direct SPA pattern (DPoP):**
+  - Third-party or cross-origin apps that don't share the gateway's domain
+  - When you need sender-constrained tokens with per-request proof of possession
+  - When the client is not a browser (mobile apps, CLI tools, M2M services)
+  - When FAPI 2.0 compliance requires cryptographic binding of each request
+
+- **Trade-offs:** Running both paths adds complexity — the backend must support two auth schemes, the `NotificationHub` must accept both, and developers must understand which path applies where. However, the alternative — using only cookies (no per-request proof) or only DPoP (impossible for WebSockets) — leaves either the real-time channel or the REST API with weaker security guarantees.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Browser as Angular Frontend
+    participant Gateway as YARP Gateway (BFF)
+    participant IdP as OpenIddict Identity
+    participant Hub as NotificationHub
+    participant API as REST API
+
+    Note over Browser,IdP: 1. Initial Authentication
+    Browser->>Browser: Generate DPoP KeyPair and PKCE challenge
+    Browser->>IdP: Authorization Code Flow with PKCE
+    IdP-->>Browser: Access Token with DPoP thumbprint in cnf claim
+    IdP-->>Gateway: Set-Cookie Identity.Application HttpOnly Secure SameSite=Strict
+    Gateway-->>Browser: Set-Cookie forwarded, scoped to Gateway domain
+
+    Note over Browser,API: 2. REST API Calls use DPoP Path
+    Browser->>Browser: Sign POST /api/users with DPoP private key
+    Browser->>Gateway: POST /api/users with DPoP header and Bearer token
+    Gateway->>Gateway: Inject X-Gateway-Secret
+    Gateway->>API: Forward with DPoP + Bearer + X-Gateway-Secret
+    API->>API: Validate JWT + Validate DPoP proof + Match cnf thumbprint
+    API-->>Browser: 200 OK
+
+    Note over Browser,Hub: 3. WebSocket uses Cookie Path
+    Browser->>Gateway: WebSocket Upgrade /hubs/notifications with cookie
+    Note right of Browser: Cannot set custom headers on WS upgrade
+    Gateway->>Gateway: Inject X-Gateway-Secret
+    Gateway->>Hub: Forward WebSocket with cookie + X-Gateway-Secret
+    Hub->>Hub: Validate Identity.Application cookie scheme
+    Hub->>Hub: Read tenant_id claim from cookie identity
+    Hub-->>Browser: WebSocket Connected
+```
 
 ```mermaid
 sequenceDiagram
@@ -305,6 +365,22 @@ The **BFF Pattern** (like our YARP Gateway) solves this by moving the OAuth hand
 
 ---
 
+### L3: BFF Cookie vs DPoP — When Do You Use Each?
+**Difficulty:** L3 (Senior)
+
+**Question:** In `tai-portal`, the `NotificationHub` accepts both cookie and JWT authentication schemes, while REST API controllers use DPoP tokens. Why does the architecture use two different authentication mechanisms, and when would you choose one over the other?
+
+**Answer:** The dual-path design is driven by a **technical constraint**: JavaScript's WebSocket API does not support setting custom HTTP headers (like `Authorization` or `DPoP`) on the upgrade handshake. This means SignalR connections *cannot* use DPoP — the browser literally has no API to attach the proof. The BFF cookie pattern solves this: the gateway holds the real tokens, the browser sends an `HttpOnly, Secure, SameSite=Strict` session cookie automatically on the WebSocket upgrade, and JavaScript never sees the token.
+
+REST API calls use DPoP because cookies alone are insufficient for financial-grade security (FAPI 2.0). A cookie proves "an authenticated browser sent this request" but doesn't provide **sender-constraint** — it doesn't prove *which specific client device* or that the request hasn't been replayed against a different endpoint. DPoP signs the exact HTTP method, URL, and timestamp with the client's non-exportable private key, providing per-request cryptographic proof.
+
+**Decision framework:**
+- Use **BFF cookies** for: WebSocket connections, first-party apps on the same domain, scenarios needing maximum XSS resistance
+- Use **DPoP tokens** for: REST API calls requiring sender-constraint, third-party/cross-origin clients, non-browser clients (mobile, CLI, M2M)
+- Use **both** (tai-portal's approach) when your architecture has both REST and WebSocket channels that require different security properties
+
+---
+
 ### L3: Machine-to-Machine (M2M) Authentication
 **Difficulty:** L3 (Senior)
 
@@ -329,4 +405,4 @@ The worker authenticates directly with OpenIddict using its ID and Secret. Becau
 
 ---
 
-*Last updated: 2026-03-31*
+*Last updated: 2026-04-03*

@@ -1,15 +1,17 @@
 ---
 title: Data Structures & Algorithms
 difficulty: L1 | L2 | L3
-lastUpdated: 2026-03-31
+lastUpdated: 2026-04-04
 relatedTopics:
   - CSharp-Fundamentals
   - EFCore-SQL
+  - Design-Patterns
+  - System-Design
 ---
 
 ## TL;DR
 
-Data Structures and Algorithms (DSA) form the foundation of efficient software. Understanding Arrays, Lists, Hash Tables, and Trees is crucial for writing code that scales, while grasping Big-O notation allows you to predictably measure performance. In modern C# 14 and .NET 10, choosing the right structure (e.g., `Dictionary` vs `List`, or leveraging stack-allocated types and `Span<T>`) can eliminate garbage collection pressure and dramatically improve application latency.
+Data Structures and Algorithms (DSA) form the foundation of efficient software. This note covers classic structures (Arrays, Lists, Hash Tables, Trees, Stacks, Queues) and modern .NET additions (`FrozenDictionary`, `PriorityQueue`, `IAsyncEnumerable`, immutable collections) that are critical for 2026 senior-level interviews. Understanding Big-O notation, LINQ's hidden algorithmic complexity, and when to use `Span<T>` for zero-allocation parsing separates senior engineers from mid-levels in both interviews and production code.
 
 ## Deep Dive
 
@@ -96,8 +98,137 @@ for (int i = 0; i < numbers.Length; i++) {
 }
 ```
 
+#### 6. Stacks, Queues, and Linked Lists
+- **Explanation:** Linear data structures that differ in access patterns. Stacks are LIFO (Last-In-First-Out), Queues are FIFO (First-In-First-Out), and Linked Lists allow efficient insert/remove at any position.
+- **How it works:** `Stack<T>` uses an internal array (like `List<T>`) with a pointer to the top. `Queue<T>` uses a circular buffer with head/tail pointers. `LinkedList<T>` uses doubly-linked nodes where each node points to the previous and next node.
+- **Why / When to use:** Stacks for undo/redo, expression parsing, DFS traversal. Queues for BFS traversal, task scheduling, message processing. Linked Lists when you need frequent O(1) insert/remove at known positions (but you already have the node reference).
+- **Trade-offs:** Stacks and Queues offer O(1) push/pop and enqueue/dequeue. Linked Lists have O(1) insert/remove at a known node, but O(N) search (no index access) and poor CPU cache locality due to scattered heap allocations.
+```csharp
+// Stack: LIFO — undo history
+var undoStack = new Stack<string>();
+undoStack.Push("action1");
+undoStack.Push("action2");
+var lastAction = undoStack.Pop(); // "action2"
+
+// Queue: FIFO — background job processing
+var jobQueue = new Queue<WorkItem>();
+jobQueue.Enqueue(new WorkItem("send-email"));
+var next = jobQueue.Dequeue(); // processes in order
+
+// PriorityQueue: dequeue by priority, not insertion order
+var pq = new PriorityQueue<string, int>();
+pq.Enqueue("low-priority", 10);
+pq.Enqueue("critical", 1);
+var first = pq.Dequeue(); // "critical" (lowest priority value wins)
+```
+
+#### 7. Frozen & Immutable Collections (.NET 8+)
+- **Explanation:** `FrozenDictionary<TKey, TValue>` and `FrozenSet<T>` are read-only collections optimized at creation time for maximum read performance. `ImmutableDictionary<TKey, TValue>` provides structural sharing for lock-free concurrent reads with occasional writes.
+- **How it works:** `Frozen*` collections analyze the keys at creation time and generate an optimized hash function and bucket layout. The result is a read-only structure that is measurably faster than `Dictionary` for lookups. `Immutable*` collections use balanced trees with structural sharing — each "modification" creates a new tree that shares most nodes with the original.
+- **Why / When to use:** `Frozen*` for configuration, permission maps, route tables — data loaded once at startup and read millions of times. `Immutable*` when multiple threads read a shared collection and one thread occasionally "updates" it (each reader sees a consistent snapshot).
+- **Trade-offs:** `Frozen*` creation is expensive (O(N) with high constant factor), but reads are the fastest available. `Immutable*` modifications are O(log N) and allocate new nodes, so they're unsuitable for write-heavy workloads.
+```csharp
+// FrozenDictionary: build once at startup, read millions of times
+var permissions = new Dictionary<string, string[]> {
+    ["Admin"] = ["Portal.Users.Read", "Portal.Users.Create", "Portal.Users.Edit"],
+    ["Viewer"] = ["Portal.Users.Read"]
+}.ToFrozenDictionary(); // Optimized at creation time
+
+// Faster than Dictionary for lookups — ideal for hot paths
+if (permissions.TryGetValue(role, out var grants)) { /* ... */ }
+
+// FrozenSet: O(1) membership checks on static data
+var blockedIps = new[] { "10.0.0.1", "10.0.0.2" }.ToFrozenSet();
+if (blockedIps.Contains(clientIp)) { /* reject */ }
+
+// ImmutableDictionary: thread-safe structural sharing
+var config = ImmutableDictionary<string, string>.Empty;
+config = config.Add("key", "value"); // returns NEW dictionary, original unchanged
+```
+
+#### 8. `IAsyncEnumerable<T>` — Streaming Data
+- **Explanation:** The asynchronous counterpart to `IEnumerable<T>`. Allows yielding items one-at-a-time across async boundaries (network, database, file I/O).
+- **How it works:** The compiler generates a state machine (like `yield return`) but each `MoveNextAsync()` can await I/O. Combined with `await foreach`, items are streamed without buffering the entire result set.
+- **Why / When to use:** Streaming large database result sets, SSE (Server-Sent Events), gRPC server streaming, reading large files. Anywhere you'd use `IEnumerable<T>` but the data source is async.
+- **Trade-offs:** Slightly more complex error handling (cancellation tokens, disposal). Not useful for small collections where buffering into a `List<T>` is fine.
+```csharp
+// Streaming query results — never loads all rows into memory
+public async IAsyncEnumerable<UserDto> StreamUsersAsync(
+    [EnumeratorCancellation] CancellationToken ct = default)
+{
+    await foreach (var user in _db.Users.AsAsyncEnumerable().WithCancellation(ct))
+    {
+        yield return new UserDto(user.Id, user.Name, user.Email);
+    }
+}
+
+// Controller streams to client
+[HttpGet("users/stream")]
+public IAsyncEnumerable<UserDto> StreamUsers(CancellationToken ct)
+    => _userService.StreamUsersAsync(ct);
+```
+
+#### 9. LINQ Algorithmic Complexity — What Happens Under the Hood
+
+Knowing LINQ's internal complexity is critical for senior interviews. Many performance bugs come from using LINQ without understanding the cost:
+
+| LINQ Method | Time Complexity | Implementation |
+|------------|----------------|----------------|
+| `.Where()` | O(N) | Lazy enumeration, single pass |
+| `.Select()` | O(N) | Lazy enumeration, single pass |
+| `.First()` / `.FirstOrDefault()` | O(1) best, O(N) worst | Short-circuits on first match |
+| `.Any()` | O(1) best, O(N) worst | Short-circuits on first match |
+| `.Count()` | O(1) if `ICollection<T>`, O(N) otherwise | Checks for `.Count` property first |
+| `.OrderBy()` | O(N log N) | Stable IntroSort, creates buffer |
+| `.Distinct()` | O(N) | Internal `HashSet<T>` |
+| `.GroupBy()` | O(N) | Internal `Dictionary` of `List<T>` |
+| `.ToList()` | O(N) | Forces materialization, allocates array |
+| `.ToDictionary()` | O(N) | Forces materialization, builds hash table |
+| `.Contains()` on `List<T>` | O(N) | Linear scan |
+| `.Contains()` on `HashSet<T>` | O(1) | Hash lookup |
+
+**Common pitfall — repeated materialization:**
+```csharp
+// BAD: .Where() is lazy — this re-evaluates the filter on every call
+var filtered = users.Where(u => u.IsActive);
+var count = filtered.Count();      // O(N) — iterates once
+var first = filtered.First();      // O(N) — iterates AGAIN from the start
+var list = filtered.ToList();      // O(N) — iterates a THIRD time
+
+// GOOD: materialize once
+var filtered = users.Where(u => u.IsActive).ToList(); // O(N) once
+var count = filtered.Count;   // O(1) — property on List<T>
+var first = filtered[0];      // O(1) — index access
+```
+
 ### .NET 10 / C# 14 Context
+
 .NET 10 expands stack allocation capabilities and improves JIT "de-abstraction," making interface-based iteration (`IEnumerable`) as fast as concrete list iteration. C# 14 introduces implicit span conversions, making high-performance, zero-allocation memory handling (`Span<T>`) easier when working with underlying arrays.
+
+**Key .NET 10 / C# 14 features for data structures:**
+
+```csharp
+// 1. Implicit Span conversions (C# 14) — zero-copy slicing
+void ProcessChunk(ReadOnlySpan<byte> data) { /* ... */ }
+byte[] buffer = new byte[1024];
+ProcessChunk(buffer);          // implicit conversion, no copy
+ProcessChunk(buffer[10..100]); // implicit range slice, still zero-copy
+
+// 2. Collection expressions (C# 12+, expanded in 14)
+List<int> numbers = [1, 2, 3, 4, 5];            // sugar for new List<int> { ... }
+HashSet<string> tags = ["angular", "dotnet"];
+Dictionary<string, int> scores = new() { ["alice"] = 95, ["bob"] = 87 };
+
+// 3. params collections (C# 13+) — avoid array allocation
+void Log(params ReadOnlySpan<string> messages) { /* stack-allocated */ }
+Log("start", "processing", "done"); // no heap array created
+
+// 4. FrozenDictionary for hot-path lookups (.NET 8+, matured in 10)
+var routeMap = new Dictionary<string, Func<HttpContext, Task>> {
+    ["/api/users"] = HandleUsers,
+    ["/api/tenants"] = HandleTenants,
+}.ToFrozenDictionary(); // built once at startup, fastest possible reads
+```
 
 ### Real-World Examples (tai-portal & DocViewer)
 
@@ -307,38 +438,56 @@ public readonly record struct TenantId(Guid Value);
 
 ---
 
+### L3: FrozenDictionary vs Dictionary — When and Why
+**Difficulty:** L3 (Senior)
+
+**Question:** .NET 8 introduced `FrozenDictionary<TKey, TValue>`. When would you use it instead of a regular `Dictionary`, and what is the performance trade-off?
+
+**Answer:** `FrozenDictionary` is optimized for read-heavy, write-never scenarios. At creation time, it analyzes the key distribution and generates an optimized hash function and bucket layout tailored to the exact data set. This makes lookups measurably faster than `Dictionary` — benchmarks show 20-40% improvement on hot paths. The trade-off is that creation is expensive (higher constant factor than `Dictionary`) and the collection is permanently immutable. Use it for route tables, permission maps, feature flags, configuration — anything loaded once at startup and read millions of times per second. Don't use it for data that changes during the application's lifetime.
+
+---
+
+### L3: IAsyncEnumerable vs Task<List<T>> — Streaming Decisions
+**Difficulty:** L3 (Senior)
+
+**Question:** You have an API endpoint that returns 50,000 user records. Should you return `Task<List<UserDto>>` or `IAsyncEnumerable<UserDto>`? What are the trade-offs?
+
+**Answer:** `Task<List<UserDto>>` buffers all 50,000 records in memory before sending any response — high memory usage, high time-to-first-byte, but simple error handling (if the query fails, the client gets a clean error before any data is sent). `IAsyncEnumerable<UserDto>` streams records as they arrive from the database — low memory (O(1) per item), fast time-to-first-byte, but if an error occurs mid-stream, the client receives a partial response followed by a broken connection. For paginated APIs (which tai-portal uses), `Task<List<T>>` is correct because page sizes are bounded. For exports, reports, or SSE event streams, `IAsyncEnumerable<T>` is the right choice.
+
+---
+
+### L3: LINQ Hidden Complexity
+**Difficulty:** L3 (Senior)
+
+**Question:** A junior developer writes this code to check if any admin users exist: `var hasAdmin = users.Where(u => u.Role == "Admin").ToList().Count > 0;`. What's wrong with it, and how would you fix it?
+
+**Answer:** Three problems. First, `.ToList()` materializes every matching admin user into a `List<T>` — allocating memory for potentially thousands of objects when we only need a boolean. Second, `.Count > 0` iterates the entire list to count elements. Third, the fix is trivial: `var hasAdmin = users.Any(u => u.Role == "Admin");` — this short-circuits on the first match (O(1) best case), allocates nothing, and translates to `SELECT TOP 1` in EF Core instead of `SELECT *`. This is a common interview litmus test for understanding lazy evaluation vs. eager materialization.
+
+---
+
 ### L3: AI-Augmented Engineering & Algorithmic Refactoring
 **Difficulty:** L3 (Senior)
 
 **Question:** As an Agentic AI native software engineer, how do you leverage AI tools (like Copilot, Gemini CLI, or Cursor) to handle complex algorithmic bottlenecks or refactor legacy data structures in a massive `.NET` codebase?
 
-**Answer:** Instead of treating AI as a simple autocomplete, I use it as a high-level reasoning engine for Big-O analysis and structural refactoring. For example, if I find a legacy $O(N^2)$ bottleneck caused by nested `List.Contains()` checks inside a `foreach` loop, I prompt the AI to mathematically analyze the time complexity and propose a space-for-time trade-off. By providing the exact constraints (e.g., "Refactor this mapping logic in C# 14 using `Dictionary` for O(1) lookups and `Span<T>` for zero-allocation parsing"), the agent generates the boilerplate for the optimized data structures. I then rely on my senior engineering judgment to verify thread safety (e.g., swapping to `ConcurrentDictionary` if it's a shared state) and rigorously test the AI's output for edge cases.
+**Answer:** Instead of treating AI as a simple autocomplete, I use it as a high-level reasoning engine for Big-O analysis and structural refactoring. For example, if I find a legacy O(N^2) bottleneck caused by nested `List.Contains()` checks inside a `foreach` loop, I prompt the AI to mathematically analyze the time complexity and propose a space-for-time trade-off. By providing the exact constraints (e.g., "Refactor this mapping logic in C# 14 using `Dictionary` for O(1) lookups and `Span<T>` for zero-allocation parsing"), the agent generates the boilerplate for the optimized data structures. I then rely on my senior engineering judgment to verify thread safety (e.g., swapping to `ConcurrentDictionary` if it's a shared state) and rigorously test the AI's output for edge cases.
 
 ---
 
 ## Cross-References
-- [[CSharp-Fundamentals]] — Provides context on Value Types (structs) vs Reference Types (classes).
-- [[EFCore-SQL]] — Details how LINQ translates expression trees into SQL queries.
+- [[CSharp-Fundamentals]] — Value Types (structs) vs Reference Types (classes), `readonly record struct` for stack-allocated value objects.
+- [[EFCore-SQL]] — How LINQ translates expression trees into SQL queries, and why `IQueryable` vs `IEnumerable` matters for database performance.
+- [[Design-Patterns]] — MediatR pipeline behaviors use `IEnumerable<IValidator<T>>` — understanding collection iteration complexity matters for pipeline performance.
+- [[System-Design]] — Caching strategies (in-memory `FrozenDictionary` vs distributed Redis) and their algorithmic trade-offs.
 
 ---
 
 ## Further Reading
 - [Collections and Data Structures in .NET](https://learn.microsoft.com/en-us/dotnet/standard/collections/)
 - [C# 14 and .NET 10 Performance Improvements](https://devblogs.microsoft.com/dotnet/)
+- [FrozenDictionary Deep Dive](https://learn.microsoft.com/en-us/dotnet/api/system.collections.frozen.frozendictionary-2)
 - [libs/core/application/Models/PaginatedList.cs](../../../libs/core/application/Models/PaginatedList.cs)
 
 ---
 
-*Last updated: 2026-03-31*lue Types (structs) vs Reference Types (classes).
-- [[EFCore-SQL]] — Details how LINQ translates expression trees into SQL queries.
-
----
-
-## Further Reading
-- [Collections and Data Structures in .NET](https://learn.microsoft.com/en-us/dotnet/standard/collections/)
-- [C# 14 and .NET 10 Performance Improvements](https://devblogs.microsoft.com/dotnet/)
-- [libs/core/application/Models/PaginatedList.cs](../../../libs/core/application/Models/PaginatedList.cs)
-
----
-
-*Last updated: 2026-03-31*
+*Last updated: 2026-04-04*

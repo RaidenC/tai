@@ -14,7 +14,7 @@ Canonical reference notes for technical interview preparation. Built from the ta
 ### Stage 2: Backend
 | Topic | Difficulty | Status | Description |
 |-------|------------|--------|-------------|
-| [[EFCore-SQL]] | L1-L3 | ✅ Complete | Entity Framework Core, migrations, queries |
+| [[EFCore-SQL]] | L1-L3 | ✅ Complete | DbContext, Global Query Filters, xmin concurrency, partitioning, domain events |
 | [[Authentication-Authorization]] | L1-L3 | ✅ Complete | OIDC, OAuth2, DPoP, Zero Trust |
 
 ### Stage 3: Frontend
@@ -27,10 +27,14 @@ Canonical reference notes for technical interview preparation. Built from the ta
 ### Stage 4: System
 | Topic | Difficulty | Status | Description |
 |-------|------------|--------|-------------|
-| [[System-Design]] | L2-Staff | ✅ Complete | AI-Native architecture, Outbox, Sagas, Resilience |
+| [[System-Design]] | L2-Staff | ✅ Complete | YARP Gateway, MediatR CQRS, DDD, Multi-Tenancy, Event-Driven, Observability |
+| [[MediatR-CQRS]] | L1-Staff | ✅ Complete | MediatR pipeline, Commands/Queries, Pipeline Behaviors, FluentValidation, Domain Events, Notification Handlers |
 | [[OpenSearch]] | L2-L3 | ✅ Complete | Inverted Index, Sharding, Search Architecture |
 | [[Security-CSP-DPoP]] | L1-L3 | ✅ Complete | CSP, DPoP, Zero Trust, security patterns |
+| [[Message-Queues]] | L2-Staff | ✅ Complete | RabbitMQ vs Kafka, Outbox, pgmq, managed brokers, MassTransit |
+| [[Logging-Observability]] | L1-Staff | ✅ Complete | Structured logging, Serilog, centralized sinks, OpenTelemetry, CloudWatch, audit vs app logs |
 | [[Testing]] | L1-L3 | ⏳ Not Started | Unit, Integration, E2E testing patterns |
+| [[Full-System-Flow]] | Staff | ✅ Complete | Unified lifecycle diagram: auth → security → real-time → observability |
 | [[Nx-Monorepo]] | L1-L3 | ⏳ Not Started | Nx workspace, monorepo patterns |
 
 ## Difficulty Levels

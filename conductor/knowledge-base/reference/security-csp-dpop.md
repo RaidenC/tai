@@ -269,6 +269,233 @@ export const dpopInterceptor: HttpInterceptorFn = (req, next) => {
 };
 ```
 
+#### The 5 DPoP Authentication Steps — Why Every One Is Needed
+
+**Key terms:**
+
+| Term | Full Name | What It Is |
+|------|-----------|------------|
+| **JWK** | JSON Web Key | A JSON format for representing a cryptographic key. The DPoP proof includes the client's **public key** as a JWK in its header so the server can verify the proof signature. |
+| **jti** | JWT ID | A unique identifier (UUID) inside every DPoP proof. Each proof gets a fresh random `jti` so the server can detect replays. |
+| **iat** | Issued At | A Unix timestamp in the DPoP proof indicating when it was created. The server checks this to reject stale proofs. |
+| **cnf** | Confirmation | A claim in the access token containing the SHA-256 thumbprint of the client's public key, binding the token to a specific key pair. |
+
+**Each step closes the loophole left by the previous one:**
+
+```mermaid
+flowchart TD
+    A1["① Validate Access Token signature + expiry"]
+    A2["② Validate DPoP proof signature with public key"]
+    A3["③ Match proof JWK thumbprint to token cnf claim"]
+    A4["④ Check jti uniqueness for replay prevention"]
+    A5["⑤ Check iat freshness within clock skew window"]
+
+    T1["🛡️ Stops: forged or expired tokens"]
+    T2["🛡️ Stops: stolen token used<br/>without the private key"]
+    T3["🛡️ Stops: stolen token used<br/>with attacker's own key pair"]
+    T4["🛡️ Stops: captured full request<br/>replayed verbatim"]
+    T5["🛡️ Stops: late replay after<br/>jti cache eviction"]
+
+    A1 --> T1
+    T1 -. "but what if the token<br/>is stolen while valid?" .-> A2
+    A2 --> T2
+    T2 -. "but what if the attacker<br/>makes their own key pair?" .-> A3
+    A3 --> T3
+    T3 -. "but what if the attacker<br/>captures the entire request?" .-> A4
+    A4 --> T4
+    T4 -. "but jti cache can't<br/>grow forever…" .-> A5
+    A5 --> T5
+```
+
+**All three artifacts in the HTTP request:**
+
+```mermaid
+flowchart TD
+    subgraph HTTP["HTTP Request: GET /api/users"]
+        AUTH["Authorization: DPoP eyJhbGciOiJSUz...<br/>(Access Token — signed by auth server's RSA key)"]
+        DPOP["DPoP: eyJ0eXAiOiJkcG9w...<br/>(DPoP Proof — signed by client's ECDSA key)"]
+        GW["X-Gateway-Secret: k8Fj2m...<br/>(Gateway Trust)"]
+    end
+```
+
+**Step 1 — Validate Access Token signature + expiry.**
+
+A JWT has three Base64URL-encoded parts separated by dots: `header.payload.signature`
+
+Access Token decoded header:
+
+```json
+{
+  "alg": "RS256",           // signing algorithm: RSA + SHA-256
+  "typ": "at+jwt",          // access token JWT
+  "kid": "openiddict-key-2026-04"  // tells server which public key to verify with
+}
+```
+
+Access Token decoded payload:
+
+```json
+{
+  "iss": "https://auth.yourapp.com",       // issuer
+  "sub": "user-guid-1234-5678",            // subject (user ID)
+  "aud": "tai-portal-api",                 // audience
+  "exp": 1743786000,                       // expiry — server checks: now < exp
+  "iat": 1743782400,                       // issued at
+  "scope": "openid profile",
+  "privileges": ["Portal.Users.Read", "Portal.Users.Create"],
+  "cnf": {
+    "jkt": "hA3lRfKZ5x9N7q2mWOH_k4VB8cT1gJwXyPdEsFvM2bY"
+    // ↑ SHA-256 thumbprint of client's DPoP public key — anchor for Step 3
+  }
+}
+```
+
+How signature + expiry are checked:
+
+```mermaid
+sequenceDiagram
+    participant API as portal-api
+    participant JWKS as OpenIddict JWKS<br/>.well-known/jwks
+
+    Note over API: Receives: eyJhbGci...eyJpc3Mi...signature
+    API->>API: Base64URL decode header → read kid
+    API->>JWKS: Fetch public key matching kid (cached in memory)
+    JWKS-->>API: RSA public key (n, e)
+
+    API->>API: Recompute: SHA256(header_b64 + . + payload_b64)<br/>then RSA verify with public key
+
+    alt Signature mismatch
+        API-->>API: 401 — token was tampered
+    else Signature valid
+        API->>API: Decode payload → check exp
+        alt now > exp
+            API-->>API: 401 — token expired
+        else Token valid
+            API->>API: Extract claims → ClaimsPrincipal
+        end
+    end
+```
+
+The server never sees the authorization server's **private** signing key. It only uses the **public** key (from the JWKS endpoint) to verify. If anyone changes a single character in the header or payload, the signature won't match. **Loophole:** if an attacker steals a valid, unexpired token (from logs, a proxy, XSS), they can use it freely — it's a bearer token.
+
+**Step 2 — Validate DPoP proof signature with public key.**
+
+The DPoP proof is also a JWT, but signed by the **client's** ECDSA private key (not the auth server's RSA key).
+
+DPoP Proof decoded header:
+
+```json
+{
+  "typ": "dpop+jwt",        // identifies this as a DPoP proof
+  "alg": "ES256",           // ECDSA P-256 + SHA-256
+  "jwk": {                  // client's PUBLIC key embedded directly
+    "kty": "EC",
+    "crv": "P-256",
+    "x": "f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU",
+    "y": "x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0"
+  }
+}
+```
+
+DPoP Proof decoded payload:
+
+```json
+{
+  "jti": "a9e0c1b4-7f3e-4d2a-b8c5-1234567890ab",  // unique ID (Step 4)
+  "htm": "GET",                                      // bound to HTTP method
+  "htu": "https://api.yourapp.com/api/users",        // bound to exact URL
+  "iat": 1743782400,                                 // issued-at (Step 5)
+  "ath": "fUHyO2r2Z3DZ53EsNrWBb0xWXoaNy59IiKCAqksmQEo"  // SHA-256 of access token
+}
+```
+
+How the DPoP proof signature is checked:
+
+```mermaid
+sequenceDiagram
+    participant API as portal-api
+
+    Note over API: Receives DPoP header:<br/>eyJ0eXAi...eyJqdGki...signature
+    API->>API: Decode header → extract embedded jwk<br/>(the client's public key)
+    API->>API: Verify: ECDSA-P256-SHA256(<br/>header_b64 + . + payload_b64,<br/>signature, jwk.public_key)
+
+    alt Signature invalid
+        API-->>API: 401 — proof not signed<br/>by holder of this key pair
+    else Signature valid
+        API->>API: Client proves possession of<br/>the private key matching this jwk
+    end
+```
+
+An attacker who steals the access token but lacks the private key cannot forge a valid proof. The private key is non-extractable in WebCrypto — even XSS can't read it. **Loophole:** the attacker could create their own key pair and sign their own proof — the signature would be valid for their key.
+
+**Step 3 — Match proof JWK thumbprint to token `cnf` claim.**
+
+This is where the access token and DPoP proof are **bound together**. The JWK Thumbprint is a deterministic SHA-256 hash of the public key's essential fields in canonical JSON format ([RFC 7638](https://tools.ietf.org/html/rfc7638)):
+
+```
+Step A: Extract required members from JWK in lexicographic order
+        For EC keys: {"crv","kty","x","y"}
+
+        Canonical JSON (no whitespace):
+        {"crv":"P-256","kty":"EC","x":"f83OJ3D2xF1Bg8vub9tLe1gHMzV76e8Tus9uPHvRVEU",
+         "y":"x_FEzRu9m36HLN_tue659LNpXW6pCyStikYjKIWI5a0"}
+
+Step B: SHA256(canonical_json) → Base64URL encode
+        → "hA3lRfKZ5x9N7q2mWOH_k4VB8cT1gJwXyPdEsFvM2bY"
+```
+
+The match check:
+
+```mermaid
+flowchart LR
+    subgraph DPoP["DPoP Proof Header"]
+        JWK["jwk:<br/>kty: EC, crv: P-256<br/>x: f83OJ3...<br/>y: x_FEz..."]
+    end
+
+    subgraph Token["Access Token Payload"]
+        CNF["cnf.jkt:<br/>hA3lRfKZ5x9N7q2m<br/>WOH_k4VB8cT1gJwX<br/>yPdEsFvM2bY"]
+    end
+
+    JWK -- "SHA-256 thumbprint<br/>of canonical JSON" --> COMPUTED["Computed thumbprint:<br/>hA3lRfKZ5x9N7q2m<br/>WOH_k4VB8cT1gJwX<br/>yPdEsFvM2bY"]
+    COMPUTED -- "== ?" --> RESULT{Match?}
+    CNF -- "compare" --> RESULT
+    RESULT -- "Yes" --> OK["Token is bound<br/>to this key pair"]
+    RESULT -- "No" --> FAIL["401 — attacker used<br/>their own key pair"]
+```
+
+What this prevents concretely:
+
+```mermaid
+sequenceDiagram
+    participant Attacker
+    participant API as portal-api
+
+    Note over Attacker: Steals access token<br/>(contains cnf.jkt = hA3lRf...)
+    Attacker->>Attacker: Generates OWN key pair<br/>(different x, y values)
+    Attacker->>Attacker: Signs valid DPoP proof<br/>with own private key
+    Attacker->>API: Sends stolen token + own proof
+
+    API->>API: Compute thumbprint of attacker's jwk<br/>→ zQ7xPm...
+    API->>API: Compare: zQ7xPm... ≠ hA3lRf...
+    API-->>Attacker: 401 Rejected — key pair mismatch
+```
+
+The `cnf.jkt` was set at token issuance time when the legitimate client presented its public key. An attacker with a different key pair will always produce a different thumbprint. **Loophole:** an attacker intercepts a complete request (token + valid proof together) and replays the whole thing.
+
+**Step 4 — Check `jti` uniqueness for replay prevention.** Each DPoP proof contains a unique `jti` (random UUID). The server stores seen `jti` values (in-memory or ElastiCache/Redis) and rejects duplicates. A captured request can only be used once. **Loophole:** the `jti` cache can't grow forever — old entries must be evicted, allowing late replays.
+
+**Step 5 — Check `iat` freshness within clock skew window.** The proof's `iat` timestamp must be within a small window (e.g., ±60 seconds). Old proofs are rejected regardless of `jti` cache state. The cache only needs to hold entries for the freshness window duration, not forever.
+
+**Summary — remove any single step and an attack path opens:**
+
+| Attack | Stopped By |
+|--------|------------|
+| Forged or expired token | Step ① (signature + expiry) |
+| Stolen token, no private key | Step ② (proof signature) |
+| Stolen token + attacker's own key | Step ③ (JWK thumbprint ↔ cnf binding) |
+| Captured full request, replayed | Step ④ (jti uniqueness) |
+| Replay after jti cache eviction | Step ⑤ (iat freshness window) |
+
 #### 4. CORS & Rate Limiting at the Gateway
 
 The Gateway applies rate limiting to OIDC endpoints before forwarding to the Identity Provider:
@@ -306,6 +533,55 @@ builder.Services.AddCors(options => {
   });
 });
 ```
+
+#### CORS Best Practice — Configuration-Driven, Not Hardcoded
+
+The `SetIsOriginAllowed` lambda above is fine for local development but should **not** be hardcoded for production. Best practice is a **configuration-driven allow list**:
+
+```json
+// appsettings.Production.json
+{
+  "Cors": {
+    "AllowedOrigins": [
+      "https://tenant1.yourapp.com",
+      "https://tenant2.yourapp.com"
+    ]
+  }
+}
+```
+
+```csharp
+// Program.cs — production: explicit origin list from config
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? [];
+
+builder.Services.AddCors(options => {
+  options.AddDefaultPolicy(policy => {
+    policy.WithOrigins(allowedOrigins)
+          .AllowAnyHeader()
+          .AllowAnyMethod()
+          .AllowCredentials();
+  });
+});
+```
+
+**For multi-tenant apps with dynamic subdomains**, a pattern-based approach avoids updating config every time a tenant is added:
+
+```csharp
+// Production multi-tenant: validate against a known base domain
+var baseDomain = builder.Configuration["Cors:BaseDomain"]; // e.g. "yourapp.com"
+
+policy.SetIsOriginAllowed(origin => {
+    var host = new Uri(origin).Host;
+    return host == baseDomain || host.EndsWith($".{baseDomain}");
+})
+```
+
+**Where values come from in production:**
+- **Environment variables** or **appsettings.{Environment}.json** for static lists.
+- **Azure App Configuration / AWS Parameter Store** for dynamic lists that change without redeployment.
+- For the multi-tenant subdomain pattern, config only needs the base domain — new tenants are automatically allowed.
 
 #### 5. Gateway Trust Middleware (Network Zero Trust)
 
