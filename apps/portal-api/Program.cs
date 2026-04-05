@@ -9,6 +9,7 @@ using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Infrastructure.Persistence;
 using Tai.Portal.Api;
 
+using Tai.Portal.Core.Application;
 using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Application.Services;
 using Tai.Portal.Api.Services;
@@ -49,10 +50,10 @@ builder.Services.AddScoped<IPrivilegeService, PrivilegeService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IMessageBus, LoggingMessageBus>();
 
-builder.Services.AddValidatorsFromAssembly(typeof(RegisterCustomerCommand).Assembly);
+builder.Services.AddValidatorsFromAssembly(typeof(IApplicationAssemblyMarker).Assembly);
 
 builder.Services.AddMediatR(cfg => {
-  cfg.RegisterServicesFromAssembly(typeof(RegisterCustomerCommand).Assembly);
+  cfg.RegisterServicesFromAssembly(typeof(IApplicationAssemblyMarker).Assembly);
   cfg.RegisterServicesFromAssembly(typeof(PortalDbContext).Assembly);
   cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationPipelineBehavior<,>));
 });
