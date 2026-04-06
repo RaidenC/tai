@@ -14,3 +14,5 @@ export * from './lib/design-system/data-table/data-table';
 export * from './lib/design-system/transfer-list/transfer-list';
 export * from './lib/design-system/notification-panel/notification-panel.service';
 export * from './lib/design-system/notification-panel/notification-toggle.component';
+export * from './lib/design-system/notification-panel/notification-panel.component';
+export * from './lib/design-system/notification-panel/notification-panel.types';

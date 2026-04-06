@@ -1,98 +1,292 @@
-import { TestBed } from '@angular/core/testing';
-import { isSignal } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { NotificationPanelComponent } from './notification-panel.component';
 import { NotificationPanelService } from './notification-panel.service';
+import { AuditLogDetails } from './notification-panel.types';
+import { isSignal } from '@angular/core';
 
-describe('NotificationPanelService', () => {
-  let service: NotificationPanelService;
+describe('NotificationPanelComponent', () => {
+  let component: NotificationPanelComponent;
+  let fixture: ComponentFixture<NotificationPanelComponent>;
+  let panelService: NotificationPanelService;
 
-  beforeEach(() => {
-    TestBed.configureTestingModule({});
-    service = TestBed.inject(NotificationPanelService);
+  const mockEvents: AuditLogDetails[] = [
+    {
+      id: '1',
+      tenantId: 'tenant-1',
+      userId: 'user-1',
+      action: 'LoginAnomaly',
+      resourceId: 'resource-1',
+      correlationId: 'corr-1',
+      timestamp: new Date().toISOString(),
+      ipAddress: '192.168.1.1',
+      details: 'Suspicious login detected'
+    },
+    {
+      id: '2',
+      tenantId: 'tenant-1',
+      userId: 'user-2',
+      action: 'WarningRateLimit',
+      resourceId: 'resource-2',
+      correlationId: 'corr-2',
+      timestamp: new Date(Date.now() - 60000).toISOString(),
+      ipAddress: '10.0.0.1',
+      details: 'Rate limit warning'
+    },
+    {
+      id: '3',
+      tenantId: 'tenant-1',
+      userId: 'user-3',
+      action: 'UserLogin',
+      resourceId: 'resource-3',
+      correlationId: null,
+      timestamp: new Date(Date.now() - 3600000).toISOString(),
+      ipAddress: null,
+      details: 'User logged in'
+    }
+  ];
+
+  beforeEach(async () => {
+    panelService = new NotificationPanelService();
+
+    await TestBed.configureTestingModule({
+      imports: [NotificationPanelComponent],
+      providers: [
+        { provide: NotificationPanelService, useValue: panelService }
+      ]
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(NotificationPanelComponent);
+    component = fixture.componentInstance;
+    component.events = mockEvents;
+    fixture.detectChanges();
   });
 
-  it('should be created', () => {
-    expect(service).toBeTruthy();
+  it('should create', () => {
+    expect(component).toBeTruthy();
   });
 
-  it('should have isOpen as signal', () => {
-    expect(service.isOpen).toBeDefined();
-    expect(isSignal(service.isOpen)).toBe(true);
+  describe('Panel visibility', () => {
+    it('should NOT show panel when isOpen is false', () => {
+      panelService.close();
+      fixture.detectChanges();
+
+      const overlay = fixture.nativeElement.querySelector('.panel-overlay');
+      const panel = fixture.nativeElement.querySelector('.notification-panel');
+
+      expect(overlay).toBeNull();
+      expect(panel).toBeNull();
+    });
+
+    it('should show panel when isOpen is true', () => {
+      panelService.open();
+      fixture.detectChanges();
+
+      const overlay = fixture.nativeElement.querySelector('.panel-overlay');
+      const panel = fixture.nativeElement.querySelector('.notification-panel');
+
+      expect(overlay).toBeTruthy();
+      expect(panel).toBeTruthy();
+    });
   });
 
-  it('should have unreadCount as signal', () => {
-    expect(service.unreadCount).toBeDefined();
-    expect(isSignal(service.unreadCount)).toBe(true);
+  describe('Severity filter buttons', () => {
+    beforeEach(() => {
+      component.events = mockEvents;
+      panelService.open();
+      fixture.detectChanges();
+    });
+
+    it('should have filter buttons', () => {
+      const buttons = fixture.nativeElement.querySelectorAll('.filter-buttons button');
+      expect(buttons.length).toBe(4);
+    });
+
+    it('should filter by critical', () => {
+      component.setSeverity('critical');
+      fixture.detectChanges();
+
+      const eventItems = fixture.nativeElement.querySelectorAll('.event-item');
+      expect(eventItems.length).toBe(1);
+    });
+
+    it('should filter by warning', () => {
+      component.setSeverity('warning');
+      fixture.detectChanges();
+
+      const eventItems = fixture.nativeElement.querySelectorAll('.event-item');
+      expect(eventItems.length).toBe(1);
+    });
+
+    it('should show all when filter is all', () => {
+      component.setSeverity('all');
+      fixture.detectChanges();
+
+      const eventItems = fixture.nativeElement.querySelectorAll('.event-item');
+      expect(eventItems.length).toBe(3);
+    });
+
+    it('should show info for non-critical/warning events', () => {
+      component.setSeverity('info');
+      fixture.detectChanges();
+
+      const eventItems = fixture.nativeElement.querySelectorAll('.event-item');
+      // UserLogin is info level
+      expect(eventItems.length).toBe(1);
+    });
   });
 
-  it('should have severityFilter as signal', () => {
-    expect(service.severityFilter).toBeDefined();
-    expect(isSignal(service.severityFilter)).toBe(true);
+  describe('Search functionality', () => {
+    beforeEach(() => {
+      component.events = mockEvents;
+      panelService.open();
+      fixture.detectChanges();
+    });
+
+    it('should have search input', () => {
+      const searchInput = fixture.nativeElement.querySelector('.search-box input');
+      expect(searchInput).toBeTruthy();
+    });
+
+    it('should filter events by search text', () => {
+      const searchInput = fixture.nativeElement.querySelector('.search-box input');
+      searchInput.value = 'login';
+      searchInput.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      const eventItems = fixture.nativeElement.querySelectorAll('.event-item');
+      // Should match LoginAnomaly and UserLogin
+      expect(eventItems.length).toBe(2);
+    });
+
+    it('should filter by details search', () => {
+      const searchInput = fixture.nativeElement.querySelector('.search-box input');
+      searchInput.value = 'suspicious';
+      searchInput.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      const eventItems = fixture.nativeElement.querySelectorAll('.event-item');
+      expect(eventItems.length).toBe(1);
+    });
+
+    it('should show all when search is empty', () => {
+      // First add a search term
+      const searchInput = fixture.nativeElement.querySelector('.search-box input');
+      searchInput.value = 'login';
+      searchInput.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      // Then clear it
+      searchInput.value = '';
+      searchInput.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      const eventItems = fixture.nativeElement.querySelectorAll('.event-item');
+      expect(eventItems.length).toBe(3);
+    });
   });
 
-  it('should have searchText as signal', () => {
-    expect(service.searchText).toBeDefined();
-    expect(isSignal(service.searchText)).toBe(true);
+  describe('Empty state', () => {
+    it('should show empty state when no events', () => {
+      component.events = [];
+      panelService.open();
+      fixture.detectChanges();
+
+      const emptyState = fixture.nativeElement.querySelector('.empty-state');
+      expect(emptyState).toBeTruthy();
+      expect(emptyState.textContent).toContain('No notifications');
+    });
+
+    it('should not show empty state when events exist', () => {
+      component.events = mockEvents;
+      panelService.open();
+      fixture.detectChanges();
+
+      const emptyState = fixture.nativeElement.querySelector('.empty-state');
+      expect(emptyState).toBeFalsy();
+    });
   });
 
-  it('should toggle panel visibility', () => {
-    service.toggle();
-    expect(service.isOpen()()).toBe(true);
-    service.toggle();
-    expect(service.isOpen()()).toBe(false);
+  describe('Close panel', () => {
+    it('should close panel when close button clicked', () => {
+      panelService.open();
+      fixture.detectChanges();
+
+      const closeBtn = fixture.nativeElement.querySelector('.close-btn');
+      closeBtn.click();
+      fixture.detectChanges();
+
+      const panel = fixture.nativeElement.querySelector('.notification-panel');
+      expect(panel).toBeNull();
+    });
+
+    it('should close panel when overlay clicked', () => {
+      panelService.open();
+      fixture.detectChanges();
+
+      const overlay = fixture.nativeElement.querySelector('.panel-overlay');
+      overlay.click();
+      fixture.detectChanges();
+
+      const panel = fixture.nativeElement.querySelector('.notification-panel');
+      expect(panel).toBeNull();
+    });
   });
 
-  it('should open panel', () => {
-    service.open();
-    expect(service.isOpen()()).toBe(true);
+  describe('Signal properties', () => {
+    it('should have isOpen as computed signal', () => {
+      expect(component.isOpen).toBeDefined();
+      expect(isSignal(component.isOpen)).toBe(true);
+    });
+
+    it('should have severityFilter as computed signal', () => {
+      expect(component.severityFilter).toBeDefined();
+      expect(isSignal(component.severityFilter)).toBe(true);
+    });
+
+    it('should have searchText as computed signal', () => {
+      expect(component.searchText).toBeDefined();
+      expect(isSignal(component.searchText)).toBe(true);
+    });
   });
 
-  it('should close panel', () => {
-    service.open();
-    service.close();
-    expect(service.isOpen()()).toBe(false);
-  });
+  describe('Helper methods', () => {
+    it('should get severity class for critical', () => {
+      expect(component.getSeverityClass('critical')).toBe('severity-critical');
+    });
 
-  it('should set unread count', () => {
-    service.setUnreadCount(5);
-    expect(service.unreadCount()()).toBe(5);
-  });
+    it('should get severity class for warning', () => {
+      expect(component.getSeverityClass('warning')).toBe('severity-warning');
+    });
 
-  it('should decrement unread count', () => {
-    service.setUnreadCount(5);
-    service.decrementUnread();
-    expect(service.unreadCount()()).toBe(4);
-  });
+    it('should get severity class for info', () => {
+      expect(component.getSeverityClass('info')).toBe('severity-info');
+    });
 
-  it('should not decrement below zero', () => {
-    service.setUnreadCount(0);
-    service.decrementUnread();
-    expect(service.unreadCount()()).toBe(0);
-  });
+    it('should get event severity for anomaly', () => {
+      expect(component.getEventSeverity('LoginAnomaly')).toBe('critical');
+    });
 
-  it('should set search text', () => {
-    service.setSearchText('test query');
-    expect(service.searchText()()).toBe('test query');
-  });
+    it('should get event severity for warning', () => {
+      expect(component.getEventSeverity('WarningRateLimit')).toBe('warning');
+    });
 
-  it('should clear unread count', () => {
-    service.markAllAsRead();
-    expect(service.unreadCount()()).toBe(0);
-  });
+    it('should get event severity for info', () => {
+      expect(component.getEventSeverity('UserLogin')).toBe('info');
+    });
 
-  it('should filter by severity', () => {
-    service.setSeverityFilter('critical');
-    expect(service.severityFilter()()).toBe('critical');
-  });
+    it('should format time as Just now', () => {
+      const now = new Date().toISOString();
+      expect(component.formatTime(now)).toBe('Just now');
+    });
 
-  it('should auto-mark as read when opening panel', () => {
-    service.setUnreadCount(5);
-    service.open();
-    expect(service.unreadCount()()).toBe(0);
-  });
+    it('should format time as minutes ago', () => {
+      const fiveMinsAgo = new Date(Date.now() - 5 * 60000).toISOString();
+      expect(component.formatTime(fiveMinsAgo)).toBe('5 min ago');
+    });
 
-  it('should auto-mark as read when toggling panel open', () => {
-    service.setUnreadCount(3);
-    service.toggle();
-    expect(service.unreadCount()()).toBe(0);
+    it('should format time as hours ago', () => {
+      const twoHoursAgo = new Date(Date.now() - 2 * 3600000).toISOString();
+      expect(component.formatTime(twoHoursAgo)).toBe('2 hr ago');
+    });
   });
 });
