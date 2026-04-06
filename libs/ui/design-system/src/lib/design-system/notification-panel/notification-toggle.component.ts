@@ -24,12 +24,18 @@ export class NotificationToggleComponent {
     this.panelService.toggle();
   }
 
+  /** Returns the capped display value (capped at 9) */
   get displayCount(): number {
     const count = this.unreadCount()();
     return count > 9 ? 9 : count;
   }
 
+  /** Returns the raw unread count, evaluated once */
+  get unreadCountValue(): number {
+    return this.unreadCount()();
+  }
+
   get showBadge(): boolean {
-    return this.unreadCount()() > 0;
+    return this.unreadCountValue > 0;
   }
 }

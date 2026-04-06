@@ -1,11 +1,13 @@
 .toggle-button {
+  --tai-notification-toggle-bg: #3b82f6;
+
   position: fixed;
   bottom: 24px;
   right: 24px;
   width: 48px;
   height: 48px;
   border-radius: 50%;
-  background-color: #3b82f6;
+  background-color: var(--tai-notification-toggle-bg);
   color: white;
   border: none;
   cursor: pointer;
@@ -14,6 +16,7 @@
   align-items: center;
   justify-content: center;
   transition: transform 0.2s, box-shadow 0.2s;
+  // Above notification panel (z-index: 40) to ensure toggle is always clickable
   z-index: 50;
 
   &:hover {
@@ -27,6 +30,8 @@
 }
 
 .unread-badge {
+  --tai-notification-badge-bg: #dc2626;
+
   position: absolute;
   top: -4px;
   right: -4px;
@@ -34,7 +39,7 @@
   height: 20px;
   padding: 0 6px;
   border-radius: 10px;
-  background-color: #dc2626;
+  background-color: var(--tai-notification-badge-bg);
   color: white;
   font-size: 12px;
   font-weight: 600;

@@ -11,10 +11,10 @@
 
   @if (showBadge) {
     <span class="unread-badge">
-      @if (unreadCount()() > 9) {
+      @if (unreadCountValue > 9) {
         9+
       } @else {
-        {{ unreadCount()() }}
+        {{ displayCount }}
       }
     </span>
   }
