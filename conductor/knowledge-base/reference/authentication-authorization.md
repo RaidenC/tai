@@ -69,7 +69,24 @@ Authentication (AuthN) proves *who you are*; Authorization (AuthZ) proves *what 
 | WebSocket (SignalR) | HttpOnly Cookie (BFF) | Cannot set custom headers on WebSocket upgrade |
 | REST API | DPoP + Bearer Token | Cookie alone lacks sender-constraint proof (FAPI 2.0) |
 
-- **When to use BFF pattern (cookie):**
+#### 7. ClaimsPrincipal — The Root of Identity
+- **What:** In modern ASP.NET Core, the user's identity is represented by a `ClaimsPrincipal`. It is the standard object available via `HttpContext.User`.
+- **Why:** It provides a flexible, claims-based model that has evolved from the legacy `IPrincipal` interface. It enables fine-grained control and multi-tenant isolation.
+- **How (The Anatomy):**
+  - **Claim:** A single "statement" about the user (Key-Value pair, e.g., `Email: matt@example.com`, `TenantId: 456`).
+  - **ClaimsIdentity:** A "Passport." A collection of claims. A user can have multiple identities (e.g., Google, Database).
+  - **ClaimsPrincipal:** The "Wallet." The top-level object holding all of the user's identities.
+- **When:** Use `ClaimsPrincipal` for all identity-related logic in the backend.
+- **In tai-portal:**
+  - **Authorization Controller:** Manually builds the `ClaimsPrincipal` during login, which is then baked into the JWT.
+  - **MediatR Pipeline:** An `ICurrentUserService` extracts data from the `ClaimsPrincipal` to provide clean IDs to handlers without coupling them to `HttpContext`.
+  - **SignalR:** Uses the `tenant_id` claim to automatically place users into isolated SignalR Groups.
+
+- **Trade-offs:** Every claim added to the principal typically ends up in the JWT. We keep tokens lean by only including security-critical claims (Subject, TenantId) and fetching display data (Full Name, Avatar) from a cache on demand.
+
+- **Senior Edge:** In .NET 10, we are meticulous about **Token Size**. A bloated JWT increases HTTP header overhead and can lead to 431 Request Header Fields Too Large errors. We prioritize "Security-Critical" claims for the token and "Display-Only" data for on-demand fetch.
+
+#### 8. Dual-Path Authentication — Why Both Cookie and DPoP
   - First-party browser apps that share the gateway's cookie domain
   - WebSocket/SignalR connections where custom headers are impossible
   - When you want to hide token complexity from the frontend entirely
@@ -291,6 +308,63 @@ builder.Services.AddReverseProxy()
 ```
 The `portal-api` is configured to reject any request that lacks this exact FAPI-compliant cryptographic secret, ensuring the Zero-Trust perimeter is maintained at the network level.
 
+#### 5. Configuration-Driven Identity (Production Registration)
+While `SeedData.cs` is effective for development, a production-grade system uses a **Reconciliation Pattern** to manage client registrations securely.
+
+- **The Pattern:** Instead of manual scripts, we use an `IHostedService` (Background Worker) that runs at startup to synchronize the application registry with a centralized configuration source.
+- **The Worker:**
+  ```csharp
+  // libs/core/infrastructure/Identity/ApplicationRegistryWorker.cs
+  public class ApplicationRegistryWorker : IHostedService {
+      private readonly IServiceProvider _serviceProvider;
+      private readonly IConfiguration _configuration;
+
+      public ApplicationRegistryWorker(IServiceProvider serviceProvider, IConfiguration configuration) {
+          _serviceProvider = serviceProvider;
+          _configuration = configuration;
+      }
+
+      public async Task StartAsync(CancellationToken ct) {
+          using var scope = _serviceProvider.CreateScope();
+          var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
+
+          // Fetch from secure production config (e.g., Azure App Config / AWS AppConfig)
+          var clients = _configuration.GetSection("Identity:Clients").Get<List<ClientConfig>>();
+
+          foreach (var client in clients) {
+              var descriptor = await manager.FindByClientIdAsync(client.ClientId, ct);
+              if (descriptor == null) {
+                  await manager.CreateAsync(client.ToDescriptor(), ct);
+              } else {
+                  // Update existing client configuration (Sync)
+                  await manager.UpdateAsync(descriptor, client.ToDescriptor(), ct);
+              }
+          }
+      }
+  }
+  ```
+- **The Config (`appsettings.Production.json`):**
+  ```json
+  {
+    "Identity": {
+      "Clients": [{
+        "ClientId": "portal-web",
+        "DisplayName": "TAI Portal Web Production",
+        "RedirectUris": [
+          "https://tai-portal.com/signin-callback",
+          "https://portal.customer-a.com/signin-callback"
+        ],
+        "PostLogoutRedirectUris": ["https://tai-portal.com/signout-callback"],
+        "Permissions": ["openid", "profile", "email", "api", "offline_access"]
+      }]
+    }
+  }
+  ```
+- **Senior Production Rules:**
+  1. **Strict Whitelisting:** Never use wildcard redirect URIs (`https://*.tai-portal.com`). This is a critical security failure. Every URI must be explicit.
+  2. **Secret Management:** Confidential client secrets must never be in `appsettings.json`. They are injected at runtime from a Secret Vault (Azure Key Vault, HashiCorp Vault).
+  3. **Environment Parity:** Use distinct `client_id` values for each environment (e.g., `portal-web-local`, `portal-web-prod`) to prevent cross-environment authentication leaks.
+
 ---
 
 ## Interview Q&A
@@ -388,6 +462,33 @@ REST API calls use DPoP because cookies alone are insufficient for financial-gra
 
 **Answer:** M2M communication relies on the **Client Credentials Grant** flow in OAuth 2.0/2.1. The background worker is registered in OpenIddict not as a public client (like Angular), but as a **Confidential Client**. It is assigned its own unique `ClientId` and a highly secure `ClientSecret` (or uses mTLS / Private Key JWTs for higher security). 
 The worker authenticates directly with OpenIddict using its ID and Secret. Because there is no human user, OpenIddict immediately issues an Access Token containing the scopes assigned specifically to that worker (e.g., `scope: billing_execute`). The API authorizes the request based on the application's identity, completely bypassing human identity claims.
+
+---
+
+### L2: ClaimsPrincipal — The Root of Identity
+**Difficulty:** L2 (Mid-Level)
+
+**Question:** How is the current user's identity represented in modern ASP.NET Core, and how does it differ from the legacy `IPrincipal` model?
+
+**Answer:** Modern ASP.NET Core uses the `ClaimsPrincipal` as the foundation of identity. Unlike the legacy `IPrincipal` which was often just a username and a few roles, `ClaimsPrincipal` is a collection of `ClaimsIdentity` objects, each containing multiple "Claims" (Key-Value pairs like `email`, `tenant_id`, or `can_approve`). This allows for a much more granular and flexible authorization model. In `tai-portal`, we use this to enforce multi-tenant isolation by reading the `tenant_id` claim directly from the principal in our middleware and SignalR hubs.
+
+---
+
+### L3: Handling Identity in Clean Architecture
+**Difficulty:** L3 (Senior)
+
+**Question:** How do you handle user identity inside a Clean Architecture where the Core layer shouldn't know about the Web layer or `HttpContext`?
+
+**Answer:** We use an abstraction called `ICurrentUserService`. In the **Infrastructure** layer, we implement this interface to extract data from the `ClaimsPrincipal` (via `IHttpContextAccessor`). The **Application** layer (our Handlers) then only interacts with `ICurrentUserService`, receiving clean IDs or strings. This keeps our business logic pure and testable; we can easily mock the user's identity in unit tests without needing to spin up a web server or simulate an HTTP request.
+
+---
+
+### Staff: Moving to a SOC 2 Compliant Production Identity Registration
+**Difficulty:** Staff
+
+**Question:** I see you are using `SeedData.cs` for client registration in the POC. How would you move this to a SOC 2 compliant production environment?
+
+**Answer:** In production, we move to a **Reconciliation Pattern**. We implement a `HostedService` that synchronizes our client registrations from a **Centralized Configuration Service** (like Azure App Config or AWS AppConfig) at startup. This ensures our DevOps team can manage 'Redirect URIs' and 'Origins' through our **CI/CD pipeline** rather than manual database scripts. We also ensure that all 'Confidential' secrets are injected at runtime from a **Secret Vault**, and we never allow wildcard redirect patterns, strictly adhering to **OAuth 2.1 Security Best Practices**.
 
 ---
 
