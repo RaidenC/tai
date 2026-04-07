@@ -26,13 +26,15 @@ export class NotificationPanelComponent {
     const filter = this.severityFilter()();
     const search = this.searchText()().toLowerCase();
 
-    return allEvents.filter(event => {
-      const matchesSeverity = filter === 'all' || this.getEventSeverity(event.action) === filter;
-      const matchesSearch = !search ||
-        event.action.toLowerCase().includes(search) ||
-        (event.details && event.details.toLowerCase().includes(search));
-      return matchesSeverity && matchesSearch;
-    });
+    return allEvents
+      .filter(event => {
+        const matchesSeverity = filter === 'all' || this.getEventSeverity(event.action) === filter;
+        const matchesSearch = !search ||
+          event.action.toLowerCase().includes(search) ||
+          (event.details && event.details.toLowerCase().includes(search));
+        return matchesSeverity && matchesSearch;
+      })
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   };
 
   setSeverity(filter: SeverityFilter): void {
@@ -68,7 +70,13 @@ export class NotificationPanelComponent {
   }
 
   formatTime(timestamp: string): string {
+    if (!timestamp) {
+      return 'Unknown';
+    }
     const date = new Date(timestamp);
+    if (isNaN(date.getTime())) {
+      return 'Unknown';
+    }
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);

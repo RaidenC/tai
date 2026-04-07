@@ -18,14 +18,10 @@ export class NotificationPanelService {
 
   toggle(): void {
     this._isOpen.update(v => !v);
-    if (this._isOpen()) {
-      this.markAllAsRead();
-    }
   }
 
   open(): void {
     this._isOpen.set(true);
-    this.markAllAsRead();
   }
 
   close(): void {
