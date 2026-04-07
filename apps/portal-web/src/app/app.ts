@@ -2,13 +2,14 @@ import { Component, inject, OnInit } from '@angular/core';
 import { RouterModule, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from './auth.service';
-import { AppShellComponent, MenuItem, NotificationToggleComponent, ToastComponent } from '@tai/ui-design-system';
+import { AppShellComponent, MenuItem, NotificationToggleComponent, NotificationPanelComponent, ToastComponent } from '@tai/ui-design-system';
 import { OnboardingStore } from './features/onboarding/onboarding.store';
 import { RealTimeService } from './real-time.service';
+import { NotificationSignalStore } from './store/notification-signal.store';
 import { combineLatest, map, of } from 'rxjs';
 
 @Component({
-    imports: [RouterModule, CommonModule, AppShellComponent, NotificationToggleComponent, ToastComponent],
+    imports: [RouterModule, CommonModule, AppShellComponent, NotificationToggleComponent, NotificationPanelComponent, ToastComponent],
     selector: 'app-root',
     templateUrl: './app.html',
     styleUrl: './app.scss',
@@ -18,6 +19,7 @@ export class App implements OnInit {
     private readonly realTimeService = inject(RealTimeService); // Ensure RealTimeService is initialized
     public readonly router = inject(Router);
     protected readonly onboardingStore = inject(OnboardingStore);
+    protected readonly notificationStore = inject(NotificationSignalStore);
     
     protected title = 'portal-web';
     protected user$ = this.authService.user$;
