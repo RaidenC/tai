@@ -16,3 +16,4 @@ export * from './lib/design-system/notification-panel/notification-panel.service
 export * from './lib/design-system/notification-panel/notification-toggle.component';
 export * from './lib/design-system/notification-panel/notification-panel.component';
 export * from './lib/design-system/notification-panel/notification-panel.types';
+export * from './lib/design-system/toast/index';
