@@ -10,6 +10,49 @@ relatedTopics:
   - Design-Patterns
 ---
 
+1. **Core Architecture**
+   - 1.1 [ORM Fundamentals & EF Core](#1-why-use-an-orm-entity-framework-core)
+   - 1.2 [Deferred Execution & IQueryable](#2-deferred-execution--iqueryable)
+   - 1.3 [Global Query Filters for Multi-Tenancy](#3-global-query-filters-automatic-multi-tenancy)
+   - 1.4 [Change Tracker & SaveChangesAsync](#4-the-change-tracker--savechangesasync)
+   - 1.5 [Persistence Interceptors](#5-interceptors-cross-cutting-persistence-concerns)
+
+2. **Advanced Patterns**
+   - 2.1 [Domain Event Dispatch Before Save](#6-domain-event-dispatch-events-before-save)
+   - 2.2 [Optimistic Concurrency with xmin](#7-optimistic-concurrency-with-postgresql-xmin)
+   - 2.3 [Strongly-Typed ID Value Converters](#8-value-converters-strongly-typed-ids)
+   - 2.4 [Range-Based Table Partitioning](#9-table-partitioning-time-series-audit-logs)
+   - 2.5 [PostgreSQL-Specific Npgsql Features](#10-postgresql-specific-features-via-npgsql)
+
+3. **Implementation Patterns**
+   - 3.1 [Zero-Trust Multi-Tenancy Config](#1-global-query-filters---zero-trust-multi-tenancy---portaldbcontextcs)
+   - 3.2 [SaveChangesAsync Pipeline & Audit](#2-savechangesasync-override---audit--domain-events---portaldbcontextcs)
+   - 3.3 [Automatic Tenant Stamping](#3-tenantinterceptor---automatic-tenantid-stamping---tenantinterceptorcs)
+   - 3.4 [Concurrency Reload Pattern](#4-optimistic-concurrency-with-xmin---privilegeservicecs)
+   - 3.5 [Dynamic Pagination & Sorting](#5-pagination-with-dynamic-sorting-and-projection---identityservicecs)
+
+4. **Infrastructure & Data Strategy**
+   - 4.1 [JSONB Storage for Semi-Structured Data](#6-jsonb-columns-with-value-converters---privilege-entity)
+   - 4.2 [Partitioning Strategy Migration](#7-table-partitioning-migration---addpartitionedauditlogs)
+   - 4.3 [Distributed Seeding Advisory Locks](#8-seed-data-with-advisory-lock---seeddatacs)
+   - 4.4 [Testcontainers Integration Testing](#9-integration-tests-with-testcontainers---databasefixturecs)
+
+5. **Knowledge Deep Dive & Q&A**
+   - 5.1 **L1: Junior Knowledge**
+     - 5.1.1 [IQueryable vs IEnumerable Filtering](#l1-iqueryable-vs-ienumerable--where-does-filtering-happen)
+     - 5.1.2 [Automated SQL Injection Protection](#l1-how-does-ef-core-prevent-sql-injection)
+   - 5.2 **L2: Mid-Level Knowledge**
+     - 5.2.1 [The base.OnModelCreating Sequence](#why-call-baseonmodelcreating-first)
+     - 5.2.2 [Solving the N+1 Query Problem](#what-is-the-n1-query-problem)
+     - 5.2.3 [Tracking vs AsNoTracking Performance](#tracking-vs-asnotracking---when-does-it-matter)
+   - 5.3 **L3: Senior Knowledge**
+     - 5.3.1 [Global Filters for Isolation](#l3-how-do-global-query-filters-work-for-multi-tenancy)
+     - 5.3.2 [Solving Cartesian Explosions](#l3-explain-the-cartesian-explosion-and-how-assplitquery-solves-it)
+     - 5.3.3 [xmin vs SQL Server RowVersion](#l3-how-does-postgresql-xmin-concurrency-differ-from-sql-server-rowversion)
+   - 5.4 **Staff: System Architecture**
+     - 5.4.1 [Scalable Multi-Tenant Data Isolation](#staff-design-the-data-access-layer-for-a-multi-tenant-saas-supporting-1000-tenants-with-different-data-isolation-requirements)
+     - 5.4.2 [Reliable Outbox Pattern Design](#staff-how-would-you-implement-an-outbox-pattern-with-ef-core-for-guaranteed-event-delivery)
+
 ## TL;DR
 
 Entity Framework Core (EF Core 10) is the standard ORM for modern .NET, translating C# LINQ into optimized SQL. In `tai-portal`, a single `PortalDbContext` (inheriting `IdentityDbContext`) manages all persistence — PostgreSQL with Npgsql. The architecture enforces **zero-trust multi-tenancy** via Global Query Filters (every query is automatically scoped by `TenantId`), uses a `TenantInterceptor` to stamp `TenantId` on inserts, populates audit fields (`CreatedAt/By`, `LastModifiedAt/By`) automatically in `SaveChangesAsync`, dispatches **domain events before save** (so handlers participate in the same transaction), and uses PostgreSQL's native `xmin` system column for **optimistic concurrency**. The `AuditLogs` table is **range-partitioned by timestamp** for scalable time-series querying. All testing runs against real PostgreSQL via **Testcontainers** — no in-memory fakes.
@@ -19,11 +62,38 @@ Entity Framework Core (EF Core 10) is the standard ORM for modern .NET, translat
 ### Concept Overview
 
 #### 1. Why Use an ORM (Entity Framework Core)?
-- **What:** An ORM (Object-Relational Mapper) bridges Object-Oriented Programming (C# classes) and Relational Databases (SQL tables). Instead of writing raw SQL strings and manually mapping results with `SqlDataReader`, EF Core lets you work with C# objects and LINQ.
-- **Why:** Massive developer velocity, compile-time type safety (rename a column → compiler catches errors, whereas raw SQL fails at runtime), built-in SQL injection protection via parameterized queries, and database provider abstraction (swap PostgreSQL for SQL Server by changing one line).
-- **How:** Define entity classes → configure them in `OnModelCreating` (or with `IEntityTypeConfiguration<T>`) → query with LINQ (`_context.Users.Where(...)`) → EF Core translates to SQL → results are materialized as C# objects → mutations are tracked → `SaveChangesAsync()` generates INSERT/UPDATE/DELETE SQL.
-- **When:** Use EF Core for applications with complex domain models, multi-tenancy, audit requirements, and moderate query complexity. Use Dapper or raw ADO.NET for performance-critical read paths, bulk data pipelines, or when you need fine-grained SQL control.
-- **Trade-offs:** EF Core is a "leaky abstraction." The Change Tracker consumes significant memory, and poorly structured LINQ can generate catastrophic SQL (N+1 queries, Cartesian explosions, full table scans). You must understand the SQL being generated — `ToQueryString()` and logging are essential development tools.
+
+##### 1.1 What
+1. An ORM (Object-Relational Mapper) bridges Object-Oriented Programming (C# classes) and Relational Databases (SQL tables)
+2. Instead of writing raw SQL strings and manually mapping results with `SqlDataReader`, EF Core lets you work with C# objects and LINQ
+
+##### 1.2 Why
+1. **Massive developer velocity**
+2. **Compile-time type safety** — rename a column → compiler catches errors, whereas raw SQL fails at runtime
+3. **Built-in SQL injection protection** via parameterized queries
+4. **Database provider abstraction** — swap PostgreSQL for SQL Server by changing one line
+
+##### 1.3 How
+1. Define entity classes
+2. Configure them in `OnModelCreating` (or with `IEntityTypeConfiguration<T>`)
+3. Query with LINQ (`_context.Users.Where(...)`)
+4. EF Core translates to SQL
+5. Results are materialized as C# objects
+6. Mutations are tracked
+7. `SaveChangesAsync()` generates INSERT/UPDATE/DELETE SQL
+
+##### 1.4 When
+1. **Use EF Core for:** applications with complex domain models, multi-tenancy, audit requirements, and moderate query complexity
+2. **Use Dapper or raw ADO.NET for:** performance-critical read paths, bulk data pipelines, or when you need fine-grained SQL control
+
+##### 1.5 Trade-offs
+1. EF Core is a "leaky abstraction"
+2. The Change Tracker consumes significant memory
+3. Poorly structured LINQ can generate catastrophic SQL:
+   1. N+1 queries
+   2. Cartesian explosions
+   3. Full table scans
+4. **You must understand the SQL being generated** — `ToQueryString()` and logging are essential development tools
 
 #### 2. Deferred Execution & IQueryable
 - **What:** When you write a LINQ query against a `DbSet` (e.g., `_context.Users.Where(u => u.IsActive)`), EF Core does not execute it immediately. It builds an **Expression Tree** — an in-memory representation of the query logic.
@@ -32,7 +102,7 @@ Entity Framework Core (EF Core 10) is the standard ORM for modern .NET, translat
 - **When:** Always build queries as `IQueryable<T>` chains. The moment you call `.ToList()` or `.AsEnumerable()` mid-chain, everything after runs in memory — a common performance trap.
 - **Trade-offs:** Not all C# expressions translate to SQL. Complex method calls, string interpolation, or custom functions inside `.Where()` may cause client evaluation warnings or exceptions. Check `ToQueryString()` to verify what SQL is generated.
 
-#### 3. Global Query Filters — Automatic Multi-Tenancy
+#### 3. Global Query Filters Automatic Multi-Tenancy
 - **What:** LINQ predicates applied automatically to every query against a specific entity type. Configured in `OnModelCreating` via `builder.Entity<T>().HasQueryFilter()`. The filter closes over a scoped service (`ITenantService`) to inject the current tenant's ID at runtime.
 - **Why:** In a multi-tenant SaaS, a single developer forgetting `.Where(u => u.TenantId == currentTenant)` would leak data across tenants — a catastrophic security bug. Global Query Filters make this impossible by enforcing the filter at the ORM level. Even if you write `_context.Users.ToListAsync()`, the generated SQL always includes `WHERE "TenantId" = @tenantId`.
 - **How:** The filter expression captures the `_tenantService` reference from the DbContext constructor. Because `PortalDbContext` is scoped (one instance per HTTP request), and `ITenantService` is also scoped (resolved from the request's `tenant_id` claim), the filter automatically reflects the current request's tenant.
@@ -49,7 +119,7 @@ Entity Framework Core (EF Core 10) is the standard ORM for modern .NET, translat
 - **When:** Use tracked queries (the default) when you intend to modify entities. Use `.AsNoTracking()` for read-only queries to avoid Change Tracker overhead (significant memory savings for large result sets).
 - **Trade-offs:** The Change Tracker consumes ~2KB per tracked entity. Loading 10,000 entities for a read-only report wastes ~20MB. Always use `.AsNoTracking()` for queries where you don't call `SaveChanges()`.
 
-#### 5. Interceptors — Cross-Cutting Persistence Concerns
+#### 5. Interceptors: Cross-Cutting Persistence Concerns
 - **What:** EF Core interceptors hook into the persistence pipeline at specific points — before/after `SaveChanges`, before/after command execution, on connection open, etc. They are registered via `optionsBuilder.AddInterceptors()`.
 - **Why:** Interceptors separate cross-cutting concerns (tenant stamping, audit logging, slow query logging) from business logic. Without them, every repository method would need to manually set `TenantId` on new entities.
 - **How:** `TenantInterceptor` in `tai-portal` overrides `SavingChangesAsync`. It scans the Change Tracker for `IMultiTenantEntity` entries in `EntityState.Added` state and stamps their `TenantId` field using the current tenant context. This uses reflection as a fallback for `init`-only properties.
@@ -529,19 +599,35 @@ public class DatabaseFixture : IAsyncLifetime
 
 ## Interview Q&A
 
-### L1: IQueryable vs IEnumerable — Where Does Filtering Happen?
+### L1: Junior Knowledge
+
+#### IQueryable vs IEnumerable — Where Does Filtering Happen?
+
+**Question:** What is the difference between `IQueryable` and `IEnumerable` when filtering data in EF Core?
 
 **Answer:** `IEnumerable<T>.Where()` executes the filter in application memory — EF Core pulls all rows from the database into RAM, then filters locally. `IQueryable<T>.Where()` builds an expression tree that EF Core translates into a SQL `WHERE` clause — filtering happens on the database server, returning only matching rows.
 
 In `tai-portal`, all queries are built as `IQueryable` chains. For example, `IdentityService.GetUsersAsync()` chains `.Where()`, `.OrderBy()`, `.Skip()`, `.Take()` as an expression tree, then materializes with `.ToListAsync()` — the database does all the work (`IdentityService.cs:65-100`).
 
-### L1: How Does EF Core Prevent SQL Injection?
+#### How Does EF Core Prevent SQL Injection?
+
+**Question:** How does using EF Core help protect the application from SQL injection attacks?
 
 **Answer:** EF Core uses parameterized queries automatically. When you write `.Where(u => u.Email == userInput)`, EF Core translates `userInput` into a SQL parameter (`@p0`), not a string concatenation. The database treats the parameter as data, never as executable SQL.
 
 Even `FromSqlInterpolated($"SELECT * FROM Users WHERE Email = {userInput}")` parameterizes the interpolated value. Only `FromSqlRaw` with manual string concatenation is unsafe — and `tai-portal` uses no `FromSqlRaw` in application code (only in migrations for DDL).
 
-### L2: What Is the N+1 Query Problem?
+### L2: Mid-Level Knowledge
+
+#### Why Call base.OnModelCreating First?
+
+**Question:** In `PortalDbContext.cs`, why do we call `base.OnModelCreating(builder)` as the very first line of the override?
+
+**Answer:** Because `PortalDbContext` inherits from `IdentityDbContext`, the base class contains critical logic to map ASP.NET Identity tables (`AspNetUsers`, `AspNetRoles`, etc.). EF Core configuration follows a "last-one-wins" rule. If you call the base method *after* your custom configuration, the base class might overwrite your changes with its defaults. By calling it first, you let the base class establish the foundation, and then your code can safely override or extend specific entity settings (like adding Global Query Filters to `ApplicationUser`).
+
+#### What Is the N+1 Query Problem?
+
+**Question:** Explain the N+1 query problem and how to solve it in EF Core.
 
 **Answer:** You query a list of entities (1 query), then iterate and access a navigation property that triggers a new query per entity (N queries). 100 users = 101 SQL queries.
 
@@ -551,7 +637,9 @@ Even `FromSqlInterpolated($"SELECT * FROM Users WHERE Email = {userInput}")` par
 
 In `tai-portal`, the schema avoids navigation properties on most entities. `UserPrivilege` is queried directly with `.Where(up => up.UserId == userId).Select(up => up.PrivilegeId)` — no `Include()` needed because the join table is accessed as a first-class entity (`IdentityService.cs:109-113`).
 
-### L2: Tracking vs AsNoTracking — When Does It Matter?
+#### Tracking vs AsNoTracking — When Does It Matter?
+
+**Question:** When should you use `.AsNoTracking()` in your queries?
 
 **Answer:** By default, EF Core tracks every queried entity in the Change Tracker (~2KB per entity). This is necessary for `SaveChangesAsync()` to detect what changed. But for read-only queries, tracking is pure overhead.
 
@@ -559,7 +647,11 @@ In `tai-portal`, the schema avoids navigation properties on most entities. `User
 
 **Rule of thumb:** Use `AsNoTracking()` on any query where you don't call `SaveChanges()` afterward.
 
-### L3: How Do Global Query Filters Work for Multi-Tenancy?
+### L3: Senior Knowledge
+
+#### How Do Global Query Filters Work for Multi-Tenancy?
+
+**Question:** Explain how Global Query Filters are used for multi-tenant data isolation in `tai-portal`.
 
 **Answer:** In `OnModelCreating`, you call `b.HasQueryFilter(u => u.TenantId == _tenantService.TenantId)`. The filter closes over the scoped `ITenantService` instance. Because `PortalDbContext` is scoped (one per HTTP request), and `ITenantService` reads the `tenant_id` claim from the current request, every query is automatically scoped.
 
@@ -567,9 +659,9 @@ In `tai-portal`, three entities have filters (`Tenant`, `ApplicationUser`, `Audi
 
 **Bypass with `IgnoreQueryFilters()`:** Used only in admin/diagnostic contexts (e.g., cross-tenant cleanup). It removes all filters on the entity, not just one — there's no selective filter removal.
 
-**Gotcha:** Filters apply to `Include()` joins too. If you `Include(u => u.Roles)` and `Role` has a tenant filter, you'll get an empty navigation if the role belongs to a different tenant. Careful filter design is critical.
+#### Explain the Cartesian Explosion and How AsSplitQuery Solves It
 
-### L3: Explain the Cartesian Explosion and How AsSplitQuery Solves It
+**Question:** What is a Cartesian explosion in EF Core joins, and how does `.AsSplitQuery()` solve it?
 
 **Answer:** When you `.Include(u => u.Roles).Include(u => u.Orders)`, EF Core generates a single `JOIN` query. If a user has 5 roles and 10 orders, the result set has 50 rows (5 x 10 Cartesian product) — the user's data is duplicated in every row.
 
@@ -580,9 +672,9 @@ In `tai-portal`, three entities have filters (`Tenant`, `ApplicationUser`, `Audi
 - Split queries can see inconsistent data if another transaction modifies rows between the 3 queries (no snapshot isolation across queries by default)
 - Single-query joins are better for small result sets; split queries win for large collections
 
-In `tai-portal`, there are no `Include/AsSplitQuery` calls because the schema uses direct join table queries instead of navigation properties — a design choice that avoids the problem entirely.
+#### How Does PostgreSQL xmin Concurrency Differ from SQL Server RowVersion?
 
-### L3: How Does PostgreSQL xmin Concurrency Differ from SQL Server RowVersion?
+**Question:** Compare PostgreSQL's `xmin` concurrency token with SQL Server's `RowVersion`.
 
 **Answer:**
 - **SQL Server `rowversion`/`timestamp`** — a dedicated 8-byte binary column that auto-increments on every row update. You must explicitly add the column. It's durable and monotonically increasing.
@@ -590,9 +682,11 @@ In `tai-portal`, there are no `Include/AsSplitQuery` calls because the schema us
 
 In `tai-portal`, `xmin` is mapped to `uint RowVersion` with `IsRowVersion().HasColumnName("xmin").HasColumnType("xid")`. EF Core reads `xmin` on every query and includes it in `UPDATE ... WHERE "xmin" = @original`.
 
-**Gotcha:** `xmin` changes on any column update — if two users update different columns on the same row, the second will still get a concurrency exception. For column-level concurrency, use a dedicated `ConcurrencyStamp` string column (which ASP.NET Identity already provides for `ApplicationUser`).
+### Staff: System Architecture
 
-### Staff: Design the data access layer for a multi-tenant SaaS supporting 1,000 tenants with different data isolation requirements.
+#### Design the data access layer for a multi-tenant SaaS supporting 1,000 tenants with different data isolation requirements.
+
+**Question:** How would you design a data access layer that supports shared, schema-per-tenant, and database-per-tenant isolation models?
 
 **Answer:** Three isolation tiers based on tenant contract:
 
@@ -636,7 +730,9 @@ builder.Services.AddDbContext<PortalDbContext>((sp, options) => {
 
 The Global Query Filter remains as defense-in-depth even in schema/database isolation — belt and suspenders.
 
-### Staff: How Would You Implement an Outbox Pattern with EF Core for Guaranteed Event Delivery?
+#### How Would You Implement an Outbox Pattern with EF Core for Guaranteed Event Delivery?
+
+**Question:** Walk me through the implementation of the Outbox pattern using EF Core and PostgreSQL `jsonb`.
 
 **Answer:** The current `tai-portal` dispatches domain events inside `SaveChangesAsync`, which means if the application crashes after save but before SignalR push, the event is lost. The Outbox pattern guarantees delivery:
 
@@ -683,12 +779,6 @@ foreach (var message in messages) {
 }
 await context.SaveChangesAsync();
 ```
-
-**Key decisions:**
-- `jsonb` payload allows querying inside events without deserializing
-- Partial index on `ProcessedAt IS NULL` keeps the polling query fast as the table grows
-- `FOR UPDATE SKIP LOCKED` prevents multiple worker instances from processing the same message
-- Idempotent handlers (check `CorrelationId`) protect against at-least-once delivery duplicates
 
 ---
 
