@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { BehaviorSubject } from 'rxjs';
 import { SecurityEventPayload, AuditLogDetails } from './models/security-event.model';
 import { NotificationSignalStore } from './store/notification-signal.store';
+import { ToastService } from '@tai/ui-design-system';
 
 /**
  * RealTimeService
@@ -24,6 +25,7 @@ export class RealTimeService implements OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly ngZone = inject(NgZone);
   private readonly store = inject(NotificationSignalStore);
+  private readonly toastService = inject(ToastService);
 
   private hubConnection: HubConnection | null = null;
   private readonly _connectionStatus$ = new BehaviorSubject<HubConnectionState>(HubConnectionState.Disconnected);
@@ -116,20 +118,34 @@ export class RealTimeService implements OnDestroy {
    * 3. Emit to subscribers
    */
   private handleSecurityEvent(payload: SecurityEventPayload): void {
-    // Extract the event ID from the payload
+    // Extract the event ID and type from the payload
     const eventId = payload.EventId;
+    const eventType = payload.EventType;
 
     if (!eventId) {
       console.warn('RealTimeService: Received SecurityEvent without EventId');
       return;
     }
 
+    // Show toast immediately for critical events
+    if (eventType === 'LoginAnomaly' || eventType === 'PrivilegeChange') {
+      this.toastService.show(
+        `${eventType}: ${payload.Reason || 'Security alert'}`,
+        'critical'
+      );
+    }
+
     // Fetch full details using Claim Check pattern
     this.fetchAuditLogDetails(eventId).subscribe({
       next: (details) => {
+        // Add eventType to the details for downstream consumers
+        const detailsWithType: AuditLogDetails = {
+          ...details,
+          eventType
+        };
         // Emit the full details inside Angular zone to trigger change detection
         this.ngZone.run(() => {
-          this.store.addEvent(details);
+          this.store.addEvent(detailsWithType);
         });
       },
       error: (err) => {

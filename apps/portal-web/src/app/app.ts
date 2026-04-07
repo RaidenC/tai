@@ -2,13 +2,13 @@ import { Component, inject, OnInit } from '@angular/core';
 import { RouterModule, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from './auth.service';
-import { AppShellComponent, MenuItem } from '@tai/ui-design-system';
+import { AppShellComponent, MenuItem, NotificationToggleComponent, ToastComponent } from '@tai/ui-design-system';
 import { OnboardingStore } from './features/onboarding/onboarding.store';
 import { RealTimeService } from './real-time.service';
 import { combineLatest, map, of } from 'rxjs';
 
 @Component({
-    imports: [RouterModule, CommonModule, AppShellComponent],
+    imports: [RouterModule, CommonModule, AppShellComponent, NotificationToggleComponent, ToastComponent],
     selector: 'app-root',
     templateUrl: './app.html',
     styleUrl: './app.scss',

@@ -12,3 +12,8 @@ export * from './lib/design-system/pending-approvals-tile/pending-approvals-tile
 export * from './lib/design-system/confirmation-dialog/confirmation-dialog';
 export * from './lib/design-system/data-table/data-table';
 export * from './lib/design-system/transfer-list/transfer-list';
+export * from './lib/design-system/notification-panel/notification-panel.service';
+export * from './lib/design-system/notification-panel/notification-toggle.component';
+export * from './lib/design-system/notification-panel/notification-panel.component';
+export * from './lib/design-system/notification-panel/notification-panel.types';
+export * from './lib/design-system/toast/index';

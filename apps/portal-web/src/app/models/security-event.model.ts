@@ -27,4 +27,6 @@ export interface AuditLogDetails {
   timestamp: string;
   ipAddress: string | null;
   details: string | null;
+  /** Event type from the original SignalR payload (e.g., 'LoginAnomaly', 'PrivilegeChange') */
+  eventType?: string;
 }
