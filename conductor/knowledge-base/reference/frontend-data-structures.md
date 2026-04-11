@@ -1557,3 +1557,161 @@ When to choose:
 - <span style="color: #FF4444; font-weight: bold;">Anti-pattern</span>: subscribing to a `BehaviorSubject` inside a component constructor and manually pushing into a `signal`. Instead, use `toSignal(subject.asObservable())` to let Angular manage the subscription.
 
 ---
+
+## Interview Q&A
+
+### L1 — Junior
+
+#### `Map` vs Plain Object
+
+**Difficulty:** L1 (Junior)
+
+**Question:** When should you use a `Map` instead of a plain object in TypeScript?
+
+**Answer:** <span style="color: #4285F4; font-weight: bold;">`Map`</span> accepts any key type (objects, numbers, not just strings), guarantees insertion order, has a `.size` property, and avoids prototype pollution risk. <span style="color: #00C851; font-weight: bold;">Use `Map` for dynamic key-value data with frequent add/delete.</span> <span style="color: #FFBB33; font-weight: bold;">Use plain objects for static configuration, JSON serialization, and when you need TypeScript's `Record<K,V>` type safety</span> — plain objects don't survive `JSON.stringify`/`JSON.parse` as Maps.
+
+---
+
+#### What Is `Set` and Why Use It?
+
+**Difficulty:** L1 (Junior)
+
+**Question:** What is a `Set` and when should you prefer it over an array?
+
+**Answer:** A <span style="color: #4285F4; font-weight: bold;">`Set`</span> is a collection of unique values with <span style="color: #00C851; font-weight: bold;">O(1) `.has()`, `.add()`, `.delete()`</span>. Use it instead of `array.includes()` (O(N)) when you need fast membership checks or deduplication. <span style="color: #00C851; font-weight: bold;">tai-portal's `TransferList` uses `Set<string>` for selected item uniqueness</span> — adding the same ID twice stays idempotent with no extra guard code.
+
+---
+
+### L2 — Mid-Level
+
+#### `WeakMap` and GC Behavior
+
+**Difficulty:** L2 (Mid-Level)
+
+**Question:** How does `WeakMap` differ from `Map`, and when should you use it?
+
+**Answer:** `WeakMap` holds <span style="color: #4285F4; font-weight: bold;">weak references</span> to object keys. When the key object has no other references, the garbage collector can collect both key and value automatically — preventing memory leaks in long-lived caches. <span style="color: #FF4444; font-weight: bold;">You cannot iterate a `WeakMap` or check its `.size`</span> — by design, since GC may collect entries at any time and iteration would produce non-deterministic results. <span style="color: #00C851; font-weight: bold;">Use for: DOM metadata, computed result caches, framework internals</span> where entries should live exactly as long as their associated objects. A classic example: caching expensive computations keyed by component instance — no manual cleanup required.
+
+---
+
+#### `structuredClone()` vs JSON Round-Trip
+
+**Difficulty:** L2 (Mid-Level)
+
+**Question:** When should you use `structuredClone()` instead of `JSON.parse(JSON.stringify(obj))`?
+
+**Answer:** <span style="color: #FF4444; font-weight: bold;">`JSON.parse(JSON.stringify(obj))` silently drops `Date` objects (→ string), `undefined` values, `Map`, `Set`, `RegExp`, and throws on circular references.</span> <span style="color: #00C851; font-weight: bold;">`structuredClone()` preserves all of these</span> and handles circular references correctly. In 2026, always prefer `structuredClone()` for deep copies within application code. Reserve the JSON round-trip strictly for serialization to/from network or localStorage. <span style="color: #FFBB33; font-weight: bold;">Caveat: neither can clone functions, DOM nodes, or class instances with methods</span> — prototype chain is lost; you get plain objects back.
+
+---
+
+#### `@for track` in Angular
+
+**Difficulty:** L2 (Mid-Level)
+
+**Question:** Why does Angular's `@for` block require a `track` expression, and what happens if you use `$index`?
+
+**Answer:** <span style="color: #4285F4; font-weight: bold;">`track`</span> provides an identity function so Angular's diffing algorithm can match DOM nodes to data items across re-renders. <span style="color: #FF4444; font-weight: bold;">Without it, the entire list is destroyed and recreated on any change</span> — expensive DOM operations and lost component state. <span style="color: #00C851; font-weight: bold;">With `track item.id`, Angular builds a `Map<trackValue, DOMNode>` and only creates/moves/removes nodes that actually changed.</span> <span style="color: #FF4444; font-weight: bold;">Using `$index` for reorderable lists is an anti-pattern</span> — if items swap positions, indices stay the same and Angular thinks nothing moved, preventing correct reconciliation. The track expression runs on every change detection cycle, so keep it a simple property access, never an expensive function call.
+
+---
+
+### L3 — Senior
+
+#### Signal vs Observable: Data Structure Perspective
+
+**Difficulty:** L3 (Senior)
+
+**Question:** From a data-structure and runtime perspective, how do Signals and Observables differ, and when do you choose each?
+
+**Answer:** Signals and Observables are <span style="color: #4285F4; font-weight: bold;">mathematical duals</span>. An <span style="color: #4285F4; font-weight: bold;">Observable is async and push-based</span> — the producer controls when consumers receive values (analogous to .NET's `IAsyncEnumerable<T>`). A <span style="color: #4285F4; font-weight: bold;">Signal is synchronous and pull-based</span> — the consumer reads the current value when needed, and Angular's runtime batches updates to prevent glitches (no mid-computation inconsistent reads). <span style="color: #00C851; font-weight: bold;">Signals are better for UI state: no subscription management, glitch-free derivation, targeted change detection.</span> <span style="color: #00C851; font-weight: bold;">Observables are better for event streams</span> needing operators like `debounceTime`, `switchMap`, or `retry`. <span style="color: #FFBB33; font-weight: bold;">Bridge at store boundaries: use `toSignal()` to convert Observable→Signal (consuming RxJS data into the reactive graph), and `toObservable()` to convert Signal→Observable (when you need operators on derived state).</span> Mixing them arbitrarily inside components creates cognitive overhead — establish a clear seam.
+
+---
+
+#### CDK VirtualScroll Algorithm & Accessibility
+
+**Difficulty:** L3 (Senior)
+
+**Question:** How does Angular CDK's `VirtualScrollViewport` work internally, and what accessibility trade-offs does it introduce?
+
+**Answer:** `VirtualScrollViewport` calculates `visibleCount = viewportHeight / itemSize` and renders only that many DOM nodes plus a configurable buffer. As the user scrolls, a `translateY()` on the container shifts the visible window and node content is recycled — <span style="color: #00C851; font-weight: bold;">DOM node count stays O(1) regardless of list size.</span> <span style="color: #FF4444; font-weight: bold;">Accessibility trade-off: screen readers cannot navigate off-screen items because they are not in the DOM.</span> Browser `Ctrl+F` search also won't find virtualized content — a real UX limitation for knowledge-base UIs. <span style="color: #00C851; font-weight: bold;">Mitigate with `aria-setsize`, `aria-posinset` attributes and an ARIA `listbox` role</span> so assistive technology knows the logical size of the list even if DOM nodes are absent. <span style="color: #FFBB33; font-weight: bold;">Variable-height items require `AutoSizeVirtualScrollStrategy` (experimental in CDK)</span> — it must measure each item on first render and can jitter during fast scrolling. Default fixed-size strategy is the safe choice for homogeneous lists.
+
+---
+
+#### Client-Side Caching with IndexedDB
+
+**Difficulty:** L3 (Senior)
+
+**Question:** Describe a robust client-side caching strategy using IndexedDB for a multi-tenant Angular portal.
+
+**Answer:** Design a <span style="color: #4285F4; font-weight: bold;">stale-while-revalidate</span> pattern: on request, immediately return cached data from IndexedDB (fast perceived UX), then fetch fresh data from the API in background. When the API responds, update IndexedDB and emit new data via signal — component re-renders automatically with no loading spinner. <span style="color: #00C851; font-weight: bold;">Cache key schema: `${endpoint}:${JSON.stringify(params)}:${tenantId}`</span> — tenant isolation is critical; never let one tenant read another's cached data. <span style="color: #00C851; font-weight: bold;">Store TTL metadata alongside cached entries</span> and prune expired entries in `requestIdleCallback` on app startup to avoid unbounded growth. <span style="color: #FFBB33; font-weight: bold;">For offline support, queue failed writes in an IndexedDB `pendingQueue` object store and drain on reconnection using `navigator.onLine` events with exponential backoff.</span> <span style="color: #FF4444; font-weight: bold;">Anti-pattern: storing all API responses in `localStorage`</span> — 5 MB quota, synchronous API blocks the main thread, no structured-query capability.
+
+---
+
+### Staff — System Architecture
+
+#### Design a Signal-Based State System with Offline Support
+
+**Difficulty:** Staff
+
+**Question:** Design a production-grade, signal-based state management system for a multi-tenant Angular portal that supports optimistic updates and offline write-ahead queuing.
+
+**Answer:**
+
+**Requirements:** multi-tenant Angular portal, optimistic updates, offline queue, conflict resolution.
+
+**Architecture layers:**
+
+1. <span style="color: #00C851; font-weight: bold;">Signal-based store per feature</span> — `@Injectable` service with `signal()` for mutable state and `computed()` for all derived state. No `BehaviorSubject` inside stores.
+2. <span style="color: #00C851; font-weight: bold;">Write-ahead log in IndexedDB</span> — every mutation is persisted to the `pendingQueue` object store *before* the UI updates. Survives tab close and browser crash.
+3. <span style="color: #4285F4; font-weight: bold;">Optimistic update</span> — update the signal immediately so the UI feels instant, then dispatch the API call in the background.
+4. **Online + success:** API returns 200 → confirm by removing the entry from the IndexedDB queue. Signal state already reflects truth.
+5. **Online + failure:** API returns 4xx/5xx → <span style="color: #FF4444; font-weight: bold;">rollback the signal to its pre-mutation snapshot</span> and surface an error toast. Never leave the UI in an inconsistent state.
+6. **Offline:** mutation is queued in IndexedDB → a `SyncService` listens to `navigator.onLine` events and drains the queue on reconnection using exponential backoff (`1s → 2s → 4s → ... → 60s max`).
+7. <span style="color: #FFBB33; font-weight: bold;">Conflict resolution</span> — last-write-wins using server timestamp for simple resources; CRDT (e.g., Yjs) for collaborative features. Server is source of truth after sync.
+8. **Tenant isolation** — all IndexedDB object store keys are prefixed with `tenantId`. Cleared on logout.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Signal Store
+    participant IndexedDB
+    participant API
+    User->>Signal Store: Mutation (optimistic)
+    Signal Store->>IndexedDB: Write-ahead log
+    Signal Store->>API: POST /api/resource
+    alt Online + Success
+        API-->>Signal Store: 200 OK (confirm)
+        Signal Store->>IndexedDB: Remove from queue
+    else Online + Failure
+        API-->>Signal Store: 500 Error
+        Signal Store->>Signal Store: Rollback state
+    else Offline
+        Signal Store->>IndexedDB: Queue for sync
+        Note over Signal Store: navigator.onLine → drain queue
+    end
+```
+
+---
+
+## Cross-References & Further Reading
+
+### Cross-References
+
+- [[TypeScript]] — Structural typing, generics, utility types, discriminated unions for state modeling
+- [[Angular-Core]] — DI, Signals, Standalone Components, Change Detection deep dive
+- [[RxJS-Signals]] — Observable operators, `toSignal()`/`toObservable()` bridge, Store patterns
+- [[Data-Structures-Algorithms]] — Backend counterparts: `Dictionary`, `HashSet`, BFS/DFS, Big-O
+- [[Performance-Optimization]] — Core Web Vitals, bundle analysis, lazy loading
+- [[Caching]] — Server-side caching strategies that complement client-side approaches
+
+### Further Reading
+
+- [MDN: Map](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map)
+- [MDN: structuredClone()](https://developer.mozilla.org/en-US/docs/Web/API/structuredClone)
+- [Angular Signals Guide](https://angular.dev/guide/signals)
+- [CDK Virtual Scrolling](https://material.angular.io/cdk/scrolling/overview)
+- `libs/ui/design-system/src/lib/design-system/transfer-list/transfer-list.ts`
+- `apps/portal-web/src/app/store/notification-signal.store.ts`
+
+---
+
+*Last updated: 2026-04-10*
