@@ -1727,3 +1727,112 @@ Each query is routed to the correct shard via `hash(tenantId) % numShards`. This
 **Answer:** <span style="color: #33b5e5; font-weight: bold;">`Span<T>`</span> is a <span style="color: #33b5e5; font-weight: bold;">ref struct</span> providing a stack-allocated window into contiguous memory without copying. It <span style="color: #00C851; font-weight: bold;">eliminates heap allocations in parsing hot paths</span>, drastically reducing GC pressure. <span style="color: #ff4444; font-weight: bold;">Cannot be used across `await` boundaries</span> (use `Memory<T>` instead). For full coverage see [[Performance-Optimization]].
 
 ---
+
+## L3 Senior Knowledge
+
+#### Keyset Pagination vs Offset Pagination
+**Difficulty:** L3 (Senior)
+
+**Question:** Why is offset pagination problematic at scale and how does keyset pagination solve it?
+
+**Answer:** <span style="color: #ff4444; font-weight: bold;">`Skip(N)` forces the database to scan and discard N rows</span>, making deep pages an <span style="color: #ff4444; font-weight: bold;">O(N) operation</span> that degrades linearly with page depth. <span style="color: #33b5e5; font-weight: bold;">Keyset pagination</span> — using a `WHERE Id > @lastSeenId` clause — allows the database to perform an <span style="color: #00C851; font-weight: bold;">O(log N) B-Tree index seek</span>, jumping directly to the next page boundary. tai-portal currently uses offset pagination in `IdentityService`; keyset would significantly improve performance on deep pages. <span style="color: #FFD700; font-weight: bold;">Trade-off: keyset cannot jump to an arbitrary page number</span> — it supports only next/previous navigation. For APIs serving mobile clients or infinite-scroll UIs, keyset is the clear winner. For admin dashboards with explicit page number navigation, offset may be acceptable if the total dataset and page depth remain bounded.
+
+---
+
+#### BFS vs DFS: When and How
+**Difficulty:** L3 (Senior)
+
+**Question:** When would you choose BFS over DFS and what are the space complexity implications of each?
+
+**Answer:** <span style="color: #33b5e5; font-weight: bold;">BFS (Breadth-First Search)</span> explores level by level via a <span style="color: #33b5e5; font-weight: bold;">Queue</span> and <span style="color: #00C851; font-weight: bold;">guarantees the shortest unweighted path</span> between two nodes. <span style="color: #33b5e5; font-weight: bold;">DFS (Depth-First Search)</span> explores depth-first via a <span style="color: #33b5e5; font-weight: bold;">Stack or recursion</span> — well suited for cycle detection, topological sort, and identifying connected components. BFS uses <span style="color: #FFD700; font-weight: bold;">O(V) space for the queue</span>, which can hold an entire level width in wide graphs. DFS uses <span style="color: #FFD700; font-weight: bold;">O(V) space for the call stack or explicit Stack</span>, proportional to the depth of the longest path. <span style="color: #ff4444; font-weight: bold;">Recursive DFS risks `StackOverflowException` on deep graphs</span> — always use an iterative implementation with an explicit `Stack<T>` in production code. In tai-portal, a BFS traversal of the role hierarchy would collect all inherited privileges level by level, ensuring no granted permission is missed.
+
+---
+
+#### Dynamic Programming: Memoization vs Tabulation
+**Difficulty:** L3 (Senior)
+
+**Question:** What is the difference between memoization and tabulation, and when should you prefer each?
+
+**Answer:** Both techniques solve problems with <span style="color: #33b5e5; font-weight: bold;">overlapping subproblems</span> by caching intermediate results to avoid redundant computation. <span style="color: #33b5e5; font-weight: bold;">Memoization (top-down)</span> retains the natural recursive structure and caches results in a `Dictionary` — it is easy to write and only computes subproblems actually reached. <span style="color: #ff4444; font-weight: bold;">Downsides: call-stack depth risk and cache misses due to non-sequential memory access.</span> <span style="color: #33b5e5; font-weight: bold;">Tabulation (bottom-up)</span> fills an array iteratively — it is <span style="color: #00C851; font-weight: bold;">stack-safe and cache-friendly</span> due to sequential memory access, but the recurrence relation can be harder to read. For Fibonacci, memoization is O(N) time and O(N) space; tabulation can be optimized to <span style="color: #00C851; font-weight: bold;">O(1) space using rolling variables</span>. <span style="color: #FFD700; font-weight: bold;">Tabulation is preferred in production</span> for its stack safety and predictable, cache-friendly performance.
+
+---
+
+#### `FrozenDictionary` vs `Dictionary`
+**Difficulty:** L3 (Senior)
+
+**Question:** What is `FrozenDictionary<TKey,TValue>` in .NET 8 and when should you prefer it over a standard `Dictionary`?
+
+**Answer:** <span style="color: #33b5e5; font-weight: bold;">`FrozenDictionary<TKey,TValue>`</span> (.NET 8+) analyzes the full key set at construction time and generates an <span style="color: #00C851; font-weight: bold;">optimized, dataset-specific hash function</span> tailored to those exact keys. Benchmarks consistently show <span style="color: #00C851; font-weight: bold;">20–40% faster lookups</span> compared to a standard `Dictionary`. <span style="color: #FFD700; font-weight: bold;">Trade-off: construction is expensive</span> (higher constant factor) and the collection is permanently immutable after creation. Ideal use cases are data loaded once at startup and read millions of times per second: route tables, permission maps, feature flags, and static configuration. <span style="color: #ff4444; font-weight: bold;">Do not use `FrozenDictionary` for data that changes at runtime</span> — the immutability guarantee makes it unsuitable. In tai-portal, the role → permission mapping is a perfect candidate: built once during application startup, read on every authorization check.
+
+---
+
+## Staff System Architecture
+
+#### Design a Distributed Rate Limiter
+**Difficulty:** Staff
+
+**Question:** How would you design a distributed rate limiter for the tai-portal API that works correctly across multiple load-balanced instances?
+
+**Answer:** <span style="color: #ff4444; font-weight: bold;">An in-memory `Dictionary` fails immediately in a multi-instance deployment</span> — each instance tracks its own counters independently, so the aggregate request rate is not enforced. The correct approach is a shared <span style="color: #33b5e5; font-weight: bold;">Redis</span> store. One option is a <span style="color: #33b5e5; font-weight: bold;">Sliding Window Log</span> using a Redis Sorted Set (ZSET): key = client identifier, score = request timestamp, value = unique request ID. On each request: `ZREMRANGEBYSCORE` removes entries older than the window, `ZCARD` counts remaining requests, and `ZADD` records the new request if under the limit. An alternative is <span style="color: #33b5e5; font-weight: bold;">Token Bucket</span> implemented with an atomic Lua script — increment a counter, check against the threshold, and reset on window expiry. <span style="color: #FFD700; font-weight: bold;">Token Bucket is more memory-efficient; Sliding Window Log is more precise.</span> Both approaches require atomic Redis operations to prevent race conditions between the check and the write. Always set a Redis TTL on the key to self-clean after the window expires.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Redis
+    Client->>API: GET /api/users
+    API->>Redis: ZREMRANGEBYSCORE ip:10.0.0.1 0 (now-60s)
+    API->>Redis: ZCARD ip:10.0.0.1
+    Redis-->>API: count: 99
+    API->>Redis: ZADD ip:10.0.0.1 now requestId
+    API-->>Client: 200 OK
+```
+
+---
+
+#### Algorithmic Refactoring: O(N²) to O(N)
+**Difficulty:** Staff
+
+**Question:** Walk through your systematic process for identifying and refactoring an O(N²) algorithm to O(N) in a production codebase.
+
+**Answer:** Start with the profiler — never guess. A profiler or BenchmarkDotNet trace showing a <span style="color: #ff4444; font-weight: bold;">nested `List.Contains` inside a `foreach`</span> is the classic O(N²) fingerprint: the inner `Contains` is a linear scan, repeated N times. Analyze the access pattern: if the inner loop is a membership check, it can be replaced with a <span style="color: #33b5e5; font-weight: bold;">`HashSet<T>`</span> for <span style="color: #00C851; font-weight: bold;">O(1) lookups</span>. Pre-build the `HashSet` from the inner collection once before the outer loop, then iterate the outer collection a single time — <span style="color: #00C851; font-weight: bold;">total complexity drops to O(N)</span>.
+
+```csharp
+// Before — O(N²)
+foreach (var item in outerList)
+    if (innerList.Contains(item.Id)) Process(item);
+
+// After — O(N)
+var innerSet = new HashSet<Guid>(innerList.Select(x => x.Id));
+foreach (var item in outerList)
+    if (innerSet.Contains(item.Id)) Process(item);
+```
+
+Validate the fix with BenchmarkDotNet before and after — measure both throughput and allocations. <span style="color: #FFD700; font-weight: bold;">If the collection is shared across threads, use `ConcurrentDictionary` or lock appropriately.</span> After deploying, monitor GC pressure (Gen0/Gen1 collections) and p99 latency — the `HashSet` trades a small upfront allocation for eliminating repeated scanning. Document the complexity in the code comment so future maintainers understand the intent.
+
+---
+
+## Cross-References & Further Reading
+
+### Related Knowledge Base Articles
+
+- [[CSharp-Fundamentals]] — Value types (structs) vs reference types; `readonly record struct` for stack-allocated value objects
+- [[EFCore-SQL]] — LINQ → SQL translation, B-Tree indexes, `EXPLAIN ANALYZE` for query tuning
+- [[Design-Patterns]] — MediatR pipeline uses `IEnumerable<IValidator<T>>` — iteration complexity matters for request throughput
+- [[System-Design]] — Caching strategies (`FrozenDictionary` vs Redis) and algorithmic trade-offs at scale
+- [[Performance-Optimization]] — `Span<T>`, `ArrayPool<T>`, GC tuning, BenchmarkDotNet profiling
+- [[Async-Concurrency]] — `Channel<T>`, `ConcurrentDictionary`, `IAsyncEnumerable` — concurrent data structures
+- [[LINQ]] — Full LINQ deep dive including expression trees and deferred execution
+- [[Frontend-Data-Structures]] — JavaScript/Angular counterparts: `Map`, `Set`, Signals, Virtual Scroll
+
+### Further Reading
+
+- [Collections and Data Structures in .NET](https://learn.microsoft.com/en-us/dotnet/standard/collections/)
+- [FrozenDictionary Deep Dive](https://learn.microsoft.com/en-us/dotnet/api/system.collections.frozen.frozendictionary-2)
+- [Introduction to Algorithms (CLRS)](https://mitpress.mit.edu/9780262046305/introduction-to-algorithms/)
+- `libs/core/infrastructure/Identity/IdentityService.cs` — pagination example (current offset implementation)
+- `libs/core/domain/ValueObjects/TenantId.cs` — stack-allocated value object using `readonly record struct`
+
+---
+
+*Last updated: 2026-04-10*
