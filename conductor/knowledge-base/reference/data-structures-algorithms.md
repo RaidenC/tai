@@ -1658,3 +1658,72 @@ Each query is routed to the correct shard via `hash(tenantId) % numShards`. This
 <span style="color: #ff4444; font-weight: bold;">Anti-pattern: `Dictionary<K,V>` in a hot path shared across threads without locking. Use `ConcurrentDictionary<K,V>` or `FrozenDictionary` (if writes are not needed) to avoid race conditions and torn reads.</span>
 
 ---
+
+## Interview Q&A
+
+### L1: Junior Knowledge
+
+#### Array vs `List<T>`
+**Difficulty:** L1 (Junior)
+
+**Question:** What is the difference between an Array and a `List<T>` in C#, and when would you choose each?
+
+**Answer:** An Array has a <span style="color: #33b5e5; font-weight: bold;">fixed size</span> determined at creation. A `List<T>` is a <span style="color: #33b5e5; font-weight: bold;">dynamic collection</span> backed by an array that automatically doubles its capacity when full, amortizing resize cost to <span style="color: #00C851; font-weight: bold;">O(1)</span>. Use arrays when size is known at compile time for minimal overhead; use `List<T>` as the default for dynamic ordered collections.
+
+---
+
+#### `IEnumerable` vs `ICollection` vs `IList`
+**Difficulty:** L1 (Junior)
+
+**Question:** What are the differences between `IEnumerable<T>`, `ICollection<T>`, and `IList<T>`, and how do you decide which to use?
+
+**Answer:** <span style="color: #33b5e5; font-weight: bold;">`IEnumerable<T>`</span> is a read-only, forward-only sequence (iteration only). <span style="color: #33b5e5; font-weight: bold;">`ICollection<T>`</span> adds `Count`, `Add`, and `Remove`. <span style="color: #33b5e5; font-weight: bold;">`IList<T>`</span> adds index-based access (`list[0]`). <span style="color: #00C851; font-weight: bold;">Return the narrowest interface that satisfies your API contract</span> — prefer `IEnumerable<T>` for return types unless callers need count or index access.
+
+---
+
+#### What Is Big-O Notation?
+**Difficulty:** L1 (Junior)
+
+**Question:** What is Big-O notation and why does it matter in interviews?
+
+**Answer:** <span style="color: #33b5e5; font-weight: bold;">Big-O</span> describes how an algorithm's time or space requirements grow with input size N. It focuses on the dominant term and worst case: <span style="color: #00C851; font-weight: bold;">O(1)</span> = constant, <span style="color: #00C851; font-weight: bold;">O(log N)</span> = logarithmic, <span style="color: #FFD700; font-weight: bold;">O(N)</span> = linear, <span style="color: #ff4444; font-weight: bold;">O(N²)</span> = quadratic. It is the universal language for comparing algorithms in interviews.
+
+---
+
+### L2: Mid-Level Knowledge
+
+#### Dictionary Internals & Hash Collisions
+**Difficulty:** L2 (Mid-Level)
+
+**Question:** How does `Dictionary<K,V>` work internally, and what happens when two keys produce the same hash?
+
+**Answer:** A `Dictionary` uses a <span style="color: #33b5e5; font-weight: bold;">hash function</span> to map keys to bucket indices, achieving <span style="color: #00C851; font-weight: bold;">O(1) average lookup</span>. When two keys hash to the same bucket (<span style="color: #33b5e5; font-weight: bold;">collision</span>), .NET resolves it using <span style="color: #33b5e5; font-weight: bold;">chaining</span>. Performance degrades to <span style="color: #ff4444; font-weight: bold;">O(N) with poor hash distribution</span>. A good, evenly distributed `GetHashCode()` implementation is critical — <span style="color: #00C851; font-weight: bold;">override it whenever you override `Equals()`</span>.
+
+---
+
+#### `HashSet` vs `List.Contains` Performance
+**Difficulty:** L2 (Mid-Level)
+
+**Question:** When would you use a `HashSet<T>` instead of `List<T>` for membership checks?
+
+**Answer:** <span style="color: #00C851; font-weight: bold;">`HashSet<T>.Contains()` is O(1)</span> via hash lookup. <span style="color: #ff4444; font-weight: bold;">`List<T>.Contains()` is O(N)</span> linear scan. However, for extremely small collections (&lt;10 items), `List` can be faster due to <span style="color: #33b5e5; font-weight: bold;">contiguous memory and CPU cache locality</span>. <span style="color: #FFD700; font-weight: bold;">For anything larger, always prefer `HashSet`.</span> In tai-portal, we use `HashSet<Guid>` for privilege deduplication.
+
+---
+
+#### Stack vs Queue vs PriorityQueue
+**Difficulty:** L2 (Mid-Level)
+
+**Question:** When would you reach for a `Stack<T>`, `Queue<T>`, or `PriorityQueue<T,P>` and what is the complexity of each?
+
+**Answer:** <span style="color: #33b5e5; font-weight: bold;">Stack (LIFO)</span>: undo/redo, DFS traversal — <span style="color: #00C851; font-weight: bold;">O(1) push/pop</span>. <span style="color: #33b5e5; font-weight: bold;">Queue (FIFO)</span>: BFS traversal, job scheduling — <span style="color: #00C851; font-weight: bold;">O(1) enqueue/dequeue</span>. <span style="color: #33b5e5; font-weight: bold;">PriorityQueue (min-heap)</span>: process by priority, not arrival order — <span style="color: #FFD700; font-weight: bold;">O(log N) enqueue/dequeue</span>. Choose based on the access pattern your algorithm needs.
+
+---
+
+#### `Span<T>` as Zero-Copy Data View
+**Difficulty:** L2 (Mid-Level)
+
+**Question:** What is `Span<T>` and when should you use it over a regular array slice?
+
+**Answer:** <span style="color: #33b5e5; font-weight: bold;">`Span<T>`</span> is a <span style="color: #33b5e5; font-weight: bold;">ref struct</span> providing a stack-allocated window into contiguous memory without copying. It <span style="color: #00C851; font-weight: bold;">eliminates heap allocations in parsing hot paths</span>, drastically reducing GC pressure. <span style="color: #ff4444; font-weight: bold;">Cannot be used across `await` boundaries</span> (use `Memory<T>` instead). For full coverage see [[Performance-Optimization]].
+
+---
