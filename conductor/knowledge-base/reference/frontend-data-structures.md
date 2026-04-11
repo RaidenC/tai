@@ -1346,3 +1346,214 @@ Use Cache API / Service Workers for **PWA offline support**, caching static asse
 **Backend Analogues (Group 5):** `localStorage` ≈ **`appsettings.json`** (simple KV config, synchronous, small); IndexedDB ≈ **SQLite / LiteDB** (embedded transactional DB, indexes, structured queries, no server required); Cache API ≈ **`IDistributedCache`** (cache HTTP responses/computed results, configurable expiry strategies, shared quota analogous to Redis memory limits).
 
 ---
+
+## Group 7: Architecture & Data Flow, Real-World Examples, Comparison Tables
+
+### 7.0 Architecture & Data Flow
+
+End-to-end data flow in an Angular signal-based application — from raw HTTP/WebSocket response through the state layer to incremental DOM rendering.
+
+```mermaid
+flowchart TD
+    subgraph Network["Network Layer"]
+        API["HTTP API Response"]
+        WS["WebSocket / SSE"]
+    end
+    subgraph State["State Layer"]
+        HTTP["HttpClient<br/>(Observable)"]
+        Store["Signal Store<br/>signal() + computed()"]
+        RxBridge["toSignal()<br/>RxJS → Signal bridge"]
+    end
+    subgraph Component["Component Layer"]
+        Input["Signal Input<br/>input.required()"]
+        Derived["computed()<br/>Memoized derivation"]
+        Template["Template<br/>@for track item.id"]
+    end
+    subgraph DOM["DOM Layer"]
+        IDOM["Incremental DOM<br/>Direct mutation"]
+        VS["VirtualScroll<br/>Windowed rendering"]
+        Paint["Browser Paint"]
+    end
+
+    API --> HTTP
+    WS --> RxBridge
+    HTTP --> Store
+    RxBridge --> Store
+    Store --> Input
+    Input --> Derived
+    Derived --> Template
+    Template --> IDOM
+    Template --> VS
+    IDOM --> Paint
+    VS --> Paint
+```
+
+Key observations:
+
+- <span style="color: #4285F4; font-weight: bold;">HttpClient returns an Observable</span> — the canonical RxJS boundary. Use `toSignal()` to cross into the signal graph once (at the store layer), not in components.
+- <span style="color: #00C851; font-weight: bold;">Signal propagation is pull-based and glitch-free</span>: Angular re-evaluates only the computed() nodes whose dependencies changed, then schedules a single DOM update.
+- <span style="color: #FF4444; font-weight: bold;">Anti-pattern</span>: subscribing to an Observable inside a component and writing `.subscribe(val => this.signal.set(val))` directly. Prefer `toSignal()` at the store boundary.
+- <span style="color: #FFBB33; font-weight: bold;">Trade-off</span>: `@for track item.id` vs `@for track $index` — tracking by stable identity prevents O(N) DOM teardown/recreate on list mutation; tracking by index is only safe for immutable lists.
+
+---
+
+### 7.1 tai-portal: TransferList `Set` Deduplication 📍
+
+**File:** `libs/ui/design-system/src/lib/design-system/transfer-list/transfer-list.ts`
+
+The `TransferListComponent` manages two buckets (available / assigned) using `signal<Set<string | number>>` rather than an array. This gives O(1) membership tests when rendering filtered lists and when moving items between buckets.
+
+```typescript
+// Signal holds the assigned-IDs bucket as a Set — O(1) has(), add(), delete()
+public readonly assignedIds = signal<Set<string | number>>(new Set());
+
+// computed() filters the full item list in one pass — no indexOf / includes
+public readonly availableItems = computed(() => {
+  const ids = this.assignedIds();                       // read signal (tracked dependency)
+  return allItems.filter(item => !ids.has(item.id));    // O(1) per item, O(N) total
+});
+
+public readonly assignedItems = computed(() => {
+  const ids = this.assignedIds();
+  return allItems.filter(item => ids.has(item.id));     // O(1) per item
+});
+
+// Move: create new Set (immutable update) → signal detects change → computed() re-runs
+public moveRight(ids: (string | number)[]): void {
+  const current = new Set(this.assignedIds());          // copy for immutability
+  ids.forEach(id => current.add(id));
+  this.updateAssigned(current);                         // signal.set() triggers reactivity
+}
+```
+
+<span style="color: #00C851; font-weight: bold;">Why Set over Array here?</span> With N=1000 privilege items, `Array.includes()` in the filter predicate would be O(N²) per render cycle. `Set.has()` reduces that to O(N). The component also uses `ScrollingModule` from `@angular/cdk/scrolling` so only visible rows are rendered — complementary optimizations.
+
+**Backend analogue:** `HashSet<T>.Contains()` — same O(1) average case, same motivation.
+
+---
+
+### 7.2 tai-portal: NotificationSignalStore 📍
+
+**File:** `apps/portal-web/src/app/store/notification-signal.store.ts`
+
+The `NotificationSignalStore` combines three primitives: a `signal<AuditLogDetails[]>` buffer, a `Set<string>` idempotency cache, and a `computed()` memoized latest-event projection.
+
+```typescript
+@Injectable({ providedIn: 'root' })
+export class NotificationSignalStore {
+  private readonly _eventBuffer = signal<AuditLogDetails[]>([]);
+  private readonly seenEventIds = new Set<string>();        // O(1) dedup guard
+
+  readonly eventBuffer = this._eventBuffer.asReadonly();    // expose read-only signal
+
+  readonly latestEvent = computed(() => {                   // memoized — only recalculates
+    const buffer = this._eventBuffer();                     // when _eventBuffer changes
+    return buffer.length > 0 ? buffer[buffer.length - 1] : null;
+  });
+
+  addEvent(event: AuditLogDetails): void {
+    if (this.seenEventIds.has(event.id)) return;            // O(1) — drop duplicate
+
+    this.seenEventIds.add(event.id);
+    this._eventBuffer.update(buffer => {                    // immutable update
+      const next = [...buffer, event];
+      return next.length > MAX_BUFFER_SIZE                  // cap ring buffer at 50
+        ? next.slice(-MAX_BUFFER_SIZE)
+        : next;
+    });
+
+    if (this.seenEventIds.size > MAX_IDEMPOTENCY_CACHE) {  // evict stale IDs
+      this.seenEventIds.clear();
+      this._eventBuffer().forEach(e => this.seenEventIds.add(e.id));
+    }
+  }
+}
+```
+
+Three patterns to internalize:
+
+| Pattern | Mechanism | Why |
+|---------|-----------|-----|
+| <span style="color: #4285F4; font-weight: bold;">Idempotency</span> | `Set.has(event.id)` before inserting | WebSocket may replay events on reconnect; Set dedup is O(1) |
+| <span style="color: #00C851; font-weight: bold;">Immutable state transitions</span> | `signal.update(prev => [...prev, event])` | New array reference triggers Angular change detection; mutating in place would not |
+| <span style="color: #4285F4; font-weight: bold;">Memoized projection</span> | `computed(() => buffer[buffer.length - 1])` | Template reads `latestEvent` on every render cycle; `computed()` recalculates only when buffer signal changes |
+
+<span style="color: #FFBB33; font-weight: bold;">Trade-off:</span> The `seenEventIds` Set grows unbounded until the eviction threshold (`MAX_IDEMPOTENCY_CACHE = 1000`). The eviction strategy is conservative — it keeps only IDs for events currently in the buffer — which is correct but means IDs for events that were already dismissed can momentarily re-enter if a replay arrives during the eviction window.
+
+**Backend analogue:** `ConcurrentDictionary<string, bool>` used as a seen-ID cache in an ASP.NET Core SignalR hub, with a periodic cleanup task.
+
+---
+
+### 7.3 tai-portal: VirtualScroll for Privilege Lists 🔧
+
+**Fits tai-portal** — The `TransferListComponent` already imports `ScrollingModule` from `@angular/cdk/scrolling`. When the available or assigned list has hundreds of privilege items, virtual scrolling ensures only the rows inside the visible viewport are rendered in the DOM.
+
+```typescript
+// transfer-list.ts already imports:
+import { ScrollingModule } from '@angular/cdk/scrolling';
+
+// In the template (conceptual — actual template uses cdk-virtual-scroll-viewport):
+// <cdk-virtual-scroll-viewport itemSize="48" style="height: 300px;">
+//   <div *cdkVirtualFor="let item of availableItems(); trackBy: trackById">
+//     {{ item.label }}
+//   </div>
+// </cdk-virtual-scroll-viewport>
+```
+
+How it works:
+
+1. `cdk-virtual-scroll-viewport` measures the container height and `itemSize` (px per row).
+2. It calculates the visible range: `[Math.floor(scrollTop / itemSize), visibleStart + visibleCount]`.
+3. Only items in that range are rendered as real DOM nodes. Items above/below are represented by spacer elements that maintain correct scrollbar position.
+4. On scroll, the rendered slice shifts — O(visible rows) DOM work, regardless of total list size.
+
+<span style="color: #00C851; font-weight: bold;">Combine with Set-based filtering:</span> `availableItems` computed() already returns only non-assigned items as an array. `*cdkVirtualFor` then windows that array. The two optimizations compose cleanly — the Set reduces the array length, VirtualScroll reduces the DOM node count.
+
+<span style="color: #FFBB33; font-weight: bold;">Trade-off:</span> `itemSize` must be a fixed pixel height for the default `FixedSizeVirtualScrollStrategy`. Variable-height rows require `AutoSizeVirtualScrollStrategy` (experimental) or a custom strategy — more complex and slightly less performant.
+
+---
+
+### 7.4 Comparison Tables
+
+#### Map vs Object vs WeakMap
+
+| Dimension | `Map` | Plain Object | `WeakMap` |
+|-----------|-------|-------------|-----------|
+| **Key types** | Any (objects, primitives) | String / Symbol only | Object only |
+| **GC behavior** | Strong references | Strong references | <span style="color: #00C851; font-weight: bold;">Weak references (auto-collected)</span> |
+| **Iteration** | `forEach`, `entries()`, `keys()` | `Object.keys()`, `for...in` | <span style="color: #FF4444; font-weight: bold;">Not iterable</span> |
+| **Size** | `.size` property O(1) | `Object.keys(obj).length` O(N) | Unknown |
+| **Insertion order** | Guaranteed | Guaranteed (ES2015+) | N/A |
+| **JSON serialization** | <span style="color: #FF4444; font-weight: bold;">No (must convert)</span> | Yes (native) | No |
+| **Best for** | Dynamic key-value maps | Static config, API DTOs | Caches, metadata, private data |
+| **Backend analogue** | `Dictionary<TKey, TValue>` | — | `ConditionalWeakTable<TKey, TValue>` |
+
+When to choose:
+
+- <span style="color: #00C851; font-weight: bold;">Map</span> — when keys are not strings, when you need `.size`, or when insertion order matters for iteration (e.g., an LRU cache).
+- <span style="color: #00C851; font-weight: bold;">Plain Object</span> — for API DTOs, static config, and anywhere JSON serialization is required. Angular HttpClient response types are plain objects.
+- <span style="color: #00C851; font-weight: bold;">WeakMap</span> — for per-DOM-node metadata or per-component caches where you want entries to be GC'd automatically when the key object is collected (no memory leak risk). Angular uses WeakMap internally for directive host metadata.
+
+---
+
+#### Signal vs BehaviorSubject vs computed
+
+| Dimension | `signal()` | `BehaviorSubject` | `computed()` |
+|-----------|-----------|-------------------|-------------|
+| **Sync / Async** | <span style="color: #4285F4; font-weight: bold;">Synchronous</span> | Asynchronous (RxJS) | <span style="color: #4285F4; font-weight: bold;">Synchronous</span> |
+| **Push / Pull** | Pull (glitch-free) | Push (can glitch) | Pull (lazy) |
+| **Memory** | Minimal (single value) | Observable chain overhead | <span style="color: #00C851; font-weight: bold;">Memoized (cached)</span> |
+| **Change detection** | Signal-based (targeted) | <span style="color: #FFBB33; font-weight: bold;">Zone-based (broad)</span> | Signal-based (targeted) |
+| **Subscription mgmt** | <span style="color: #00C851; font-weight: bold;">None (automatic)</span> | <span style="color: #FF4444; font-weight: bold;">Manual (must unsubscribe)</span> | <span style="color: #00C851; font-weight: bold;">None (automatic)</span> |
+| **Current value** | `signal()` call | `.value` property | `computed()` call |
+| **Best for** | Component / store state | Cross-service event streams | Derived / filtered state |
+| **Backend analogue** | `INotifyPropertyChanged` | Event / `IAsyncEnumerable<T>` | Memoized LINQ query |
+
+When to choose:
+
+- <span style="color: #00C851; font-weight: bold;">signal()</span> — primary state container for component-local or store state. No subscription lifecycle to manage.
+- <span style="color: #00C851; font-weight: bold;">computed()</span> — any value derivable from one or more signals (filtered list, total count, formatted string). Never replicate derivable state into a second `signal()`.
+- <span style="color: #FFBB33; font-weight: bold;">BehaviorSubject</span> — cross-service streams that must interop with RxJS operators (`switchMap`, `debounceTime`, `combineLatest`). Bridge into the signal graph with `toSignal()` at the store boundary. Prefer `signal()` when RxJS operators are not needed.
+- <span style="color: #FF4444; font-weight: bold;">Anti-pattern</span>: subscribing to a `BehaviorSubject` inside a component constructor and manually pushing into a `signal`. Instead, use `toSignal(subject.asObservable())` to let Angular manage the subscription.
+
+---
