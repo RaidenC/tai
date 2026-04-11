@@ -1423,4 +1423,121 @@ The **exchange argument** proves correctness: if any solution skips the earliest
 
 ---
 
+## Concept Group 6 — LINQ Algorithmic Complexity
+
+> **Cross-reference:** This is a brief algorithmic-complexity perspective on LINQ. For expression trees, IQueryable translation, deferred execution internals, and query comprehension syntax, see [[LINQ]].
+
+### 6.1 LINQ Method Complexity Table
+
+##### What
+<span style="color: #4fc3f7; font-weight: bold;">LINQ operators are thin wrappers over standard iteration algorithms.</span> Each method has a predictable time complexity that follows directly from what it does under the hood — lazy enumeration, hash tables, or sorting.
+
+##### Why
+Understanding LINQ complexity prevents accidentally writing O(N²) loops hidden behind readable method chains. The chain reads linearly but the runtime behaviour depends on whether each operator is lazy or eager, and whether it buffers.
+
+##### How
+
+| LINQ Method | Time Complexity | Implementation |
+|---|---|---|
+| `.Where()` | O(N) | Lazy enumeration, single pass |
+| `.Select()` | O(N) | Lazy enumeration, single pass |
+| `.First()` / `.FirstOrDefault()` | O(1) best, O(N) worst | Short-circuits on first match |
+| `.Any()` | O(1) best, O(N) worst | Short-circuits on first match |
+| `.Count()` | O(1) if `ICollection`, O(N) otherwise | Checks for `.Count` property first |
+| `.OrderBy()` | O(N log N) | Stable IntroSort, creates buffer |
+| `.Distinct()` | O(N) | Internal `HashSet<T>` |
+| `.GroupBy()` | O(N) | Internal `Dictionary<TKey, List<T>>` |
+| `.ToList()` | O(N) | Forces materialization |
+| `.ToDictionary()` | O(N) | Builds hash table |
+| `.Contains()` on `List<T>` | O(N) | Linear scan |
+| `.Contains()` on `HashSet<T>` | O(1) | Hash lookup |
+
+##### When
+<span style="color: #00C851; font-weight: bold;">Treat every lazy LINQ query as a recipe, not a result.</span> The recipe re-executes each time you iterate. <span style="color: #ffbb33; font-weight: bold;">Materialize with `.ToList()` or `.ToArray()` when you need to iterate more than once, pass a collection to multiple callers, or measure `.Count` repeatedly.</span>
+
+##### Trade-offs
+<span style="color: #ffbb33; font-weight: bold;">Lazy evaluation saves memory when you only need the first few results. Eager materialization costs O(N) memory but eliminates repeated iteration.</span> <span style="color: #ff4444; font-weight: bold;">Never assume a LINQ chain is O(N) overall — each chained operator that buffers (`.OrderBy()`, `.GroupBy()`, `.ToList()`) resets the budget.</span>
+
+---
+
+### 6.2 Common Pitfall: Repeated Materialization
+
+<span style="color: #ff4444; font-weight: bold;">BAD — the lazy `.Where()` query re-evaluates on every terminal call:</span>
+
+```csharp
+// BAD: .Where() is lazy — re-evaluates on every call
+var filtered = users.Where(u => u.IsActive);
+var count = filtered.Count();      // O(N) — iterates once
+var first = filtered.First();      // O(N) — iterates AGAIN
+var list = filtered.ToList();      // O(N) — iterates a THIRD time
+```
+
+<span style="color: #00C851; font-weight: bold;">GOOD — materialize once, then use O(1) list operations:</span>
+
+```csharp
+// GOOD: materialize once
+var filtered = users.Where(u => u.IsActive).ToList();
+var count = filtered.Count;   // O(1) — property
+var first = filtered[0];      // O(1) — index
+```
+
+---
+
+### 6.3 `.Any()` vs `.Count() > 0`
+
+<span style="color: #4fc3f7; font-weight: bold;">`.Any()` short-circuits on the first match — it stops as soon as one element satisfies the predicate.</span> `.Count()` always iterates the entire sequence to tally every match.
+
+```csharp
+// BAD — forces full enumeration, then allocates a list, then checks count
+var hasAdmin = users.Where(u => u.Role == "Admin").ToList().Count > 0;
+
+// GOOD — short-circuits at the first Admin found
+var hasAdmin = users.Any(u => u.Role == "Admin");
+```
+
+<span style="color: #ffbb33; font-weight: bold;">`.Count() > 0` is O(N); `.Any()` is O(1) best-case, O(N) worst-case. For existence checks, always prefer `.Any()`.</span>
+
+---
+
+## Architecture & Data Flow — Choosing the Right .NET Collection
+
+<span style="color: #4fc3f7; font-weight: bold;">The decision tree below maps your access-pattern requirements to the collection type with the best asymptotic fit.</span> Start from the top and follow the branching questions.
+
+```mermaid
+flowchart TD
+    Start["Need a collection?"] --> Ordered{"Ordered\nsequence?"}
+    Ordered -->|Yes| Size{"Fixed\nsize?"}
+    Size -->|Yes| Array["Array T[]\nO(1) index"]
+    Size -->|No| ListT["List&lt;T&gt;\nO(1) amortized add"]
+    Ordered -->|No| Unique{"Need unique\nkeys/values?"}
+    Unique -->|Key-Value| ReadOnly{"Read-only\nafter init?"}
+    ReadOnly -->|Yes| Frozen["FrozenDictionary\nFastest reads"]
+    ReadOnly -->|No| ThreadSafe{"Thread-\nsafe?"}
+    ThreadSafe -->|Yes| Concurrent["ConcurrentDictionary\n→ Async-Concurrency"]
+    ThreadSafe -->|No| Dict["Dictionary&lt;K,V&gt;\nO(1) avg"]
+    Unique -->|Keys only| HSet["HashSet&lt;T&gt;\nO(1) contains"]
+    Unique -->|No| Access{"Access\npattern?"}
+    Access -->|LIFO| Stack["Stack&lt;T&gt;"]
+    Access -->|FIFO| Queue["Queue&lt;T&gt;"]
+    Access -->|Priority| PQ["PriorityQueue\nO(log N)"]
+```
+
+### Quick Reference
+
+| Requirement | Best Fit | Key Complexity |
+|---|---|---|
+| Indexed, fixed size | `T[]` | O(1) read/write |
+| Indexed, dynamic size | `List<T>` | O(1) amortized add, O(N) insert |
+| Key-value, single-threaded | `Dictionary<K,V>` | O(1) avg get/set |
+| Key-value, frozen after init | `FrozenDictionary<K,V>` | Fastest read, no writes |
+| Key-value, multi-threaded | `ConcurrentDictionary<K,V>` | O(1) avg, thread-safe |
+| Unique membership test | `HashSet<T>` | O(1) contains |
+| LIFO (undo stack) | `Stack<T>` | O(1) push/pop |
+| FIFO (work queue) | `Queue<T>` | O(1) enqueue/dequeue |
+| Ordered by priority | `PriorityQueue<E,P>` | O(log N) enqueue/dequeue |
+
+<span style="color: #00C851; font-weight: bold;">Rule of thumb: default to `List<T>` for sequences and `Dictionary<K,V>` for lookups. Upgrade to a more specialised type only when profiling shows a bottleneck or when thread-safety is required.</span>
+
+<span style="color: #ff4444; font-weight: bold;">Anti-pattern: using `List<T>.Contains()` inside a loop — O(N²) total. Convert to `HashSet<T>` for O(N) overall.</span>
+
 ---
