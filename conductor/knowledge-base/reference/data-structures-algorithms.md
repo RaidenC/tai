@@ -872,3 +872,369 @@ trie.GetWordsWithPrefix("car"); // ["car", "card", "care"]
 <span style="color: #ffbb33; font-weight: bold;">Memory consumption is the dominant cost</span>. Each character in each word gets its own `TrieNode` object, and each `TrieNode` holds a `Dictionary<char, TrieNode>`. For a vocabulary of 1 million words averaging 8 characters, you allocate ~8 million TrieNode objects — significant heap pressure. Alternatives: **compressed tries** (Patricia/Radix Trees) merge single-child chains into one node, reducing node count dramatically; **DAWG** (Directed Acyclic Word Graph) deduplicates shared suffixes as well as prefixes. In production, use a purpose-built library (e.g., `Gma.DataStructures.StringSearch` NuGet) or leverage the inverted index in OpenSearch/Elasticsearch rather than a hand-rolled Trie.
 
 ---
+
+## Concept Group 4: Core Algorithms
+
+### 4.1 Big-O Notation
+
+##### What
+<span style="color: #33b5e5; font-weight: bold;">Big-O notation</span> is mathematical shorthand for how an algorithm's runtime or space requirements grow as input size N increases. It describes the **worst-case upper bound**, drops constant factors, and keeps only the dominant term. O(2N + 5) simplifies to O(N); O(N² + N log N) simplifies to O(N²). The result is a vocabulary for comparing algorithms independent of hardware.
+
+##### Why
+Big-O is **the language of technical interviews**. Every data structure choice, every algorithmic decision, every trade-off discussion eventually circles back to it. Without Big-O, you can't justify why you chose a `HashSet` over a `List` for membership checks, or why you sort once and binary-search many times instead of linear-scanning repeatedly.
+
+##### How
+Common complexity classes from fastest to slowest:
+
+| Complexity | Name | Example |
+|---|---|---|
+| O(1) | Constant | Dictionary lookup, array index, stack push/pop |
+| O(log N) | Logarithmic | Binary search, balanced BST insert/lookup |
+| O(N) | Linear | Single loop, List.Contains, LINQ First() |
+| O(N log N) | Linearithmic | IntroSort (Array.Sort), merge sort, LINQ OrderBy |
+| O(N²) | Quadratic | Nested loops, bubble sort, naive duplicate detection |
+| O(2^N) | Exponential | Recursive Fibonacci without memoization, subset generation |
+
+```csharp
+// O(1) — constant regardless of input size
+T GetFirst<T>(List<T> list) => list[0];
+
+// O(log N) — halves search space each step
+int BinarySearchExample(int[] sorted, int target) {
+    int lo = 0, hi = sorted.Length - 1;
+    while (lo <= hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (sorted[mid] == target) return mid;
+        if (sorted[mid] < target) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    return -1;
+}
+
+// O(N) — single pass through input
+bool ContainsDuplicate(int[] nums) {
+    var seen = new HashSet<int>();
+    foreach (var n in nums)
+        if (!seen.Add(n)) return true;
+    return false;
+}
+
+// O(N log N) — sort-based
+int[] SortedCopy(int[] nums) {
+    var copy = nums.ToArray();
+    Array.Sort(copy); // IntroSort internally
+    return copy;
+}
+
+// O(N²) — nested loop
+bool HasDuplicateNaive(int[] nums) {
+    for (int i = 0; i < nums.Length; i++)
+        for (int j = i + 1; j < nums.Length; j++)
+            if (nums[i] == nums[j]) return true;
+    return false;
+}
+
+// O(2^N) — recursive without memoization
+int FibNaive(int n) => n <= 1 ? n : FibNaive(n - 1) + FibNaive(n - 2);
+```
+
+##### When
+<span style="color: #00C851; font-weight: bold;">Reference Big-O in every data structure and algorithm comparison</span>. Anytime an interviewer asks "what's the time complexity?" or "could this be faster?", lead with the Big-O of your current approach, then of the alternative. <span style="color: #ff4444; font-weight: bold;">Never just say "it's fast" or "it's slow"</span> — quantify with Big-O.
+
+##### Trade-offs
+<span style="color: #ffbb33; font-weight: bold;">Big-O ignores constants and lower-order terms, which matter in practice</span>. An O(N) algorithm with a large constant (e.g., 1000·N operations) can be slower than an O(N log N) algorithm with a tiny constant for realistic input sizes. For very small N (under ~20 elements), O(N²) with excellent cache locality often beats O(N log N) — this is why IntroSort switches to InsertionSort for small partitions. Big-O is a starting point, not the final word.
+
+---
+
+### 4.2 Sorting — IntroSort, Stable vs Unstable
+
+##### What
+<span style="color: #33b5e5; font-weight: bold;">IntroSort</span> is a hybrid sorting algorithm used by C#'s `Array.Sort`: it starts with QuickSort (good average case), switches to HeapSort if recursion depth exceeds 2·log(N) (prevents QuickSort's O(N²) worst case), and switches to InsertionSort for partitions of ≤16 elements (optimal for small inputs with low overhead). <span style="color: #33b5e5; font-weight: bold;">Stable sort</span> preserves the relative order of equal elements; <span style="color: #33b5e5; font-weight: bold;">unstable sort</span> may reorder them. LINQ's `OrderBy` / `ThenBy` is a stable merge sort.
+
+##### Why
+Sorting is a prerequisite for binary search and a common pre-processing step for optimized algorithms (e.g., two-pointer, sliding window). Understanding stable vs unstable sort matters when sorting objects by multiple criteria — an unstable sort on secondary key can corrupt primary-key ordering established in a prior pass.
+
+##### How
+```csharp
+// Array.Sort — in-place, O(N log N), UNSTABLE
+// Equal elements may be reordered
+var names = new[] { "Charlie", "Alice", "Bob", "Alice" };
+Array.Sort(names); // ["Alice", "Alice", "Bob", "Charlie"] — order of two Alices not guaranteed
+
+// LINQ OrderBy — new collection, O(N log N), STABLE
+// Equal elements preserve their original relative order
+var people = new[] {
+    new { Name = "Alice", Age = 30 },
+    new { Name = "Bob",   Age = 25 },
+    new { Name = "Alice", Age = 28 },
+};
+
+// Stable: first Alice (age 30) stays before second Alice (age 28)
+var sorted = people.OrderBy(p => p.Name).ToList();
+// Result: [Alice(30), Alice(28), Bob(25)] — two Alices stay in insertion order
+
+// For multi-key stable sort, chain ThenBy:
+var multiSorted = people
+    .OrderBy(p => p.Name)
+    .ThenBy(p => p.Age)
+    .ToList();
+// Result: [Alice(28), Alice(30), Bob(25)]
+
+// Array.Sort with custom comparer — still unstable
+var arr = new[] { 3, 1, 4, 1, 5, 9 };
+Array.Sort(arr, (a, b) => a.CompareTo(b));
+
+// For in-place stable sort on spans, use MemoryExtensions.Sort (stable since .NET 6)
+// or just use LINQ and convert back
+```
+
+##### When
+<span style="color: #00C851; font-weight: bold;">Use `OrderBy`/`ThenBy` in LINQ chains when stability matters</span> (sorting UI grids by multiple columns, preserving insertion order for ties). <span style="color: #00C851; font-weight: bold;">Use `Array.Sort` for in-place mutation of arrays when stability is irrelevant</span> — it avoids allocating a new collection and is marginally faster. <span style="color: #ff4444; font-weight: bold;">Do not sort just to find the min/max</span> — use `LINQ.Min()`/`Max()` (O(N)) instead of sorting (O(N log N)).
+
+##### Trade-offs
+<span style="color: #ffbb33; font-weight: bold;">All comparison-based sorts have a theoretical lower bound of Ω(N log N)</span> — no comparison sort can do better in the general case. If you're sorting and then repeatedly searching, a `SortedDictionary<K, V>` or `SortedSet<T>` maintains sorted order on every insert (O(log N) per insert) and may eliminate the need for explicit sort passes. For data that lives in a database, prefer `ORDER BY` in SQL over sorting in application memory.
+
+---
+
+### 4.3 Binary Search
+
+##### What
+<span style="color: #33b5e5; font-weight: bold;">Binary search</span> finds a target in a **sorted** collection in O(log N) time by repeatedly halving the search space: compare the middle element to the target, eliminate the half that cannot contain it, repeat. For N = 1 billion, binary search takes at most 30 comparisons.
+
+##### Why
+The combination of "sort once O(N log N), binary search many times O(log N)" dramatically outperforms "linear search many times O(N)" when queries are frequent. Binary search also supports finding insertion points — knowing where an element *would* go is useful for maintaining sorted order without re-sorting.
+
+##### How
+```csharp
+// Option 1: Array.BinarySearch — built-in, returns index or bitwise complement of insertion point
+int[] sorted = { 1, 3, 5, 7, 9, 11, 13 };
+int idx = Array.BinarySearch(sorted, 7);   // returns 3
+int missing = Array.BinarySearch(sorted, 6); // returns ~3 (negative = not found, ~result = insertion point)
+int insertAt = ~missing; // = 3 (insert at index 3 to keep sorted)
+
+// Option 2: Manual implementation — understand this for interviews
+public static int BinarySearch(int[] sorted, int target) {
+    int lo = 0, hi = sorted.Length - 1;
+    while (lo <= hi) {
+        int mid = lo + (hi - lo) / 2; // avoids integer overflow vs (lo + hi) / 2
+        if (sorted[mid] == target) return mid;
+        if (sorted[mid] < target) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    return -1; // not found
+}
+
+// Finding leftmost (first) occurrence of target — useful for duplicate handling
+public static int BinarySearchLeft(int[] sorted, int target) {
+    int lo = 0, hi = sorted.Length;
+    while (lo < hi) {
+        int mid = lo + (hi - lo) / 2;
+        if (sorted[mid] < target) lo = mid + 1;
+        else hi = mid; // keep narrowing right boundary
+    }
+    return (lo < sorted.Length && sorted[lo] == target) ? lo : -1;
+}
+
+// List<T>.BinarySearch — same semantics as Array.BinarySearch
+var list = new List<int> { 2, 4, 6, 8, 10 };
+int result = list.BinarySearch(6); // returns 2
+```
+
+<span style="color: #ff4444; font-weight: bold;">Common off-by-one pitfalls</span>: using `hi = sorted.Length` vs `hi = sorted.Length - 1` changes loop termination — be consistent. Using `(lo + hi) / 2` overflows for large arrays; always use `lo + (hi - lo) / 2`.
+
+##### When
+<span style="color: #00C851; font-weight: bold;">Use binary search on sorted arrays or lists when lookup performance matters</span> — finding elements, insertion points, or range boundaries. <span style="color: #ff4444; font-weight: bold;">Do NOT use binary search on unsorted data</span> (incorrect results) or on linked lists (no random access — O(N) to reach mid element defeats the purpose). For fewer than ~20 elements, a linear scan is typically faster due to branch prediction and cache effects.
+
+##### Trade-offs
+<span style="color: #ffbb33; font-weight: bold;">Binary search requires sorted input</span> — the sort cost (O(N log N)) must be amortized over enough searches to justify it. If the collection changes frequently, maintaining sorted order on every insert becomes expensive; consider a `SortedSet<T>` (balanced BST, O(log N) insert + search) or a database index instead. For string prefix matching, a Trie outperforms binary search on string arrays.
+
+---
+
+### 4.4 BFS & DFS
+
+##### What
+<span style="color: #33b5e5; font-weight: bold;">Breadth-First Search (BFS)</span> explores all neighbors at the current depth before going deeper — it uses a **Queue** (FIFO). <span style="color: #33b5e5; font-weight: bold;">Depth-First Search (DFS)</span> explores as far as possible along each branch before backtracking — it uses a **Stack** (LIFO) or recursion. Both work on graphs and trees represented as adjacency lists.
+
+##### Why
+BFS and DFS are the two fundamental graph/tree traversal strategies. **BFS guarantees shortest path** in an unweighted graph (fewest edges). **DFS is the backbone** of cycle detection, topological sorting, connected components, and maze solving. In web applications, these patterns appear in permission hierarchies, org-chart traversals, dependency resolution, and sitemap generation.
+
+##### How
+```csharp
+// BFS — explores level by level using Queue
+public static List<int> BFS(Dictionary<int, List<int>> graph, int start)
+{
+    var visited = new HashSet<int>();
+    var queue = new Queue<int>();
+    var result = new List<int>();
+
+    visited.Add(start);
+    queue.Enqueue(start);
+
+    while (queue.Count > 0)
+    {
+        var node = queue.Dequeue();
+        result.Add(node);
+
+        foreach (var neighbor in graph.GetValueOrDefault(node, []))
+        {
+            if (visited.Add(neighbor))   // Add returns false if already present
+                queue.Enqueue(neighbor);
+        }
+    }
+    return result;
+}
+
+// DFS — iterative with explicit Stack (avoids StackOverflowException)
+public static List<int> DFS(Dictionary<int, List<int>> graph, int start)
+{
+    var visited = new HashSet<int>();
+    var stack = new Stack<int>();
+    var result = new List<int>();
+
+    stack.Push(start);
+
+    while (stack.Count > 0)
+    {
+        var node = stack.Pop();
+        if (!visited.Add(node)) continue; // skip if already visited
+
+        result.Add(node);
+
+        foreach (var neighbor in graph.GetValueOrDefault(node, []))
+        {
+            if (!visited.Contains(neighbor))
+                stack.Push(neighbor);
+        }
+    }
+    return result;
+}
+
+// Usage
+var graph = new Dictionary<int, List<int>>
+{
+    [1] = [2, 3],
+    [2] = [4, 5],
+    [3] = [6],
+    [4] = [],
+    [5] = [],
+    [6] = []
+};
+
+var bfsOrder = BFS(graph, 1); // [1, 2, 3, 4, 5, 6] — level by level
+var dfsOrder = DFS(graph, 1); // [1, 3, 6, 2, 5, 4] — depth first (stack reverses neighbor order)
+
+// BFS for shortest path (unweighted) — track parent nodes
+public static int ShortestPath(Dictionary<int, List<int>> graph, int start, int end)
+{
+    var visited = new HashSet<int> { start };
+    var queue = new Queue<(int node, int dist)>();
+    queue.Enqueue((start, 0));
+
+    while (queue.Count > 0)
+    {
+        var (node, dist) = queue.Dequeue();
+        if (node == end) return dist;
+
+        foreach (var neighbor in graph.GetValueOrDefault(node, []))
+            if (visited.Add(neighbor))
+                queue.Enqueue((neighbor, dist + 1));
+    }
+    return -1; // unreachable
+}
+```
+
+##### When
+<span style="color: #00C851; font-weight: bold;">Use BFS when shortest path (fewest hops) or level-order traversal is required</span>: social network degrees of separation, minimum steps in a grid, Angular lazy-loaded module dependency graphs. <span style="color: #00C851; font-weight: bold;">Use DFS when exploring all paths, detecting cycles, or generating topological order</span>: permission inheritance trees, dependency resolution, maze generation. <span style="color: #ff4444; font-weight: bold;">Do not use recursive DFS on deep graphs</span> in production — use iterative DFS with an explicit stack.
+
+##### Trade-offs
+<span style="color: #ffbb33; font-weight: bold;">Both BFS and DFS have identical asymptotic complexity: O(V + E) time, O(V) space</span> (V = vertices, E = edges). The practical difference is memory: BFS holds all nodes at the current frontier in the queue, which can be very wide for dense graphs. DFS only holds one path at a time. <span style="color: #ff4444; font-weight: bold;">Recursive DFS risks `StackOverflowException`</span> on graphs with depth exceeding ~10,000 nodes — .NET's default stack is ~1MB. Always prefer iterative DFS with an explicit `Stack<T>` in production code.
+
+---
+
+### 4.5 Recursion & Backtracking
+
+##### What
+<span style="color: #33b5e5; font-weight: bold;">Recursion</span> is when a function calls itself with a smaller or simpler subproblem, converging toward a **base case** that terminates the chain. <span style="color: #33b5e5; font-weight: bold;">Backtracking</span> extends recursion by treating it as an explicit search: make a choice, recurse into it, then **undo that choice** (backtrack) if it leads to a dead end and try the next option.
+
+##### Why
+Recursion is the natural fit for problems with self-similar substructure: tree traversal, nested data parsing, divide-and-conquer algorithms. Backtracking handles combinatorial search problems — generating permutations, solving Sudoku, placing N-queens, generating valid bracket combinations — where the search space is exponential but pruning eliminates dead branches early.
+
+##### How
+```csharp
+// (a) Classic recursion with base case — factorial
+public static long Factorial(int n)
+{
+    if (n <= 1) return 1;        // base case — terminates recursion
+    return n * Factorial(n - 1); // recursive case — smaller subproblem
+}
+
+// (b) Backtracking — generate all valid parentheses combinations
+// For n=2: ["(())", "()()"]
+// For n=3: ["((()))", "(()())", "(())()", "()(())", "()()()"]
+public static List<string> GenerateParentheses(int n)
+{
+    var result = new List<string>();
+    Backtrack(result, "", 0, 0, n);
+    return result;
+}
+
+private static void Backtrack(
+    List<string> result,
+    string current,
+    int open,
+    int close,
+    int max)
+{
+    if (current.Length == max * 2)
+    {
+        result.Add(current); // base case — valid combination complete
+        return;
+    }
+
+    // Choice 1: add '(' if we haven't used all open brackets
+    if (open < max)
+        Backtrack(result, current + "(", open + 1, close, max);
+
+    // Choice 2: add ')' only if it won't exceed open count (pruning invalid states)
+    if (close < open)
+        Backtrack(result, current + ")", open, close + 1, max);
+    // No explicit "undo" needed here because strings are immutable (new string per call)
+}
+
+// (c) Backtracking with explicit undo — permutations using mutable list
+public static List<List<int>> Permutations(int[] nums)
+{
+    var result = new List<List<int>>();
+    var used = new bool[nums.Length];
+    Permute(nums, used, new List<int>(), result);
+    return result;
+}
+
+private static void Permute(int[] nums, bool[] used, List<int> current, List<List<int>> result)
+{
+    if (current.Count == nums.Length)
+    {
+        result.Add(new List<int>(current)); // snapshot — don't add reference to mutable list
+        return;
+    }
+    for (int i = 0; i < nums.Length; i++)
+    {
+        if (used[i]) continue;
+        used[i] = true;
+        current.Add(nums[i]);          // make choice
+
+        Permute(nums, used, current, result);
+
+        current.RemoveAt(current.Count - 1); // UNDO choice (backtrack)
+        used[i] = false;
+    }
+}
+```
+
+##### When
+<span style="color: #00C851; font-weight: bold;">Use recursion for tree/graph traversal, nested data structures, and divide-and-conquer algorithms</span> (merge sort, binary search). <span style="color: #00C851; font-weight: bold;">Use backtracking for combinatorial search where the search space is exponential but pruning is possible</span>: constraint satisfaction, puzzle solving, generating all subsets/permutations/combinations. <span style="color: #ff4444; font-weight: bold;">Do NOT use plain recursion for overlapping subproblems</span> — that's Dynamic Programming territory (memoization or tabulation eliminates redundant recomputation).
+
+##### Trade-offs
+<span style="color: #ffbb33; font-weight: bold;">.NET's default thread stack is ~1MB, supporting roughly 10,000 recursive frames</span> before `StackOverflowException`. For deep recursion (parsing deeply nested JSON, traversing deep trees), convert to iterative using an explicit `Stack<T>`. Backtracking is inherently exponential in the worst case — pruning is what makes it practical. If a problem has overlapping subproblems (same state visited repeatedly), switch to Dynamic Programming with memoization to avoid recomputing. <span style="color: #ff4444; font-weight: bold;">Never use recursive `Factorial` or naive recursive Fibonacci in production</span> — use iteration or memoization.
+
+---
