@@ -1238,3 +1238,189 @@ private static void Permute(int[] nums, bool[] used, List<int> current, List<Lis
 <span style="color: #ffbb33; font-weight: bold;">.NET's default thread stack is ~1MB, supporting roughly 10,000 recursive frames</span> before `StackOverflowException`. For deep recursion (parsing deeply nested JSON, traversing deep trees), convert to iterative using an explicit `Stack<T>`. Backtracking is inherently exponential in the worst case — pruning is what makes it practical. If a problem has overlapping subproblems (same state visited repeatedly), switch to Dynamic Programming with memoization to avoid recomputing. <span style="color: #ff4444; font-weight: bold;">Never use recursive `Factorial` or naive recursive Fibonacci in production</span> — use iteration or memoization.
 
 ---
+
+### Concept Group 5: Interview Algorithm Patterns
+
+#### 5.1 Two-Pointer Technique
+
+##### What
+<span style="color: #33b5e5; font-weight: bold;">Two-pointer</span> is a technique using two indices that move through a sorted array or string simultaneously — typically one starting at the left and one at the right — to solve problems in **O(N)** instead of O(N²). The pointers converge toward each other (or both move forward in the same direction) based on a comparison condition, eliminating the need for a nested loop.
+
+##### Why
+<span style="color: #00C851; font-weight: bold;">Eliminates nested loops for certain classes of sorted-array problems.</span> Classic interview applications: finding a pair that sums to a target, validating a palindrome, merging two sorted arrays, and the container-with-most-water problem. Interviewers reach for this pattern to test whether you can recognise O(N²) brute-force candidates and optimise them.
+
+##### How
+
+```csharp
+// Two Sum II — input array is sorted
+public static int[] TwoSumSorted(int[] numbers, int target)
+{
+    int left = 0, right = numbers.Length - 1;
+    while (left < right)
+    {
+        int sum = numbers[left] + numbers[right];
+        if (sum == target)  return [left, right];
+        else if (sum < target) left++;
+        else right--;
+    }
+    return [];
+}
+```
+
+Each iteration either advances `left` or retreats `right`, so the loop runs at most **N** times. No extra space is allocated — the two pointers live in registers.
+
+##### When
+<span style="color: #00C851; font-weight: bold;">Use two-pointer on sorted arrays, palindrome validation, and problems involving merging or comparing elements from both ends.</span> <span style="color: #ff4444; font-weight: bold;">Do NOT apply on unsorted data</span> — the logic breaks because you can no longer conclude anything from a sum being too large or too small without first sorting (O(N log N) pre-sort may still be worth it).
+
+##### Trade-offs
+<span style="color: #ffbb33; font-weight: bold;">O(1) space is the primary advantage over hash-table approaches.</span> Only works on sorted or ordered data; if sorting is required, the overall complexity becomes O(N log N). Watch for off-by-one errors: `while (left < right)` (strict) vs `while (left <= right)` depends on whether pointers can overlap. Variable-direction variants (fast/slow pointers for cycle detection) are conceptually similar but serve a different family of problems.
+
+---
+
+#### 5.2 Sliding Window
+
+##### What
+<span style="color: #33b5e5; font-weight: bold;">Sliding window</span> maintains a contiguous subarray (the "window") that moves across the input array. A **fixed window** keeps a constant size `k`; a **variable window** expands and shrinks based on a constraint (e.g., no repeating characters). In both cases the window's running result is updated incrementally rather than recomputed from scratch.
+
+##### Why
+<span style="color: #00C851; font-weight: bold;">Reduces brute-force O(N²) subarray enumeration to O(N)</span> by reusing work already done in the previous window position. A sliding window is the go-to pattern for subarray/substring optimisation questions — max/min sum, longest valid substring, smallest window containing all characters.
+
+##### How
+
+```csharp
+// Fixed window — maximum sum of any subarray of size k
+public static int MaxSumSubarray(int[] arr, int k)
+{
+    int windowSum = 0;
+    for (int i = 0; i < k; i++) windowSum += arr[i];   // seed first window
+    int maxSum = windowSum;
+
+    for (int i = k; i < arr.Length; i++)
+    {
+        windowSum += arr[i] - arr[i - k];              // slide: add right, drop left
+        maxSum = Math.Max(maxSum, windowSum);
+    }
+    return maxSum;
+}
+
+// Variable window — longest substring without repeating characters
+public static int LongestUniqueSubstring(string s)
+{
+    var seen = new HashSet<char>();
+    int left = 0, maxLen = 0;
+
+    for (int right = 0; right < s.Length; right++)
+    {
+        while (seen.Contains(s[right]))
+        {
+            seen.Remove(s[left]);   // shrink window from left
+            left++;
+        }
+        seen.Add(s[right]);
+        maxLen = Math.Max(maxLen, right - left + 1);
+    }
+    return maxLen;
+}
+```
+
+##### When
+<span style="color: #00C851; font-weight: bold;">Use sliding window for subarray or substring problems that involve a contiguous window constraint</span> — maximum/minimum aggregate, exactly-k distinct elements, or character frequency matching. <span style="color: #ff4444; font-weight: bold;">Do NOT use when elements are non-contiguous or when you need to consider non-adjacent combinations</span> — that suggests two-pointer or DP instead.
+
+##### Trade-offs
+<span style="color: #ffbb33; font-weight: bold;">Fixed window: O(N) time, O(1) space — ideal.</span> Variable window with a `HashSet` or `Dictionary` for constraint tracking: O(N) time, O(K) space where K is the window size / alphabet size. The inner `while` loop looks O(N²) but `left` never moves right-to-left, so total pointer movements are still O(N) — a common interview discussion point. Ensure you handle edge cases: empty input, `k > arr.Length`, all-duplicate characters.
+
+---
+
+#### 5.3 Dynamic Programming — Memoization & Tabulation
+
+##### What
+<span style="color: #33b5e5; font-weight: bold;">Dynamic Programming (DP)</span> solves problems with **overlapping subproblems** and **optimal substructure** by caching intermediate results so each subproblem is solved only once.
+
+- **Memoization** (top-down): write a recursive solution, then add a cache (`Dictionary`) to skip already-computed states.
+- **Tabulation** (bottom-up): fill an array iteratively from the base case up to the answer, no recursion stack needed.
+
+##### Why
+<span style="color: #00C851; font-weight: bold;">Turns exponential O(2^N) recursive solutions into polynomial O(N) or O(N²) ones.</span> DP is one of the most-tested categories in technical interviews — Fibonacci, climbing stairs, coin change, longest common subsequence, 0/1 knapsack. Demonstrating both top-down and bottom-up approaches shows depth.
+
+##### How
+
+```csharp
+// Memoization — top-down recursive with cache
+public static long FibMemo(int n, Dictionary<int, long>? memo = null)
+{
+    memo ??= new();
+    if (n <= 1) return n;
+    if (memo.TryGetValue(n, out var cached)) return cached;
+    memo[n] = FibMemo(n - 1, memo) + FibMemo(n - 2, memo);
+    return memo[n];
+}
+
+// Tabulation — bottom-up, O(1) space optimised (rolling variables)
+public static long FibTab(int n)
+{
+    if (n <= 1) return n;
+    long prev2 = 0, prev1 = 1;
+    for (int i = 2; i <= n; i++)
+    {
+        long current = prev1 + prev2;
+        prev2 = prev1;
+        prev1 = current;
+    }
+    return prev1;
+}
+```
+
+The full tabulation table for Fibonacci would be an `long[]` of size `n+1`, but since each step only needs the previous two values, you can optimise to two variables — reducing space from O(N) to O(1).
+
+##### When
+<span style="color: #00C851; font-weight: bold;">Apply DP when the problem has both overlapping subproblems AND optimal substructure.</span> Overlapping subproblems: the same sub-computation recurs multiple times (Fibonacci, coin change). Optimal substructure: the global optimum can be built from locally optimal sub-solutions (shortest path, knapsack). <span style="color: #ff4444; font-weight: bold;">Do NOT use DP when subproblems don't overlap</span> — that's divide-and-conquer (merge sort, binary search), which doesn't benefit from a cache.
+
+##### Trade-offs
+<span style="color: #ffbb33; font-weight: bold;">Memoization is natural to write (start from the recursive solution, add a cache) but carries call-stack risk for deep `n`.</span> In .NET, deep memoised recursion can still hit `StackOverflowException` at ~10k frames. Tabulation is iterative, stack-safe, and typically has better cache locality (sequential array access). <span style="color: #00C851; font-weight: bold;">Tabulation is preferred in production code.</span> For multi-dimensional DP (grid problems, two-sequence problems), space optimisation often reduces a 2-D table to a 1-D rolling array, halving memory usage.
+
+---
+
+#### 5.4 Greedy Algorithms
+
+##### What
+<span style="color: #33b5e5; font-weight: bold;">A greedy algorithm</span> makes the locally optimal choice at each step — the choice that looks best right now — without reconsidering previous decisions, hoping (and proving) that the sequence of local optima leads to the global optimum. No backtracking, no recursion tree.
+
+##### Why
+<span style="color: #00C851; font-weight: bold;">Simpler and faster than Dynamic Programming when the greedy-choice property holds.</span> Greedy solutions are typically O(N log N) (dominated by a sort) rather than O(N²) or O(N·W) for DP. Classic greedy problems appear in interviews: interval scheduling, activity selection, Huffman coding, minimum spanning tree (Kruskal/Prim), Dijkstra's shortest path, fractional knapsack.
+
+##### How
+
+```csharp
+// Interval scheduling — maximum number of non-overlapping intervals
+// Greedy: always pick the interval that ends earliest
+public static int MaxNonOverlapping(int[][] intervals)
+{
+    // Sort by end time ascending
+    Array.Sort(intervals, (a, b) => a[1].CompareTo(b[1]));
+
+    int count = 1;
+    int lastEnd = intervals[0][1];
+
+    for (int i = 1; i < intervals.Length; i++)
+    {
+        if (intervals[i][0] >= lastEnd)   // starts at or after last end
+        {
+            count++;
+            lastEnd = intervals[i][1];
+        }
+    }
+    return count;
+}
+```
+
+The **exchange argument** proves correctness: if any solution skips the earliest-ending interval in favour of another, you can swap them without reducing the count — therefore always picking the earliest-ending interval is at least as good as any alternative.
+
+##### When
+<span style="color: #00C851; font-weight: bold;">Use greedy for interval scheduling, Huffman coding, Dijkstra's single-source shortest path, minimum spanning trees, and fractional knapsack.</span> <span style="color: #ff4444; font-weight: bold;">Do NOT use greedy for 0/1 knapsack</span> — taking the highest value-per-weight item first fails when items cannot be split. The 0/1 knapsack requires DP. In general, suspect greedy when you can sort by a single attribute and make a one-pass decision; suspect DP when you need to consider all combinations.
+
+##### Trade-offs
+<span style="color: #ffbb33; font-weight: bold;">Greedy is fast — O(N log N) with a sort, O(N) otherwise — and uses O(1) extra space in the decision loop.</span> The downside: proving a greedy algorithm correct is non-trivial. The standard proof technique is the **exchange argument** (show any deviation from the greedy choice can be swapped back without loss). If you cannot construct this proof, the problem likely requires DP or backtracking. Greedy offers no backtracking — once a choice is made, it stands — so an incorrect greedy strategy silently produces wrong answers on certain inputs.
+
+---
+
+---
