@@ -1541,3 +1541,120 @@ flowchart TD
 <span style="color: #ff4444; font-weight: bold;">Anti-pattern: using `List<T>.Contains()` inside a loop — O(N²) total. Convert to `HashSet<T>` for O(N) overall.</span>
 
 ---
+
+## Group 8 — Real-World Examples & Comparison Table
+
+### 8.1 tai-portal: IdentityService Pagination 📍
+
+> Reference: `libs/core/infrastructure/Identity/IdentityService.cs:40-54`
+
+The live codebase uses **offset pagination** via EF Core's `Skip`/`Take`:
+
+```csharp
+// Current implementation — offset pagination
+return await _userManager.Users
+    .Where(u => u.Status == status && u.TenantId == tenantId)
+    .OrderByDescending(u => u.UserName)
+    .Skip(skip)      // database must scan and discard `skip` rows → O(skip)
+    .Take(take)
+    .ToListAsync(cancellationToken);
+```
+
+**The problem:** `Skip(N)` forces the database engine to read and throw away N rows before returning results. At page 1000 with a page size of 20, that is 20 000 discarded rows per query.
+
+**Keyset (cursor) pagination** eliminates this by using the B-Tree index as a seek point:
+
+```csharp
+// Improved: keyset pagination — O(log N) B-Tree index seek, no row discard
+return await query
+    .Where(u => u.Id.CompareTo(lastSeenId) > 0)   // seek past cursor
+    .OrderBy(u => u.Id)
+    .Take(take)
+    .ToListAsync(ct);
+```
+
+<span style="color: #4D90FE; font-weight: bold;">Vocabulary — keyset pagination: the client passes the last-seen key as a cursor; the database seeks directly to that B-Tree leaf node and reads forward. Constant cost regardless of page depth.</span>
+
+<span style="color: #FFD700; font-weight: bold;">Trade-off: keyset pagination cannot jump to an arbitrary page ("go to page 47") and requires a stable sort key. Offset pagination remains useful when random page access is required and the dataset is small.</span>
+
+---
+
+### 8.2 tai-portal: Permission Graph Traversal with BFS 🔧
+
+Role hierarchies (e.g. Admin → Manager → Viewer) form a **directed graph**. BFS guarantees every reachable role is visited exactly once, collecting all inherited privileges in O(V + E) time.
+
+```csharp
+public HashSet<string> GetEffectivePrivileges(
+    Dictionary<string, List<string>> roleGraph,       // adjacency list
+    Dictionary<string, List<string>> rolePrivileges,  // role → permission list
+    string startRole)
+{
+    var privileges = new HashSet<string>();
+    var visited   = new HashSet<string>();
+    var queue     = new Queue<string>();
+
+    queue.Enqueue(startRole);
+    visited.Add(startRole);
+
+    while (queue.Count > 0)
+    {
+        var role = queue.Dequeue();
+
+        if (rolePrivileges.TryGetValue(role, out var perms))
+            privileges.UnionWith(perms);                     // O(|perms|) set merge
+
+        foreach (var childRole in roleGraph.GetValueOrDefault(role, []))
+        {
+            if (visited.Add(childRole))   // HashSet.Add returns false if already present
+                queue.Enqueue(childRole);
+        }
+    }
+
+    return privileges;
+}
+```
+
+<span style="color: #4D90FE; font-weight: bold;">Vocabulary — BFS (Breadth-First Search): explores all neighbours at distance 1 before moving to distance 2. Uses a Queue (FIFO). Guarantees shortest path in unweighted graphs. Total complexity O(V + E) where V = roles, E = inheritance edges.</span>
+
+<span style="color: #00C851; font-weight: bold;">Best practice: the `visited` HashSet is the cycle guard. Without it, a circular role reference (A → B → A) would cause an infinite loop. `HashSet.Add` returning `false` is idiomatic C# for "already seen".</span>
+
+<span style="color: #ff4444; font-weight: bold;">Anti-pattern: recursive DFS without a visited set on a role graph. Any cycle causes a StackOverflowException. BFS with an explicit queue + visited set is safer and does not consume call-stack depth.</span>
+
+---
+
+### 8.3 DocViewer: Inverted Index & Tree Pruning 📍
+
+DocViewer relies on **OpenSearch** (port 9200) for full-text document search. Three data-structure concepts power its performance:
+
+**Inverted Index**
+Each term (keyword) maps to a sorted posting list of document IDs. Under the hood the term dictionary is a <span style="color: #4D90FE; font-weight: bold;">Trie</span> (prefix lookup) backed by a <span style="color: #4D90FE; font-weight: bold;">B-Tree</span> on disk. A keyword lookup costs O(log N) in the term dictionary, then O(k) to read k matching document IDs — far faster than a full table scan.
+
+**Tree Pruning (Segment Metadata)**
+OpenSearch stores documents in immutable **segments**. Each segment records the min/max values of indexed fields (e.g. `uploadDate`). A date-range filter can skip entire segments whose metadata proves they contain no matching documents — this is <span style="color: #4D90FE; font-weight: bold;">tree pruning</span>: cutting branches of the search tree without reading the leaves.
+
+**Shard Routing by TenantId**
+Each query is routed to the correct shard via `hash(tenantId) % numShards`. This is an O(1) <span style="color: #4D90FE; font-weight: bold;">hash-based dispatch</span> — only one shard (or a small replica set) is consulted, keeping cross-tenant data physically separated and query fan-out minimal.
+
+<span style="color: #FFD700; font-weight: bold;">Trade-off: the inverted index is optimised for read (search) at the cost of write overhead. Every document insert must update the posting lists for all of its terms. High-write workloads benefit from write-optimised structures (LSM trees) instead.</span>
+
+---
+
+## Comparison Table — .NET Collection Types
+
+| Dimension | `List<T>` | `Dictionary<K,V>` | `HashSet<T>` | `FrozenDictionary<K,V>` | `SortedDictionary<K,V>` |
+|---|---|---|---|---|---|
+| **Lookup** | O(N) linear scan | O(1) average | O(1) average | O(1) fastest (read-only optimised) | O(log N) |
+| **Insert** | O(1) amortised append | O(1) average | O(1) average | N/A — immutable after build | O(log N) |
+| **Delete** | O(N) element shift | O(1) average | O(1) average | N/A — immutable | O(log N) |
+| **Memory** | Low — contiguous array | High — buckets + chains | High — buckets | High — compact read-only layout | Moderate — red-black tree nodes |
+| **Ordering** | Insertion order | None | None | None | Sorted by key (IComparer) |
+| **Thread safety** | None | None | None | Inherent (read-only) | None |
+| **tai-portal use** | Domain event lists, EF result sets | Tenant resolution cache | Privilege deduplication in BFS | Permission maps loaded at startup | — |
+
+<span style="color: #00C851; font-weight: bold;">Best practice: build a `FrozenDictionary` once at startup for static lookup tables (permission maps, tenant configs). Reads are faster than `Dictionary` because the layout is optimised at build time and the runtime can skip resize/collision logic entirely.</span>
+
+<span style="color: #FFD700; font-weight: bold;">Trade-off: `SortedDictionary` costs O(log N) per operation but provides ordered iteration. Use it when you need both key-based lookup and in-order enumeration. If you only need ordering for display, sort a `Dictionary.Values` with LINQ at render time instead.</span>
+
+<span style="color: #ff4444; font-weight: bold;">Anti-pattern: `Dictionary<K,V>` in a hot path shared across threads without locking. Use `ConcurrentDictionary<K,V>` or `FrozenDictionary` (if writes are not needed) to avoid race conditions and torn reads.</span>
+
+---
