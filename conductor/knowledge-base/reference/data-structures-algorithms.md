@@ -536,3 +536,339 @@ Use `ArrayPool<T>` / `MemoryPool<T>` for parsing, serialization, stream processi
 <span style="color: #ffbb33; font-weight: bold;">Rented arrays may be larger than requested</span> (pool rounds up to the next power-of-two bucket) — always slice with `AsSpan(0, actualLength)` rather than using the full array. Returning without `clearArray: true` means the buffer may contain data from a previous caller — a subtle <span style="color: #ff4444; font-weight: bold;">security risk</span> if buffer contents could be read by untrusted code (e.g., sending HTTP response buffers). `ArrayPool<T>` is not suitable as a long-lived storage mechanism — rented arrays should be held only for the duration of a single operation, not stored on objects or fields.
 
 ---
+
+## Concept Group 3: Trees & Graphs
+
+### Binary Search Trees
+
+#### 3.1 Binary Search Trees
+
+##### What
+A <span style="color: #33b5e5; font-weight: bold;">Binary Search Tree (BST)</span> is a hierarchical node-based structure where every node satisfies the invariant: **left child < parent < right child**. Each node holds a value and references to up to two child nodes. The structure naturally partitions data at each level, enabling efficient divide-and-conquer search.
+
+##### Why
+A balanced BST delivers <span style="color: #00C851; font-weight: bold;">O(log N) search, insert, and delete</span> — the height of the tree bounds every operation. .NET's `SortedDictionary<TKey, TValue>` and `SortedSet<T>` are backed by a <span style="color: #33b5e5; font-weight: bold;">Red-Black Tree</span> (a self-balancing BST variant), so you use BST semantics every time you reach for sorted, dynamically-updated collections. Understanding BSTs is a prerequisite for reasoning about any sorted-key structure.
+
+##### How
+```csharp
+public class TreeNode<T> where T : IComparable<T>
+{
+    public T Value { get; set; }
+    public TreeNode<T>? Left { get; set; }
+    public TreeNode<T>? Right { get; set; }
+
+    public TreeNode(T value) => Value = value;
+}
+
+public class BinarySearchTree<T> where T : IComparable<T>
+{
+    private TreeNode<T>? _root;
+
+    public void Insert(T value)
+    {
+        _root = InsertRec(_root, value);
+    }
+
+    private TreeNode<T> InsertRec(TreeNode<T>? node, T value)
+    {
+        if (node is null) return new TreeNode<T>(value);
+
+        int cmp = value.CompareTo(node.Value);
+        if (cmp < 0)      node.Left  = InsertRec(node.Left,  value);
+        else if (cmp > 0) node.Right = InsertRec(node.Right, value);
+        // cmp == 0: duplicate — ignore (or handle per domain rules)
+        return node;
+    }
+
+    public bool Search(T value)
+    {
+        var current = _root;
+        while (current is not null)
+        {
+            int cmp = value.CompareTo(current.Value);
+            if      (cmp == 0) return true;
+            else if (cmp <  0) current = current.Left;
+            else               current = current.Right;
+        }
+        return false;
+    }
+
+    // In-order traversal: left → root → right yields sorted ascending output
+    public IEnumerable<T> InOrder()
+    {
+        var stack = new Stack<TreeNode<T>>();
+        var current = _root;
+        while (current is not null || stack.Count > 0)
+        {
+            while (current is not null) { stack.Push(current); current = current.Left; }
+            current = stack.Pop();
+            yield return current.Value;  // sorted ascending
+            current = current.Right;
+        }
+    }
+}
+```
+
+In-order traversal (left → root → right) always yields nodes in sorted ascending order — this is the defining property that makes BSTs useful for range queries and sorted iteration.
+
+##### When
+Use a BST (via `SortedDictionary` / `SortedSet`) when you need **sorted data with frequent dynamic inserts and deletes**. If your data is static, sorting once into an array and using binary search is faster. <span style="color: #00C851; font-weight: bold;">In practice, reach for `SortedDictionary<TKey, TValue>` or `SortedSet<T>`</span> rather than implementing your own — they are battle-tested Red-Black Trees.
+
+##### Trade-offs
+<span style="color: #ff4444; font-weight: bold;">An unbalanced BST degrades to O(N)</span> for all operations. Inserting already-sorted data (1, 2, 3, 4…) produces a degenerate tree that looks exactly like a linked list — every insert goes to the right child. <span style="color: #ffbb33; font-weight: bold;">Self-balancing variants (Red-Black Trees, AVL Trees) add rotation logic to maintain O(log N) height</span> at the cost of more complex insert/delete code. Red-Black Trees (used by .NET) tolerate slightly unbalanced trees (height ≤ 2 log N) for faster inserts; AVL Trees are more strictly balanced, favouring read-heavy workloads.
+
+---
+
+### B-Trees & Database Indexing
+
+#### 3.2 B-Trees & Database Indexing
+
+##### What
+A <span style="color: #33b5e5; font-weight: bold;">B-Tree</span> is a self-balancing search tree optimised for **block-based (disk) storage**. Unlike a BST where each node holds one key and two children, a B-Tree node holds **multiple keys** and **multiple child pointers** (the branching factor). A B-Tree of order M has nodes with up to M−1 keys and M children. The high branching factor produces a **shallow tree** — a B-Tree over millions of rows may be only 3–4 levels deep.
+
+##### Why
+<span style="color: #00C851; font-weight: bold;">PostgreSQL and SQL Server use B-Tree variants for their default indexes</span> (SQL Server uses B+Trees, where all data lives in leaf nodes). When you run `EXPLAIN ANALYZE` in Postgres or look at query plans in SQL Server, index seeks are B-Tree traversals: `WHERE Id = @id` with an index is O(log N); without an index it is O(N) (full table scan). This is the single most impactful data-structure concept for database performance interviews. Cross-reference: [[EFCore-SQL]].
+
+##### How
+You will never implement a B-Tree — this is conceptual understanding for interviews.
+
+**Why B-Trees win on disk:**
+- A disk read fetches one **page** (typically 4–16 KB) at a time. A BST node holds one key → N keys = N disk reads in the worst case.
+- A B-Tree node is sized to fill one disk page → one disk read fetches dozens or hundreds of keys.
+- A B-Tree of order 1000 over 1 billion rows has height ≈ log₁₀₀₀(10⁹) = 3. Three disk reads to find any row.
+
+**Clustered vs non-clustered indexes:**
+
+| Type | What it stores | Effect |
+|---|---|---|
+| <span style="color: #33b5e5; font-weight: bold;">Clustered index</span> | Leaf nodes ARE the data rows (table sorted by key) | One lookup → row in hand. One per table. |
+| <span style="color: #33b5e5; font-weight: bold;">Non-clustered index</span> | Leaf nodes hold key + pointer (RID/clustered key) to row | Two lookups: index seek → then row fetch ("key lookup"). |
+
+```sql
+-- Index seek: O(log N) — B-Tree traversal
+SELECT * FROM Orders WHERE OrderId = 42;        -- clustered index seek
+
+-- Index seek + key lookup: O(log N) — non-clustered seek then row fetch
+SELECT * FROM Orders WHERE CustomerId = 7;      -- non-clustered index on CustomerId
+
+-- Full table scan: O(N) — no usable index
+SELECT * FROM Orders WHERE YEAR(CreatedAt) = 2024;  -- function prevents index use
+```
+
+**Write amplification:** inserting a key into a full B-Tree node triggers a **node split** — the node is divided and a key promoted to the parent, potentially cascading splits upward. This is why heavy insert workloads on heavily-indexed tables see write amplification.
+
+##### When
+You will encounter B-Tree reasoning in any interview touching database indexing, `EXPLAIN` / `EXPLAIN ANALYZE` query plans, or the trade-off between read performance and write overhead. The interviewer wants to hear: "an index is a B-Tree; a seek is O(log N); a scan is O(N); adding too many indexes slows writes due to node splits."
+
+##### Trade-offs
+<span style="color: #ffbb33; font-weight: bold;">Write amplification:</span> every insert/update/delete must maintain all indexes on the table. A table with 10 indexes pays 10x the write cost per row change. <span style="color: #ff4444; font-weight: bold;">Over-indexing is a common production anti-pattern</span> — indexes waste storage and serialise write throughput under heavy insert load (e.g., event logs, audit trails). Index only columns that appear in `WHERE`, `JOIN ON`, or `ORDER BY` clauses with high cardinality.
+
+---
+
+### Graph Representation
+
+#### 3.3 Graph Representation
+
+##### What
+A <span style="color: #33b5e5; font-weight: bold;">graph</span> is a set of **vertices** (nodes) connected by **edges**. Graphs are characterised along three axes:
+
+| Dimension | Options |
+|---|---|
+| Edge direction | **Directed** (one-way) vs **Undirected** (bidirectional) |
+| Edge weight | **Weighted** (cost on edge) vs **Unweighted** |
+| Cycles | **Cyclic** vs **Acyclic** (a DAG = Directed Acyclic Graph) |
+
+Permission hierarchies, dependency resolution (NuGet, npm), and microservice call graphs are all real-world graphs.
+
+##### Why
+Graphs model relationships that hierarchies (trees) cannot: many-to-many connections, cycles, weighted paths. In a full-stack .NET/Angular context: permission role inheritance is a DAG, OpenSearch index relationships are graphs, and service dependency resolution at startup is a topological sort of a DAG. Understanding graph representations is the prerequisite for BFS/DFS (concept 4.4) and any routing or scheduling algorithm.
+
+##### How
+Two canonical representations, each with distinct trade-offs:
+
+```csharp
+// ─── Adjacency List ─── O(V + E) space ───────────────────────────────────────
+// Best for sparse graphs (most real-world graphs). Stores only existing edges.
+var adjacencyList = new Dictionary<int, List<int>>
+{
+    [0] = new List<int> { 1, 2 },   // vertex 0 connects to 1 and 2
+    [1] = new List<int> { 2 },      // vertex 1 connects to 2
+    [2] = new List<int> { 3 },      // vertex 2 connects to 3
+    [3] = new List<int>()           // vertex 3 has no outgoing edges
+};
+
+// Traverse neighbours of vertex 0: O(degree(v))
+foreach (int neighbour in adjacencyList[0])
+    Console.WriteLine(neighbour);  // 1, 2
+
+// Edge existence check: O(degree(v)) — must scan the neighbour list
+bool hasEdge = adjacencyList[0].Contains(2);  // true
+
+
+// ─── Adjacency Matrix ─── O(V²) space ────────────────────────────────────────
+// Best for dense graphs or when O(1) edge lookup is critical.
+int V = 4;
+bool[,] matrix = new bool[V, V];
+
+// Add edges (directed)
+matrix[0, 1] = true;
+matrix[0, 2] = true;
+matrix[1, 2] = true;
+matrix[2, 3] = true;
+
+// Edge existence check: O(1)
+bool edgeExists = matrix[0, 2];  // true
+
+// Traverse all neighbours of vertex 0: O(V) — must scan the entire row
+for (int j = 0; j < V; j++)
+    if (matrix[0, j]) Console.WriteLine(j);  // 1, 2
+
+
+// ─── Weighted Graph — Adjacency List variant ──────────────────────────────────
+var weightedGraph = new Dictionary<int, List<(int Neighbour, int Weight)>>
+{
+    [0] = new List<(int, int)> { (1, 4), (2, 1) },  // 0→1 costs 4, 0→2 costs 1
+    [1] = new List<(int, int)> { (3, 1) },
+    [2] = new List<(int, int)> { (1, 2), (3, 5) },
+    [3] = new List<(int, int)>()
+};
+```
+
+##### When
+<span style="color: #00C851; font-weight: bold;">Use an adjacency list for almost every real-world graph</span> — social networks, dependency graphs, and permission hierarchies are all sparse (V vertices, far fewer than V² edges). Use an adjacency matrix only when the graph is dense (E ≈ V²) or when O(1) edge existence lookup is the dominant operation (e.g., Floyd-Warshall all-pairs shortest path).
+
+##### Trade-offs
+
+| Operation | Adjacency List | Adjacency Matrix |
+|---|---|---|
+| Space | O(V + E) | O(V²) |
+| Add edge | O(1) amortised | O(1) |
+| Edge existence | O(degree(v)) | O(1) |
+| All neighbours of v | O(degree(v)) | O(V) |
+| Best for | Sparse graphs | Dense graphs / O(1) edge lookup |
+
+<span style="color: #ffbb33; font-weight: bold;">The matrix becomes impractical for large sparse graphs</span> — a social network with 1 million users would require a 1M×1M boolean matrix (1 TB of RAM) despite having perhaps only 10 billion edges (10 bytes per user average).
+
+---
+
+### Trie — Prefix Trees
+
+#### 3.4 Trie — Prefix Trees
+
+##### What
+A <span style="color: #33b5e5; font-weight: bold;">Trie</span> (pronounced "try", from re**trie**val) is a tree where each **node represents a single character**. The path from the root to any node spells a prefix; the path to a node marked as a word-end spells a complete word. All words sharing a common prefix share the same prefix nodes — storage is deduplicated across the shared prefix.
+
+```
+Insert: "cat", "car", "card", "care", "bat"
+
+        (root)
+       /      \
+      c         b
+      |         |
+      a         a
+     / \        |
+    t*  r       t*
+        |
+        d*  e*
+
+* = IsEndOfWord = true
+```
+
+##### Why
+Trie lookup is <span style="color: #00C851; font-weight: bold;">O(K) where K is the key length</span> — completely independent of how many words are stored. A `Dictionary<string, T>` lookup is also O(K) on average (hash computation), but a Trie additionally supports **prefix enumeration** in O(K + results) — find all words starting with "car" without scanning the whole collection. This makes Tries the foundation of: autocomplete engines, IP routing (longest-prefix match), and OpenSearch/Lucene inverted index term lookups. Cross-reference: [[System-Design]] for autocomplete system design.
+
+##### How
+```csharp
+public class TrieNode
+{
+    // One child per possible character — Dictionary for sparse alphabets,
+    // char[] of size 26 for ASCII-only lower-case (more memory, O(1) child lookup)
+    public Dictionary<char, TrieNode> Children { get; } = new();
+    public bool IsEndOfWord { get; set; }
+}
+
+public class Trie
+{
+    private readonly TrieNode _root = new();
+
+    // Insert: O(K) where K = word.Length
+    public void Insert(string word)
+    {
+        var current = _root;
+        foreach (char ch in word)
+        {
+            if (!current.Children.TryGetValue(ch, out var node))
+            {
+                node = new TrieNode();
+                current.Children[ch] = node;
+            }
+            current = node;
+        }
+        current.IsEndOfWord = true;
+    }
+
+    // Exact search: O(K)
+    public bool Search(string word)
+    {
+        var node = GetNode(word);
+        return node is not null && node.IsEndOfWord;
+    }
+
+    // Prefix check: O(K) — does any stored word start with this prefix?
+    public bool StartsWith(string prefix) => GetNode(prefix) is not null;
+
+    // Prefix enumeration: O(K + total characters in all matching words)
+    public IEnumerable<string> GetWordsWithPrefix(string prefix)
+    {
+        var node = GetNode(prefix);
+        if (node is null) yield break;
+
+        var sb = new System.Text.StringBuilder(prefix);
+        foreach (var word in DfsCollect(node, sb))
+            yield return word;
+    }
+
+    private IEnumerable<string> DfsCollect(TrieNode node, System.Text.StringBuilder sb)
+    {
+        if (node.IsEndOfWord) yield return sb.ToString();
+
+        foreach (var (ch, child) in node.Children)
+        {
+            sb.Append(ch);
+            foreach (var word in DfsCollect(child, sb)) yield return word;
+            sb.Length--;  // backtrack
+        }
+    }
+
+    private TrieNode? GetNode(string prefix)
+    {
+        var current = _root;
+        foreach (char ch in prefix)
+        {
+            if (!current.Children.TryGetValue(ch, out current)) return null;
+        }
+        return current;
+    }
+}
+
+// Usage
+var trie = new Trie();
+trie.Insert("cat");
+trie.Insert("car");
+trie.Insert("card");
+trie.Insert("care");
+trie.Insert("bat");
+
+trie.Search("car");          // true
+trie.Search("ca");           // false (not marked as end)
+trie.StartsWith("ca");       // true
+trie.GetWordsWithPrefix("car"); // ["car", "card", "care"]
+```
+
+##### When
+<span style="color: #00C851; font-weight: bold;">Use a Trie when prefix-matching or autocomplete is the primary access pattern</span>: search boxes, CLI tab-completion, tag filtering, IP routing tables. <span style="color: #ff4444; font-weight: bold;">Do NOT use a Trie for exact key lookup</span> — `Dictionary<string, T>` is simpler, uses less memory, and has equivalent O(K) average-case lookup. For small datasets where prefix matching is occasional, `HashSet<string>.Where(s => s.StartsWith(prefix))` is simpler and has no up-front memory cost (though O(N·K) per query vs O(K) for Trie).
+
+##### Trade-offs
+<span style="color: #ffbb33; font-weight: bold;">Memory consumption is the dominant cost</span>. Each character in each word gets its own `TrieNode` object, and each `TrieNode` holds a `Dictionary<char, TrieNode>`. For a vocabulary of 1 million words averaging 8 characters, you allocate ~8 million TrieNode objects — significant heap pressure. Alternatives: **compressed tries** (Patricia/Radix Trees) merge single-child chains into one node, reducing node count dramatically; **DAWG** (Directed Acyclic Word Graph) deduplicates shared suffixes as well as prefixes. In production, use a purpose-built library (e.g., `Gma.DataStructures.StringSearch` NuGet) or leverage the inverted index in OpenSearch/Elasticsearch rather than a hand-rolled Trie.
+
+---
