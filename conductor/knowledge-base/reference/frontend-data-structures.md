@@ -659,3 +659,690 @@ export class ItemStore {
 **Backend Analogues (Group 2):** `Observable<T>` ≈ `IAsyncEnumerable<T>` — both represent async sequences, though `IAsyncEnumerable` is pull-based (consumer awaits `MoveNextAsync()`) while `Observable` is push-based. `BehaviorSubject<T>` ≈ a `volatile` field combined with a pub/sub event (`event EventHandler<T> ValueChanged`) — same "current value + notification" pattern, done manually in C#. `signal<T>()` ≈ `INotifyPropertyChanged` with `PropertyChanged` events, but automatic dependency tracking replaces manual wiring. `computed()` ≈ a memoized LINQ projection with automatic cache invalidation, analogous to writing a property getter that re-runs only when its backing data changes.
 
 ---
+
+## Concept Group 3: State Management Structures
+
+### 3.1 NgRx Store as Immutable State Tree
+
+##### What
+
+<span style="color: #33B5E5; font-weight: bold;">NgRx Store</span> is a single, application-wide immutable state object managed by **pure reducer functions**. Every state transition follows the unidirectional data flow: `Action dispatched → Reducer produces new state → Selectors emit new derived values → Components re-render`. The state object itself is never mutated — reducers always return a fresh object reference.
+
+##### Why
+
+Immutability enables **time-travel debugging** (every prior state snapshot is preserved), **serializable state snapshots** (the full app state can be logged, replayed, or persisted), and **predictable transitions** (given the same action and state, a pure reducer always produces the same output). These guarantees are impossible with mutable shared service state.
+
+##### How
+
+```typescript
+// actions.ts
+export const loadUsers = createAction('[Users] Load');
+export const loadUsersSuccess = createAction(
+  '[Users] Load Success',
+  props<{ users: User[] }>()
+);
+
+// reducer.ts
+export interface UsersState {
+  users: User[];
+  loading: boolean;
+  error: string | null;
+}
+
+const initialState: UsersState = { users: [], loading: false, error: null };
+
+export const usersReducer = createReducer(
+  initialState,
+  on(loadUsers, (state) => ({ ...state, loading: true })),           // structural sharing: reuses state.users ref
+  on(loadUsersSuccess, (state, { users }) => ({
+    ...state,
+    loading: false,
+    users,                                                            // only users ref is replaced
+  }))
+);
+```
+
+<span style="color: #00C851; font-weight: bold;">Structural sharing:</span> the spread operator `{ ...state, loading: true }` creates a new top-level object but reuses all unchanged nested references (e.g. `state.users` is the same array reference). This makes reference equality checks cheap — selectors can detect "nothing changed" in O(1).
+
+##### When
+
+Use NgRx global store for **complex, cross-feature state** with many consumers: authentication session, global notifications, shopping cart shared across feature modules. <span style="color: #FF4444; font-weight: bold;">Anti-pattern: storing simple component-local state (form field values, accordion open/closed) in the global store — this creates unnecessary boilerplate and pollutes the global namespace.</span>
+
+##### Trade-offs
+
+<span style="color: #FFBB33; font-weight: bold;">Significant boilerplate</span> — actions, reducers, effects, selectors, and feature state all require separate files. Steep learning curve for the action → effect → reducer → selector mental model. State serialization constraint: no functions, classes, or circular references in the store (use plain objects and primitives only).
+
+**Backend Analogue:** NgRx Store ≈ **Event Sourcing** — actions are domain events, reducers are projections that rebuild state from the event stream, and time-travel debugging corresponds to replaying the event log from any checkpoint.
+
+---
+
+### 3.2 Selectors as Memoized Projections
+
+##### What
+
+<span style="color: #33B5E5; font-weight: bold;">Selectors</span> are pure functions that extract and transform slices of NgRx store state. `createSelector` wraps them with **memoization**: the derived value is cached, and the projection function only re-runs when input selectors return new references (referential equality check).
+
+##### Why
+
+Without memoization, every store emission (any state change, anywhere in the tree) would trigger re-derivation for every selector in every subscribed component. With memoization, a cache hit is O(1) — the cached result is returned immediately, and no downstream components re-render.
+
+##### How
+
+```typescript
+// Base selectors (feature slice)
+export const selectUsersState = createFeatureSelector<UsersState>('users');
+export const selectAllUsers = createSelector(selectUsersState, (s) => s.users);
+export const selectLoading = createSelector(selectUsersState, (s) => s.loading);
+
+// Derived selector — only re-runs when selectAllUsers emits a new reference
+export const selectActiveUsers = createSelector(
+  selectAllUsers,
+  (users) => users.filter((u) => u.isActive)   // cached until users array ref changes
+);
+
+// Composing selectors for complex derivations
+export const selectActiveUserCount = createSelector(
+  selectActiveUsers,
+  (activeUsers) => activeUsers.length
+);
+
+// In component
+@Component({ ... })
+export class UserListComponent {
+  activeUsers$ = this.store.select(selectActiveUsers);
+  constructor(private store: Store) {}
+}
+```
+
+The referential equality check: `createSelector` stores `{ lastInputs, lastResult }`. On each store emission, it compares each input selector's output with `===`. If all inputs are `===` to last time, the cached `lastResult` is returned without calling the projection function.
+
+##### When
+
+Use selectors for **any derived state** from the NgRx store — filtered lists, aggregated counts, formatted display strings, permission checks. Compose selectors for complex derivations: `selectActiveAdminUsers = createSelector(selectActiveUsers, selectAdminIds, ...)`. <span style="color: #00C851; font-weight: bold;">Always define selectors as pure named functions — never inline `store.select(s => s.users.filter(...))` in the component.</span>
+
+##### Trade-offs
+
+<span style="color: #FFBB33; font-weight: bold;">Depth-1 cache:</span> `createSelector` only caches the **last** input/output pair. If two components alternately pass different inputs to a parameterized selector (e.g. `selectUserById(id)`), the cache thrashes on every call. Workaround: use `createSelectorFactory` with a larger cache or factory functions that return pre-bound selectors per instance.
+
+**Backend Analogue:** Selectors ≈ **Materialized Views** — a pre-computed projection of underlying data that is updated (invalidated) only when the source data changes, providing O(1) read performance for common query patterns.
+
+---
+
+### 3.3 ComponentStore for Local State
+
+##### What
+
+<span style="color: #33B5E5; font-weight: bold;">ComponentStore</span> (from `@ngrx/component-store`) is a lightweight, **component-scoped** state container. It has no global action bus, no feature reducers — just `setState()`, `patchState()`, `select()`, and `effect()`. Its lifetime is tied to the component (or feature module) that provides it.
+
+##### Why
+
+NgRx global store is overkill when state logically belongs to one component or feature and no other consumer needs it. ComponentStore eliminates the action/reducer ceremony while preserving the reactive, observable-based state model. State is private to the feature by default.
+
+##### How
+
+```typescript
+interface SearchState {
+  query: string;
+  results: SearchResult[];
+  loading: boolean;
+  page: number;
+}
+
+@Injectable()                     // provided in component providers[], not root
+export class SearchStore extends ComponentStore<SearchState> {
+  constructor() {
+    super({ query: '', results: [], loading: false, page: 1 });
+  }
+
+  // Selectors
+  readonly results$ = this.select((s) => s.results);
+  readonly loading$ = this.select((s) => s.loading);
+  readonly vm$ = this.select(
+    this.results$,
+    this.loading$,
+    (results, loading) => ({ results, loading })   // combined view model
+  );
+
+  // Updaters (synchronous state mutations)
+  readonly setQuery = this.updater((state, query: string) => ({
+    ...state,
+    query,
+    page: 1,                      // reset pagination on new query
+  }));
+
+  // Effects (async, e.g. HTTP)
+  readonly search = this.effect((trigger$: Observable<string>) =>
+    trigger$.pipe(
+      debounceTime(300),
+      switchMap((query) => {
+        this.patchState({ loading: true });
+        return this.searchService.search(query).pipe(
+          tapResponse(
+            (results) => this.patchState({ results, loading: false }),
+            () => this.patchState({ loading: false })
+          )
+        );
+      })
+    )
+  );
+}
+```
+
+Provide in component: `@Component({ providers: [SearchStore] })` — ComponentStore is instantiated and destroyed with the component.
+
+##### When
+
+Use ComponentStore for **complex local state** within a single feature: multi-step wizards, drag-and-drop boards, paginated data tables with local filter/sort. <span style="color: #FF4444; font-weight: bold;">Anti-pattern: providing ComponentStore in `root` — this defeats its purpose and creates a de-facto global store without NgRx's tooling.</span> Not appropriate for state that must survive navigation or be shared across sibling features.
+
+##### Trade-offs
+
+<span style="color: #FFBB33; font-weight: bold;">RxJS-based:</span> subscription management is still required (though `async` pipe handles most cases). Being superseded by signal-based stores in Angular 17+ — for new code, prefer the signal store pattern (3.4) for simpler mental model and zone-free reactivity.
+
+**Backend Analogue:** ComponentStore ≈ a **scoped service** registered with DI lifetime matching the feature module — analogous to a `Scoped` service in ASP.NET Core that lives for one HTTP request/feature boundary and is not shared globally.
+
+---
+
+### 3.4 Signal-Based Store Pattern
+
+##### What
+
+<span style="color: #33B5E5; font-weight: bold;">Signal-based store</span> is a lightweight state container built from `signal()` + `computed()` inside an `@Injectable` service — no NgRx dependency required. Private writable signals hold state; public readonly signals expose it; `computed()` derives projections.
+
+##### Why
+
+Simpler than NgRx global store (no actions, reducers, effects boilerplate), no RxJS subscription management, fully **zone-free** change detection (only components that read the signal are re-checked). The pattern aligns with Angular's reactive primitives direction for 2024+.
+
+##### How
+
+From the tai-portal `NotificationSignalStore` (`apps/portal-web/src/app/store/notification-signal.store.ts`):
+
+```typescript
+@Injectable({ providedIn: 'root' })
+export class NotificationSignalStore {
+  // Private writable signals — only the store can mutate
+  private readonly _eventBuffer = signal<AuditLogDetails[]>([]);
+
+  // O(1) deduplication — Set lookup beats Array.includes() (O(n))
+  private readonly seenEventIds = new Set<string>();
+
+  // Public readonly surface — consumers can read but not write
+  readonly eventBuffer = this._eventBuffer.asReadonly();
+
+  // computed() — memoized projection, re-evaluates only when _eventBuffer changes
+  readonly latestEvent = computed(() => {
+    const buffer = this._eventBuffer();
+    return buffer.length > 0 ? buffer[buffer.length - 1] : null;
+  });
+
+  readonly unreadCount = computed(() => this._eventBuffer().length);
+
+  addEvent(event: AuditLogDetails): void {
+    if (this.seenEventIds.has(event.id)) return;   // O(1) check before mutation
+    this.seenEventIds.add(event.id);
+    this._eventBuffer.update((buf) => [...buf, event]);  // immutable update
+  }
+
+  clearBuffer(): void {
+    this._eventBuffer.set([]);
+    this.seenEventIds.clear();
+  }
+}
+
+// Component usage — no subscriptions, no async pipe
+@Component({
+  template: `
+    <span>{{ store.unreadCount() }} unread</span>
+    @if (store.latestEvent(); as evt) {
+      <p>{{ evt.message }}</p>
+    }
+  `,
+})
+export class NotificationBadgeComponent {
+  store = inject(NotificationSignalStore);
+}
+```
+
+Combine with `effect()` for side effects that run when signals change:
+
+```typescript
+effect(() => {
+  const count = this.store.unreadCount();
+  document.title = count > 0 ? `(${count}) Portal` : 'Portal';
+});
+```
+
+##### When
+
+<span style="color: #00C851; font-weight: bold;">Prefer signal-based stores for all new Angular 2024+ code</span> with simple to moderate state complexity. Combine with `effect()` for side effects. Use NgRx global store when you need: Redux DevTools time-travel, complex action/saga patterns, or team familiarity demands it.
+
+##### Trade-offs
+
+<span style="color: #FFBB33; font-weight: bold;">No built-in DevTools:</span> unlike NgRx, signal stores have no Redux DevTools integration — debugging state history requires manual logging. No action/reducer audit trail (every mutation is a direct method call). For complex state machines with many transition rules, NgRx or XState provide better structure. `providedIn: 'root'` means the store is never garbage collected — be mindful of memory with large buffers.
+
+**Backend Analogues (Group 3):** NgRx Store ≈ **Event Sourcing** (actions = domain events, reducer = event projection); Selectors ≈ **Materialized Views** (pre-computed, cache-invalidated on source change); ComponentStore ≈ **Scoped DI service** (lifetime matches feature boundary); Signal Store ≈ **Reactive singleton service** using `INotifyPropertyChanged` with automatic dependency tracking replacing manual event wiring.
+
+---
+
+## Concept Group 4: Rendering & DOM Algorithms
+
+### 4.1 Incremental DOM vs Virtual DOM
+
+##### What
+
+Two fundamentally different strategies for reconciling application state with the browser DOM:
+
+- <span style="color: #33B5E5; font-weight: bold;">Virtual DOM (React):</span> on each render, build a complete **in-memory tree** of the desired UI, diff it against the previous virtual tree, then batch-apply the minimal set of real DOM patches.
+- <span style="color: #33B5E5; font-weight: bold;">Incremental DOM (Angular):</span> the Angular compiler generates **imperative instructions** (`elementStart`, `text`, `elementEnd`, `property`) that directly check and update the real DOM — no intermediate virtual tree exists.
+
+##### Why
+
+Incremental DOM uses significantly less **memory**: there is no duplicate virtual tree copy held alongside the real DOM. Virtual DOM enables **concurrent rendering** (React Fiber) by making the diffing work interruptible — since diffing happens in memory, it can be paused and resumed without touching the DOM.
+
+##### How
+
+Angular's compiled template output (conceptually):
+
+```typescript
+// Template: <h1>{{ title }}</h1>
+// Angular compiler emits instructions:
+function AppComponent_Template(rf: RenderFlags, ctx: AppComponent) {
+  if (rf & RenderFlags.Create) {
+    elementStart(0, 'h1');      // create <h1> in real DOM once
+      text(1);                  // create text node once
+    elementEnd();
+  }
+  if (rf & RenderFlags.Update) {
+    textInterpolate(ctx.title); // check if title changed, patch text node if so
+  }
+}
+```
+
+The `Update` block runs every change detection cycle and **only writes to the DOM if the value changed**. There is no virtual tree allocation — Angular holds the previous binding values in a flat array (the "LView") for comparison.
+
+##### When
+
+Framework choice determines which approach applies — this distinction matters for **interview framework comparison questions** and for understanding performance characteristics. When asked "why is Angular fast?", the answer includes: no virtual tree allocation per render, minimal DOM writes, and (with signals) skipping component subtrees entirely.
+
+##### Trade-offs
+
+| | Incremental DOM (Angular) | Virtual DOM (React) |
+|---|---|---|
+| Memory | Lower — no virtual tree | Higher — full tree copy |
+| DOM writes | Direct, conditional | Batched diff patch |
+| Concurrent rendering | Limited (signals help) | React Fiber: full support |
+| Binding overhead | Visits every binding per cycle | Diffs full tree |
+
+<span style="color: #FFBB33; font-weight: bold;">Incremental DOM visits every binding</span> on each CD cycle in zone-based mode — O(N bindings). Virtual DOM builds a new tree each render — O(N nodes) allocation but enables Fiber's priority scheduling.
+
+**Backend Analogue:** Incremental DOM ≈ **direct SQL `UPDATE` statements** (only update what changed, no intermediate representation); Virtual DOM ≈ **materialized view refresh** (rebuild the full projection, then compare and apply deltas).
+
+---
+
+### 4.2 `@for track` — Identity-Based Diffing
+
+##### What
+
+<span style="color: #33B5E5; font-weight: bold;">`@for (item of items; track item.id)`</span> provides a **stable identity key** to Angular's list diffing algorithm. When the `items` array changes, Angular uses the track expression to match new items to existing DOM nodes rather than destroying and recreating the entire list.
+
+##### Why
+
+Without `track`, Angular cannot identify which items are the same across renders — it destroys all DOM nodes and recreates them on any array change. With `track`, only nodes whose identity has no matching DOM node are created/destroyed; existing nodes are moved or updated in-place. This is critical for performance and for preserving input focus, animations, and component state within list items.
+
+##### How
+
+```typescript
+// Template
+@Component({
+  template: `
+    @for (user of users(); track user.id) {
+      <app-user-card [user]="user" />
+    }
+  `
+})
+export class UserListComponent {
+  users = input<User[]>([]);
+}
+
+// What Angular does internally (conceptually):
+// 1. Build Map<trackValue, DOM node> from current list
+// 2. On new array: for each item, look up track value in Map
+//    - Found: reuse existing DOM node, update bindings if changed
+//    - Not found: create new DOM node
+//    - Missing from new array: destroy DOM node
+
+// Track function variant for complex keys:
+@for (order of orders(); track trackByOrderKey(order)) { ... }
+trackByOrderKey(order: Order): string {
+  return `${order.id}-${order.version}`;  // composite key
+}
+```
+
+<span style="color: #FF4444; font-weight: bold;">Anti-pattern: `track $index`</span> — using the array index as the track value means reordering the array causes every item to appear "changed" (index 0 now maps to a different item), defeating diffing. Use stable unique IDs.
+
+##### When
+
+<span style="color: #00C851; font-weight: bold;">Always provide `track` on every `@for` loop</span> — Angular 17+ will warn in development mode if `track` is missing. Use a stable unique ID from the data model (database PK, UUID). Reserve `track $index` only for static, never-reordered lists (e.g. rendering a fixed set of tab headers).
+
+##### Trade-offs
+
+<span style="color: #FFBB33; font-weight: bold;">The track expression runs every change detection cycle</span> for every item in the list — keep it cheap (property access). Avoid `track JSON.stringify(item)` or any computation. If items have no stable ID, generate one at the data layer (server-assigned UUID) rather than the template layer.
+
+**Backend Analogue:** `@for track` ≈ **EF Core's change tracker** — EF Core identifies entities by primary key to determine whether to issue `INSERT`, `UPDATE`, or `DELETE`, rather than comparing every field. The track expression is Angular's equivalent of the entity primary key.
+
+---
+
+### 4.3 CDK VirtualScroll — Windowed Rendering
+
+##### What
+
+<span style="color: #33B5E5; font-weight: bold;">CDK Virtual Scroll</span> (`@angular/cdk/scrolling`) renders **only the DOM nodes currently visible** in the scroll viewport, plus a configurable buffer. As the user scrolls, off-screen nodes are recycled — their content is swapped to represent the newly visible items, keeping total DOM node count constant.
+
+##### Why
+
+Rendering 100,000 `<div>` elements simultaneously overwhelms the browser's layout engine — initial paint takes seconds, scrolling stutters, and memory consumption spikes. VirtualScroll keeps the DOM node count at O(viewport height / item height) regardless of dataset size, making large lists performant.
+
+##### How
+
+```typescript
+// Template
+@Component({
+  imports: [ScrollingModule],      // from @angular/cdk/scrolling
+  template: `
+    <cdk-virtual-scroll-viewport itemSize="48" style="height: 600px;">
+      <div *cdkVirtualFor="let item of items; trackBy: trackById"
+           class="list-item">
+        {{ item.name }}
+      </div>
+    </cdk-virtual-scroll-viewport>
+  `
+})
+export class LargeListComponent {
+  items: Item[] = [];              // can be 100,000+ items — array held in memory, DOM is windowed
+  trackById = (_: number, item: Item) => item.id;
+}
+
+// tai-portal TransferList uses ScrollingModule for the candidate/selected panels
+// libs/ui/design-system/src/lib/design-system/transfer-list/transfer-list.ts
+```
+
+Internally: viewport height (600px) / item height (48px) ≈ 13 visible items. CDK renders 13 + buffer (typically ×2 = ~26 DOM nodes total). Scroll events shift the rendered window by updating item content, not creating new nodes.
+
+##### When
+
+Use VirtualScroll for any list with **100+ items** where item height is known (fixed height is required for `itemSize`). Common cases: data grids, notification feeds, log viewers, autocomplete dropdowns with large option sets. <span style="color: #FFBB33; font-weight: bold;">Variable-height items are experimentally supported</span> via `AutoSizeVirtualScrollStrategy` but have correctness edge cases.
+
+##### Trade-offs
+
+<span style="color: #FF4444; font-weight: bold;">Accessibility gap:</span> screen readers enumerate the DOM — off-screen items are not present and cannot be announced. Browser Ctrl+F text search will not find virtualized content that is not currently rendered. Keyboard navigation (Tab/arrow keys) can jump unexpectedly when the render window shifts. Test with a screen reader before shipping a virtualized list in an accessibility-critical context.
+
+**Backend Analogue:** VirtualScroll ≈ **keyset pagination** — instead of loading all 100K rows, the backend returns only the page the user is viewing. VirtualScroll applies the same windowing principle on the client: show only what fits in the viewport, load (render) the next page on demand.
+
+---
+
+### 4.4 Change Detection as Tree Traversal
+
+##### What
+
+<span style="color: #33B5E5; font-weight: bold;">Angular's change detection (CD)</span> is a **depth-first traversal** of the component tree. On each CD cycle, Angular visits every component and checks each template binding for changes. Total work is O(N) where N = total number of bindings across all rendered components.
+
+##### Why
+
+Understanding CD as an algorithm explains why Angular performance optimization focuses on **reducing N**: fewer components rendered (lazy loading, virtualization), fewer bindings per component (separate presentational concerns), and skipping subtrees entirely (OnPush, signals).
+
+##### How
+
+**Zone-based CD (default):**
+
+```typescript
+// Zone.js patches all async APIs (setTimeout, Promise, fetch, event listeners)
+// After any async operation completes, Zone.js triggers ApplicationRef.tick()
+// Angular walks the entire component tree DFS, checking every binding
+
+@Component({
+  // Default: checked on every tick, regardless of whether inputs changed
+  template: `<span>{{ expensivePipe.transform(value) }}</span>`
+})
+export class DefaultComponent { value = 'hello'; }
+```
+
+**OnPush — skip subtree if inputs unchanged:**
+
+```typescript
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  // Checked only when: @Input() reference changes, event fires inside component,
+  // async pipe emits, markForCheck() called, or signals read in template change
+  template: `<span>{{ value }}</span>`
+})
+export class OnPushComponent {
+  @Input() value!: string;   // CD skipped if same reference passed
+}
+```
+
+**Signal-based CD (Angular 17+, zone-free):**
+
+```typescript
+// With provideExperimentalZonelessChangeDetection()
+// Angular only re-checks components that read a changed signal
+// No global tree walk — O(components that read changed signal), not O(all components)
+@Component({
+  template: `<span>{{ count() }}</span>`   // only this component is dirty-marked when count changes
+})
+export class CounterComponent {
+  count = signal(0);
+}
+```
+
+<span style="color: #FF4444; font-weight: bold;">Anti-pattern: default CD with 500 components and a mouse-move event handler</span> = 5,000+ binding checks per mouse event. Use `OnPush` on all presentational components.
+
+##### When
+
+<span style="color: #00C851; font-weight: bold;">Apply `OnPush` to all leaf/presentational components</span> as a baseline optimization. Migrate to signals + zoneless for new features in Angular 17+. Use `ChangeDetectorRef.detach()` for completely manual control (e.g. components rendering only on explicit user action).
+
+##### Trade-offs
+
+<span style="color: #FFBB33; font-weight: bold;">`OnPush` requires immutable input patterns</span> — mutating an object in-place (`.push()`, property assignment) does not change the object reference, so OnPush components will not update. Must return new object references from state updates. Signal-based zoneless CD is the long-term future (Angular 19+ stable) but requires migrating Zone.js bootstrapping and auditing all existing async patterns.
+
+**Backend Analogues (Group 4):** Incremental DOM ≈ direct SQL `UPDATE` vs materialized view rebuild; `@for track` ≈ EF Core change tracker using PK identity; VirtualScroll ≈ keyset pagination (render only the current window); CD tree walk ≈ **ASP.NET middleware pipeline** — every request (CD cycle) flows through every middleware (component) in sequence, short-circuiting early only if explicitly configured (OnPush = circuit breaker).
+
+---
+
+## Concept Group 5: Client-Side Persistence
+
+### 5.1 `localStorage` / `sessionStorage`
+
+##### What
+
+<span style="color: #33B5E5; font-weight: bold;">`localStorage`</span> and <span style="color: #33B5E5; font-weight: bold;">`sessionStorage`</span> are synchronous, string key-value stores exposed on `window`. `localStorage` persists indefinitely across browser sessions (until explicitly cleared or storage is evicted). `sessionStorage` is scoped to the current browser tab and cleared when the tab closes.
+
+##### Why
+
+The simplest persistence mechanism for small data that must survive page refresh: auth tokens, user preferences (theme, locale), feature flags, and last-visited route. No async setup, no schema, no migration — just `setItem`/`getItem`.
+
+##### How
+
+```typescript
+// Angular service wrapping Web Storage API
+@Injectable({ providedIn: 'root' })
+export class StorageService {
+  private readonly PREFIX = 'portal_';
+
+  set<T>(key: string, value: T): void {
+    localStorage.setItem(this.PREFIX + key, JSON.stringify(value));
+  }
+
+  get<T>(key: string): T | null {
+    const raw = localStorage.getItem(this.PREFIX + key);
+    if (raw === null) return null;
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return null;    // corrupted data — fail gracefully
+    }
+  }
+
+  remove(key: string): void {
+    localStorage.removeItem(this.PREFIX + key);
+  }
+
+  // sessionStorage variant — same API, different scope
+  setSession<T>(key: string, value: T): void {
+    sessionStorage.setItem(this.PREFIX + key, JSON.stringify(value));
+  }
+}
+
+// Usage
+this.storageService.set('theme', { mode: 'dark', accent: 'blue' });
+const theme = this.storageService.get<ThemeConfig>('theme');
+```
+
+##### When
+
+Use Web Storage for **small data (<5 MB total)** that is string-representable and does not need to be queried or indexed. Ideal for: auth tokens (consider security implications), UI preferences, draft form state between sessions. <span style="color: #FF4444; font-weight: bold;">Anti-patterns: storing large datasets, binary data (images, files), or sensitive PII without encryption. Do not store JWT tokens in localStorage if XSS risk exists — consider httpOnly cookies instead.</span>
+
+##### Trade-offs
+
+<span style="color: #FFBB33; font-weight: bold;">Synchronous API blocks the main thread</span> — `getItem` on a large value pauses all JS execution. 5–10 MB limit (browser-dependent). XSS-vulnerable: any injected script can read all localStorage for the origin. Data is shared across all tabs for the same origin (localStorage) — concurrent writes can race. Not available in Web Workers (use IndexedDB instead).
+
+**Backend Analogue:** `localStorage` ≈ **`appsettings.json`** — simple key-value configuration persisted on disk, human-readable, no query capability, read synchronously at startup. `sessionStorage` ≈ in-memory cache scoped to a single request/session lifetime.
+
+---
+
+### 5.2 IndexedDB — Structured Offline Storage
+
+##### What
+
+<span style="color: #33B5E5; font-weight: bold;">IndexedDB</span> is an asynchronous, **transactional object store** built into the browser. It supports structured data (objects, arrays, blobs), secondary indexes for efficient lookup, cursor-based iteration, and storage of hundreds of megabytes. It is the foundation for PWA offline-first data strategies.
+
+##### Why
+
+When localStorage's 5 MB limit and string-only constraint are insufficient — offline caching of API responses, storing user-generated content (documents, images), or maintaining a queryable client-side dataset — IndexedDB provides a full embedded database with ACID transactions.
+
+##### How
+
+```typescript
+// Using the 'idb' wrapper library (npm install idb) — wraps the raw IndexedDB API in Promises
+import { openDB, IDBPDatabase } from 'idb';
+
+interface PortalDB {
+  notifications: {
+    key: string;
+    value: AuditLogDetails;
+    indexes: { 'by-timestamp': string };
+  };
+}
+
+@Injectable({ providedIn: 'root' })
+export class IndexedDbService {
+  private db!: IDBPDatabase<PortalDB>;
+
+  async init(): Promise<void> {
+    this.db = await openDB<PortalDB>('portal-db', 1, {
+      upgrade(db) {
+        const store = db.createObjectStore('notifications', { keyPath: 'id' });
+        store.createIndex('by-timestamp', 'timestamp');   // enables efficient time-range queries
+      },
+    });
+  }
+
+  async saveNotification(event: AuditLogDetails): Promise<void> {
+    await this.db.put('notifications', event);   // upsert by keyPath (id)
+  }
+
+  async getRecentNotifications(since: Date): Promise<AuditLogDetails[]> {
+    const range = IDBKeyRange.lowerBound(since.toISOString());
+    return this.db.getAllFromIndex('notifications', 'by-timestamp', range);
+  }
+
+  async clearOldNotifications(before: Date): Promise<void> {
+    const tx = this.db.transaction('notifications', 'readwrite');
+    const range = IDBKeyRange.upperBound(before.toISOString());
+    let cursor = await tx.store.index('by-timestamp').openCursor(range);
+    while (cursor) {
+      await cursor.delete();
+      cursor = await cursor.continue();
+    }
+    await tx.done;
+  }
+}
+```
+
+##### When
+
+Use IndexedDB for **offline-first PWAs**, caching large API payloads between sessions, storing user-generated files (images, documents), or maintaining a queryable local dataset. <span style="color: #FF4444; font-weight: bold;">Anti-pattern: using IndexedDB for simple key-value data that fits in localStorage — IndexedDB's async overhead is unnecessary for small scalar values.</span>
+
+##### Trade-offs
+
+<span style="color: #FFBB33; font-weight: bold;">Raw IndexedDB API is complex</span> — use the `idb` wrapper library to avoid callback-based boilerplate. Schema migrations require incrementing the `version` number and handling `upgrade` callbacks — plan migration paths carefully. Browser may **evict IndexedDB data under storage pressure** (especially on iOS Safari) without warning. Data is not encrypted at rest — do not store sensitive credentials.
+
+**Backend Analogue:** IndexedDB ≈ **SQLite / LiteDB** — an embedded, file-backed transactional database requiring no server process, supporting indexes and structured queries, with storage limits determined by available disk space (browser quota, in this case).
+
+---
+
+### 5.3 Cache API — Service Worker Patterns
+
+##### What
+
+<span style="color: #33B5E5; font-weight: bold;">Cache API</span> is a browser storage mechanism for **HTTP request/response pairs**. Unlike localStorage or IndexedDB (which store arbitrary data), Cache API stores complete `Request`/`Response` objects — including headers, status codes, and body. It is primarily used by **Service Workers** to intercept network requests and serve cached responses.
+
+##### Why
+
+The Cache API enables offline-capable web applications by caching static assets (JS bundles, CSS, fonts, images) and API responses. Combined with a Service Worker, it allows the app to load and function without a network connection, and reduces latency by serving cached assets locally.
+
+##### How
+
+```typescript
+// service-worker.ts (runs in Service Worker context, not main thread)
+const CACHE_NAME = 'portal-v1';
+const STATIC_ASSETS = ['/index.html', '/main.js', '/styles.css'];
+
+// Cache-First strategy: serve from cache, fall back to network
+async function cacheFirst(request: Request): Promise<Response> {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  if (cached) return cached;                         // cache hit — instant response
+  const response = await fetch(request);
+  cache.put(request, response.clone());              // store for next time
+  return response;
+}
+
+// Network-First strategy: try network, fall back to cache (for API data)
+async function networkFirst(request: Request): Promise<Response> {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const response = await fetch(request);
+    cache.put(request, response.clone());
+    return response;
+  } catch {
+    return (await cache.match(request)) ?? new Response('Offline', { status: 503 });
+  }
+}
+
+// Stale-While-Revalidate: serve cache immediately, update cache in background
+async function staleWhileRevalidate(request: Request): Promise<Response> {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  const networkPromise = fetch(request).then((response) => {
+    cache.put(request, response.clone());
+    return response;
+  });
+  return cached ?? networkPromise;                   // serve stale immediately, refresh behind scenes
+}
+
+// In Angular: use @angular/service-worker (Angular PWA) to configure strategies
+// ngsw-config.json:
+// { "assetGroups": [{ "name": "app", "installMode": "prefetch", ... }],
+//   "dataGroups": [{ "name": "api", "cacheConfig": { "strategy": "freshness" } }] }
+```
+
+##### When
+
+Use Cache API / Service Workers for **PWA offline support**, caching static assets to eliminate network round trips on repeat visits, and implementing background sync. Integrate via Angular's `@angular/service-worker` package rather than hand-authoring service worker files. <span style="color: #00C851; font-weight: bold;">Match caching strategy to data freshness requirements:</span> Cache-First for versioned static assets, Network-First for user-specific API data, Stale-While-Revalidate for reference data that can tolerate brief staleness.
+
+##### Trade-offs
+
+<span style="color: #FFBB33; font-weight: bold;">Cache API stores HTTP responses, not arbitrary data</span> — for non-HTTP data, use IndexedDB. Cache invalidation is **manual**: stale cached responses will be served until explicitly deleted or the cache name is versioned (deploy a new `portal-v2` cache, delete `portal-v1`). Storage quota is shared with IndexedDB — aggressive caching can exhaust the available budget. Service Workers only run on HTTPS (except localhost). Debugging Service Workers requires the Application tab in DevTools and explicit cache clearing during development.
+
+**Backend Analogues (Group 5):** `localStorage` ≈ **`appsettings.json`** (simple KV config, synchronous, small); IndexedDB ≈ **SQLite / LiteDB** (embedded transactional DB, indexes, structured queries, no server required); Cache API ≈ **`IDistributedCache`** (cache HTTP responses/computed results, configurable expiry strategies, shared quota analogous to Redis memory limits).
+
+---
