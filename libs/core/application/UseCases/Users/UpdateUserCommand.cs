@@ -6,8 +6,10 @@ using System.Threading.Tasks;
 using FluentValidation;
 using MediatR;
 using Tai.Portal.Core.Application.Interfaces;
+using Tai.Portal.Core.Application.Models;
 using Tai.Portal.Core.Domain.Exceptions;
 using Tai.Portal.Core.Domain.ValueObjects;
+using Tai.Portal.Core.Domain.Events;
 
 namespace Tai.Portal.Core.Application.UseCases.Users;
 
@@ -30,9 +32,11 @@ public class UpdateUserCommandValidator : AbstractValidator<UpdateUserCommand> {
 
 public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, bool> {
   private readonly IIdentityService _identityService;
+  private readonly IMediator _mediator;
 
-  public UpdateUserCommandHandler(IIdentityService identityService) {
+  public UpdateUserCommandHandler(IIdentityService identityService, IMediator mediator) {
     _identityService = identityService;
+    _mediator = mediator;
   }
 
   public async Task<bool> Handle(UpdateUserCommand request, CancellationToken cancellationToken) {
@@ -56,6 +60,20 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand, bool>
 
     // Update privileges
     var privilegeIds = request.PrivilegeIds.Select(id => new PrivilegeId(id));
-    return await _identityService.UpdateUserPrivilegesAsync(request.Id, privilegeIds, cancellationToken);
+    var result = await _identityService.UpdateUserPrivilegesAsync(request.Id, privilegeIds, cancellationToken);
+
+    // Publish security event for privilege change
+    if (result) {
+      var domainEvent = new PrivilegeChangeEvent(
+        user.TenantId,
+        user.Id,
+        "privilege_update",
+        $"User privileges updated: {string.Join(", ", request.PrivilegeIds)}",
+        request.Id
+      );
+      await _mediator.Publish(new DomainEventNotification<PrivilegeChangeEvent>(domainEvent), cancellationToken);
+    }
+
+    return result;
   }
 }

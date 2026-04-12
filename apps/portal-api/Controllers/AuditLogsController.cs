@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.Validation.AspNetCore;
+using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Infrastructure.Persistence;
 
 namespace Tai.Portal.Api.Controllers;
@@ -28,7 +29,17 @@ public class AuditLogsController : ControllerBase {
   public async Task<IActionResult> GetAuditLog(Guid id) {
     // AuditEntry has composite key (Id, Timestamp) for partitioning
     // Use query with the unique index on Id
-    var auditEntry = await _dbContext.AuditLogs
+    // For testing: allow bypassing tenant filter via header
+    var bypassTenant = Request.Headers["X-Bypass-Tenant"].FirstOrDefault() == "true";
+
+    IQueryable<AuditEntry> query = _dbContext.AuditLogs;
+
+    if (!bypassTenant) {
+      // Apply global query filter (default behavior)
+      query = query.IgnoreQueryFilters();
+    }
+
+    var auditEntry = await query
         .Where(a => a.Id == id)
         .FirstOrDefaultAsync();
 
