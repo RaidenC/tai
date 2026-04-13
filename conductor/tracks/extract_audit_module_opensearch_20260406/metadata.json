@@ -1,0 +1,7 @@
+{
+  "id": "extract_audit_module_opensearch_20260406",
+  "title": "Extract Audit Module & Migrate to OpenSearch",
+  "status": "planned",
+  "created_at": "2026-04-06",
+  "tags": ["backend", "architecture", "audit", "opensearch", "modular-monolith"]
+}

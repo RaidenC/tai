@@ -1,0 +1,7 @@
+{
+  "id": "outbox_pattern_rabbitmq_20260406",
+  "title": "Implement Outbox Pattern & RabbitMQ for Domain Events",
+  "status": "planned",
+  "created_at": "2026-04-06",
+  "tags": ["backend", "architecture", "rabbitmq", "events", "outbox"]
+}
