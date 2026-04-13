@@ -106,21 +106,39 @@ const dense: number[] = [1, 2, 3, 4, 5];
 const sparse: number[] = [1, 2, 3, 4, 5];
 delete sparse[2]; // ← hole at index 2, now hash-table backed
 
-// Safe dense initialization with N elements (never use new Array(N))
-const denseN = Array.from({ length: 5 }, (_, i) => i * 2); // [0, 2, 4, 6, 8]
+// ❌ ANTI-PATTERN: Creating empty arrays for template iteration
+// new Array(5) creates a SPARSE array of length 5 with no actual elements (just holes).
+// Array methods like .map(), .filter(), and Angular's @for track will SKIP these holes entirely!
+const badSkeleton = new Array(5); 
+
+// ✅ GOOD: Safe dense initialization with N elements
+// Array.from creates a true DENSE array where every index exists (even if undefined).
+const goodSkeleton = Array.from({ length: 5 }, (_, i) => i); // [0, 1, 2, 3, 4]
 
 // Typed Arrays: single fixed type, true contiguous memory (for binary/WebGL)
 const buffer = new Uint8Array(1024);      // 1024 bytes, no boxing overhead
-const floatBuf = new Float32Array(256);   // 32-bit floats for shader uniforms
-
-// Avoid these patterns that create sparse arrays:
-const bad1 = new Array(100);             // 100-slot sparse array
-bad1[50] = 'value';                      // still sparse — gaps everywhere
 ```
 
 ##### When
 
-<span style="color: #00C851; font-weight: bold;">Always prefer dense arrays.</span> Use `Array.from({ length: N }, fn)` instead of `new Array(N)` for pre-allocated dense arrays. Use **Typed Arrays** (`Uint8Array`, `Float32Array`, etc.) for WebGL vertex buffers, binary protocol parsing (e.g. reading a WebSocket binary frame), or any numeric computation that needs zero boxing overhead.
+<span style="color: #00C851; font-weight: bold;">Always prefer dense arrays.</span> 
+
+**Real-World Application in `tai-portal`:**
+The most common place this bites Angular developers is when building **Skeleton Loaders** or mocking data in unit tests. 
+
+If you want to render 5 empty skeleton cards while data loads, you might be tempted to do this in your component:
+```typescript
+// ❌ BAD: Returns a sparse array of holes. Angular's @for loop will render ZERO items.
+skeletonItems = new Array(5); 
+```
+
+You must use `Array.from` to create a dense array so Angular's renderer actually sees the indices:
+```typescript
+// ✅ GOOD: Returns a dense array. Angular will render 5 skeleton items.
+skeletonItems = Array.from({ length: 5 }); 
+```
+
+Additionally, use **Typed Arrays** (`Uint8Array`, `Float32Array`) for binary protocol parsing (e.g. reading a WebSocket binary frame) or when zero-boxing overhead is required.
 
 ##### Trade-offs
 
@@ -145,38 +163,46 @@ bad1[50] = 'value';                      // still sparse — gaps everywhere
 ##### How
 
 ```typescript
-type UserId = string;
-interface User { id: UserId; name: string; }
+// ✅ GOOD: Map for dynamic key-value caches (O(1) operations, safe from prototype pollution)
+// In tai-portal, we might cache user details by their ID to avoid redundant API calls.
+const userCache = new Map<string, UserDto>();
+userCache.set('user-123', { name: 'Alice', role: 'Admin' });
 
-// Map: explicit type-safe, any key, O(1) operations
-const userCache = new Map<UserId, User>();
-userCache.set('u1', { id: 'u1', name: 'Alice' });
-userCache.set('u2', { id: 'u2', name: 'Bob' });
-
-console.log(userCache.get('u1'));     // { id: 'u1', name: 'Alice' }
-console.log(userCache.has('u3'));     // false
-console.log(userCache.size);         // 2
-
-userCache.delete('u1');
-for (const [id, user] of userCache) { // guaranteed insertion order
-  console.log(id, user.name);
+// Map gives us .has() and .size for free without Object.keys() overhead
+if (!userCache.has('user-456')) {
+  // fetch user...
 }
+console.log(`Cached ${userCache.size} users`);
 
-// Plain object (Record): fine for static, known keys
-const config: Record<string, string> = {
-  apiUrl: 'https://api.example.com',
-  environment: 'production',
-};
-
-// Prototype pollution danger with plain objects:
-const dict: Record<string, unknown> = {};
+// ❌ BAD: Plain object for dynamic keys (Prototype Pollution Risk)
+// If 'userInput' happens to be "__proto__" or "constructor", it breaks the object.
+const unsafeCache: Record<string, UserDto> = {};
 const userInput = '__proto__';
-dict[userInput] = { polluted: true }; // ← corrupts Object.prototype in old JS engines
+unsafeCache[userInput] = { name: 'Hacker', role: 'Admin' }; // Corrupts the prototype chain!
+
+// ✅ GOOD: Plain object (Record) for static, known configurations or DTOs
+// Angular @Input() bindings and HTTP payloads should be plain objects.
+const queryParams: Record<string, string | number> = {
+  page: 1,
+  limit: 20,
+  sort: 'desc'
+};
+// This is safe because the keys are hardcoded and not user-controlled.
 ```
 
 ##### When
 
-Use **`Map`** when: keys are dynamic or user-controlled, keys are non-strings (object references), you need frequent add/delete, or you need `.size` without `Object.keys().length`. Use **plain objects/`Record`** when: the shape is statically known (TypeScript interface), you need JSON serialization, or you're working with Angular component `@Input()` configs.
+**Real-World Application in Angular / `tai-portal`:**
+
+Use **`Map`** when:
+1. **Keys are dynamic or user-controlled:** A dictionary mapping User IDs to their active websocket connections.
+2. **Keys are not strings:** You want to attach metadata directly to a DOM Element or an Angular `ComponentRef` (e.g., `new Map<HTMLElement, OverlayRef>()`).
+3. **You need frequent add/delete operations:** `Map` is internally optimized for hash-table operations, making it faster than `delete obj['key']` which de-optimizes the JS engine.
+
+Use **Plain Objects/`Record`** when:
+1. **You need JSON Serialization:** `Map` cannot be serialized by `JSON.stringify()` out of the box (it returns `{}`). HTTP DTOs must be plain objects.
+2. **Angular Template Binding:** You want to pass a configuration object into a component via `@Input()` (e.g., `<app-chart [config]="{ type: 'bar', color: 'red' }">`).
+3. **The shape is statically known:** You are defining a TypeScript interface or payload where every key is known at compile time.
 
 ##### Trade-offs
 

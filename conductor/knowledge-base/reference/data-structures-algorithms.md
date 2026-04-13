@@ -294,7 +294,36 @@ O(log N) enqueue, O(log N) dequeue, O(1) peek-minimum. <span style="color: #ffbb
 #### `Dictionary<TKey, TValue>` & Hash Collisions
 
 ##### What
-<span style="color: #33b5e5; font-weight: bold;">`Dictionary<TKey, TValue>`</span> is a hash table that maps keys to values by running the key through a hash function to produce a bucket index. Each bucket holds a linked chain of entries — when two keys hash to the same bucket index, that's a <span style="color: #33b5e5; font-weight: bold;">collision</span>, and the chain grows by one node. Internally, .NET's `Dictionary<TKey, TValue>` stores entries in a flat array (not a true linked list) alongside a parallel `_buckets` int array of head indices, giving it excellent cache locality compared to pointer-chasing implementations.
+<span style="color: #33b5e5; font-weight: bold;">`Dictionary<TKey, TValue>`</span> is a hash table that maps keys to values. When we think of a Hash Table, we often picture an array of "buckets", where each bucket contains a pointer to a linked list of entries (to handle collisions). While conceptually true, this pointer-based linked list approach is terrible for modern CPU caches because every pointer traversal across the heap causes a cache miss.
+
+In .NET, `Dictionary<TKey, TValue>` maintains the conceptual behavior of a hashtable but implements it using **two flat arrays** to maximize CPU cache locality and minimize garbage collection (GC) overhead.
+
+**1. The Two Flat Arrays**
+1. **`int[] _buckets`**: An array of integers. The index is the "hash bucket" (derived from the key's hash code modulo the array length). The value stored at that index is an integer pointing to the *first entry* in the `_entries` array for that bucket.
+2. **`Entry[] _entries`**: An array of a custom `Entry` struct. This array stores the actual data contiguously in the order it was inserted (mostly).
+
+**The `Entry` Struct**
+```csharp
+private struct Entry
+{
+    public uint hashCode;   // The full 32-bit hash code of the key (cached so we don't recompute)
+    public int next;        // The index of the NEXT entry in the chain (for collisions), or -1
+    public TKey key;        // The actual key
+    public TValue value;    // The actual value
+}
+```
+Notice that `next` is an `int` (an index), not a reference to another object on the heap. This is the crucial optimization: **the "linked list" for collisions is just a sequence of indices jumping around within the flat `_entries` array.**
+
+**2. The Lookup Process (O(1) Average)**
+1. **Hash the Key:** Calls `GetHashCode()` on the key (e.g., "Alice" -> `1234567`).
+2. **Find the Bucket:** Calculates the bucket index using the modulo operator: `bucketIndex = 1234567 % _buckets.Length`.
+3. **Check the Bucket:** Looks at `_buckets[bucketIndex]`. If valid, it points to the first entry in `_entries`.
+4. **Walk the Chain (The "Linked List"):** Jumps to the entry, compares the full `hashCode` first (fast path), then calls `.Equals()`. If it's a collision but not a match, it follows the `next` integer index to the next entry in the chain.
+
+Because the data is in a flat array, traversing this chain is extremely fast for the CPU cache compared to chasing memory pointers across the heap.
+
+**3. Resizing (The O(N) Cliff)**
+When the `_entries` array is full, the dictionary must resize. It chooses the **next prime number** that is at least double the current size, allocates new arrays, and **rehashes** every single entry because the modulo math (`hash % newLength`) has changed. This is an **O(N) operation**. To avoid this performance cliff, always pre-allocate if you know the capacity: `new Dictionary<string, int>(10000)`.
 
 ##### Why
 The primary reason `Dictionary<TKey, TValue>` dominates day-to-day .NET development is its <span style="color: #00C851; font-weight: bold;">O(1) average-case lookup and insert</span>. When you need to look up a user by ID, cache a computed value by key, or invert a mapping, no other general-purpose structure competes. Contrast with `List<T>.Contains()` at O(N) — on a list of 100,000 items, a dictionary lookup is orders of magnitude faster.
@@ -624,44 +653,53 @@ Use a BST (via `SortedDictionary` / `SortedSet`) when you need **sorted data wit
 #### 3.2 B-Trees & Database Indexing
 
 ##### What
-A <span style="color: #33b5e5; font-weight: bold;">B-Tree</span> is a self-balancing search tree optimised for **block-based (disk) storage**. Unlike a BST where each node holds one key and two children, a B-Tree node holds **multiple keys** and **multiple child pointers** (the branching factor). A B-Tree of order M has nodes with up to M−1 keys and M children. The high branching factor produces a **shallow tree** — a B-Tree over millions of rows may be only 3–4 levels deep.
+A <span style="color: #33b5e5; font-weight: bold;">B-Tree</span> is a self-balancing search tree optimised for **block-based (disk) storage**. Unlike a Binary Search Tree (BST) where each node holds one key and two children, a B-Tree node holds **multiple keys** and **multiple child pointers** (the branching factor). A B-Tree of order *M* has nodes with up to *M−1* keys and *M* children. The high branching factor produces a **shallow, wide tree** — a B-Tree over millions of rows may be only 3–4 levels deep.
 
 ##### Why
-<span style="color: #00C851; font-weight: bold;">PostgreSQL and SQL Server use B-Tree variants for their default indexes</span> (SQL Server uses B+Trees, where all data lives in leaf nodes). When you run `EXPLAIN ANALYZE` in Postgres or look at query plans in SQL Server, index seeks are B-Tree traversals: `WHERE Id = @id` with an index is O(log N); without an index it is O(N) (full table scan). This is the single most impactful data-structure concept for database performance interviews. Cross-reference: [[EFCore-SQL]].
+Disks (even SSDs) read data in "blocks" or "pages" (typically 4KB to 16KB). If you stored a database index as a standard BST on disk, following a child pointer might mean jumping to a completely different disk page. Finding a row among 1 million records would take ~20 hops (O(log₂ 1,000,000)). If each hop is a separate disk read, performance collapses.
+
+B-Trees solve this by sizing each node to fit exactly into one disk page. 
+*   Instead of 1 key per node, a B-Tree node might hold 100 keys and 101 child pointers. 
+*   Finding a row among 1 million records now takes ~3 hops (O(log₁₀₀ 1,000,000)). 
+*   **The goal of a B-Tree is to minimize the number of disk reads.**
+
+This is why <span style="color: #00C851; font-weight: bold;">PostgreSQL and SQL Server use B-Tree variants for their default indexes</span> (SQL Server specifically uses B+Trees, where all actual data rows live exclusively in the leaf nodes, while inner nodes only hold routing keys).
 
 ##### How
-You will never implement a B-Tree — this is conceptual understanding for interviews.
+You will never implement a B-Tree manually — this is conceptual understanding for database performance interviews.
 
-**Why B-Trees win on disk:**
-- A disk read fetches one **page** (typically 4–16 KB) at a time. A BST node holds one key → N keys = N disk reads in the worst case.
-- A B-Tree node is sized to fill one disk page → one disk read fetches dozens or hundreds of keys.
-- A B-Tree of order 1000 over 1 billion rows has height ≈ log₁₀₀₀(10⁹) = 3. Three disk reads to find any row.
-
-**Clustered vs non-clustered indexes:**
+**Clustered vs Non-Clustered Indexes:**
 
 | Type | What it stores | Effect |
 |---|---|---|
-| <span style="color: #33b5e5; font-weight: bold;">Clustered index</span> | Leaf nodes ARE the data rows (table sorted by key) | One lookup → row in hand. One per table. |
-| <span style="color: #33b5e5; font-weight: bold;">Non-clustered index</span> | Leaf nodes hold key + pointer (RID/clustered key) to row | Two lookups: index seek → then row fetch ("key lookup"). |
+| <span style="color: #33b5e5; font-weight: bold;">Clustered index</span> | Leaf nodes ARE the actual data rows (table sorted physically on disk by this key). | One lookup → you have the whole row. Only one allowed per table. |
+| <span style="color: #33b5e5; font-weight: bold;">Non-clustered index</span> | Leaf nodes hold the index key + a pointer (RID or clustered key) back to the real row. | Two lookups: index seek → then row fetch ("key lookup"). |
 
 ```sql
--- Index seek: O(log N) — B-Tree traversal
+-- Index seek: O(log N) — B-Tree traversal. Extremely fast.
 SELECT * FROM Orders WHERE OrderId = 42;        -- clustered index seek
 
--- Index seek + key lookup: O(log N) — non-clustered seek then row fetch
+-- Index seek + key lookup: O(log N) — non-clustered seek, then jumps to clustered index to get the rest of the columns.
 SELECT * FROM Orders WHERE CustomerId = 7;      -- non-clustered index on CustomerId
 
--- Full table scan: O(N) — no usable index
-SELECT * FROM Orders WHERE YEAR(CreatedAt) = 2024;  -- function prevents index use
+-- Full table scan: O(N) — no usable index. Reads every page on disk.
+SELECT * FROM Orders WHERE YEAR(CreatedAt) = 2024;  -- Function applied to column prevents B-Tree traversal!
 ```
 
-**Write amplification:** inserting a key into a full B-Tree node triggers a **node split** — the node is divided and a key promoted to the parent, potentially cascading splits upward. This is why heavy insert workloads on heavily-indexed tables see write amplification.
+**Write Amplification & Node Splits:**
+What happens when you insert a new row, and the B-Tree node (disk page) it belongs in is already 100% full?
+1.  **Node Split:** The database must allocate a *new* empty page.
+2.  It moves half the keys from the full page to the new page.
+3.  It promotes the middle key up to the parent node so it can route between the two halves.
+4.  If the parent is also full, *it* splits, cascading all the way up to the root.
+
+This is an expensive, lock-heavy disk operation. This is why heavy insert workloads on heavily-indexed tables suffer from **write amplification**.
 
 ##### When
-You will encounter B-Tree reasoning in any interview touching database indexing, `EXPLAIN` / `EXPLAIN ANALYZE` query plans, or the trade-off between read performance and write overhead. The interviewer wants to hear: "an index is a B-Tree; a seek is O(log N); a scan is O(N); adding too many indexes slows writes due to node splits."
+You will encounter B-Tree reasoning in any interview touching database indexing, `EXPLAIN` / `EXPLAIN ANALYZE` query plans, or the trade-off between read performance and write overhead. The interviewer wants to hear: "An index is a B-Tree; a seek is O(log N); a scan is O(N); adding too many indexes slows writes due to node splits."
 
 ##### Trade-offs
-<span style="color: #ffbb33; font-weight: bold;">Write amplification:</span> every insert/update/delete must maintain all indexes on the table. A table with 10 indexes pays 10x the write cost per row change. <span style="color: #ff4444; font-weight: bold;">Over-indexing is a common production anti-pattern</span> — indexes waste storage and serialise write throughput under heavy insert load (e.g., event logs, audit trails). Index only columns that appear in `WHERE`, `JOIN ON`, or `ORDER BY` clauses with high cardinality.
+<span style="color: #ffbb33; font-weight: bold;">Write amplification:</span> Every insert/update/delete must maintain all indexes on the table. A table with 10 indexes pays 10x the write cost per row change. <span style="color: #ff4444; font-weight: bold;">Over-indexing is a common production anti-pattern</span> — indexes waste storage and serialise write throughput under heavy insert load (e.g., event logs, audit trails). Only index columns that frequently appear in `WHERE`, `JOIN ON`, or `ORDER BY` clauses with high cardinality.
 
 ---
 
@@ -1579,9 +1617,13 @@ return await query
 
 ---
 
-### 8.2 tai-portal: Permission Graph Traversal with BFS 🔧
+### 8.2 Conceptual: Resolving Role Hierarchies with BFS 🔧
 
-Role hierarchies (e.g. Admin → Manager → Viewer) form a **directed graph**. BFS guarantees every reachable role is visited exactly once, collecting all inherited privileges in O(V + E) time.
+**Context:** The `tai-portal` API runtime uses **Claims-Based Authorization**. When an endpoint requires `[Authorize(Policy = "Portal.Users.Read")]`, it checks if the incoming JWT Access Token contains a flat claim for that privilege in O(1) time. The API does *not* traverse a tree on every request.
+
+However, how do those flat claims get into the JWT in the first place? If the system supports **Role Hierarchies** (e.g. Admin → Manager → Viewer), the Identity Provider must flatten that directed graph into a simple list of claims during the login handshake (in `AuthorizationController`). 
+
+BFS guarantees every reachable role is visited exactly once, collecting all inherited privileges in O(V + E) time, which can then be baked into the JWT.
 
 ```csharp
 public HashSet<string> GetEffectivePrivileges(
@@ -1610,7 +1652,7 @@ public HashSet<string> GetEffectivePrivileges(
         }
     }
 
-    return privileges;
+    return privileges; // These are the flat claims injected into the JWT
 }
 ```
 
