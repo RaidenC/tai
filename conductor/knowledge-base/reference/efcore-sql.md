@@ -10,6 +10,8 @@ relatedTopics:
   - Design-Patterns
 ---
 
+[🧠 **View Interactive Mindmap**](./efcore-sql-mindmap.md)
+
 1. **Core Architecture**
    - 1.1 [ORM Fundamentals & EF Core](#1-why-use-an-orm-entity-framework-core)
    - 1.2 [Deferred Execution & IQueryable](#2-deferred-execution--iqueryable)
@@ -108,6 +110,7 @@ Entity Framework Core (EF Core 10) is the standard ORM for modern .NET, translat
 - **How:** The filter expression captures the `_tenantService` reference from the DbContext constructor. Because `PortalDbContext` is scoped (one instance per HTTP request), and `ITenantService` is also scoped (resolved from the request's `tenant_id` claim), the filter automatically reflects the current request's tenant.
 - **When:** Use for any cross-cutting data isolation concern — multi-tenancy, soft deletes (`IsDeleted == false`), active/inactive filtering. Use `IgnoreQueryFilters()` only in tightly scoped admin/diagnostic contexts.
 - **Trade-offs:** Filters are invisible in code — developers may not realize a filter exists and be confused by "missing" data. Filters also apply to `Include()` joins, which can cause unexpected empty navigations. You cannot have multiple independent filters per entity (they compose with AND). `IgnoreQueryFilters()` removes all filters, not just one — there's no `IgnoreQueryFilter<TFilter>()`.
+- **Cross-reference:** See **[[System-Design]]** for the full 3-layer tenant isolation strategy (request → database → real-time).
 
 #### 4. The Change Tracker & SaveChangesAsync
 - **What:** EF Core's Change Tracker monitors every entity loaded from the database. It knows the original values, current values, and state (`Unchanged`, `Added`, `Modified`, `Deleted`) of each tracked entity. When you call `SaveChangesAsync()`, it generates SQL only for changed entities.
@@ -127,11 +130,10 @@ Entity Framework Core (EF Core 10) is the standard ORM for modern .NET, translat
 - **Trade-offs:** Interceptors run on every `SaveChanges` call, so they must be fast. The `TenantInterceptor` uses reflection, which is slower than direct property access — acceptable for the small number of `Added` entities per request, but problematic for bulk inserts. Also, interceptors are invisible to callers — a developer may not realize `TenantId` is being set automatically.
 
 #### 6. Domain Event Dispatch — Events Before Save
-- **What:** Domain entities raise events (e.g., `UserApprovedEvent`, `PrivilegeModifiedEvent`) by adding them to a `DomainEvents` collection. In `SaveChangesAsync`, these events are collected, the collection is cleared, and the events are published via MediatR — all before `base.SaveChangesAsync()` is called.
-- **Why:** Dispatching before save means event handlers participate in the same database transaction. If a handler writes an `AuditEntry` and the main save fails, both are rolled back. This gives you transactional consistency without a distributed transaction coordinator.
-- **How:** The dispatch mechanism uses reflection to create `DomainEventNotification<T>` wrappers (where `T` is the concrete event type) and publishes them via MediatR's `IPublisher`. Handlers are resolved from DI and can inject `PortalDbContext` to write audit entries.
-- **When:** Use pre-save dispatch for events that must be transactionally consistent with the triggering change (audit logs, cascading state changes). Use post-save dispatch (or an Outbox pattern) for events that trigger external side effects (sending emails, calling external APIs, pushing SignalR notifications).
-- **Trade-offs:** Pre-save dispatch means handler failures abort the entire save. A buggy audit handler can prevent legitimate business operations. Also, the dispatch iterates entities and uses `Activator.CreateInstance` with reflection — minor performance overhead per save.
+- **What:** The `SaveChangesAsync` override scans the Change Tracker for `IHasDomainEvents` entities, collects their events, clears the collections, and publishes via MediatR — all before `base.SaveChangesAsync()`.
+- **Why:** Pre-save dispatch means event handlers participate in the same database transaction. If a handler writes an `AuditEntry` and the main save fails, both roll back atomically.
+- **How:** Uses `Activator.CreateInstance` to wrap each event in `DomainEventNotification<T>`, published via `IPublisher`. See **[[MediatR-CQRS]]** for the full dispatch lifecycle, notification handlers, and event hierarchy. See **[[DDD-Domain-Modeling]]** for how entities raise events.
+- **Trade-offs:** Handler failures abort the entire save — a buggy handler can block legitimate operations. The reflection-based dispatch adds minor overhead per save.
 
 #### 7. Optimistic Concurrency with PostgreSQL xmin
 - **What:** Optimistic concurrency assumes conflicts are rare. Instead of locking rows on read, EF Core includes a concurrency token in the `WHERE` clause of `UPDATE` statements. If the token has changed since the entity was loaded, the update affects zero rows and EF Core throws `DbUpdateConcurrencyException`.

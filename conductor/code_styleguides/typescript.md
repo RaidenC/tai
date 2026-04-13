@@ -45,20 +45,104 @@ This document summarizes key rules and best practices from the Google TypeScript
 - **`const enum`:** Do not use `const enum`. Use plain `enum` instead.
 - **`eval()` and `Function(...string)`:** Forbidden.
 
-## 3. Naming
+## 3. Type Narrowing & Type Guards
+
+In enterprise TypeScript, dealing with Union Types (e.g., `User | HttpErrorResponse`) is common. The Google Style Guide strictly forbids Type Assertions (`x as SomeType`) because they bypass the compiler and cause runtime crashes. Instead, you must use **Type Narrowing** and **Type Guards** to safely prove to the compiler what a type is.
+
+### A. Built-in Type Guards
+TypeScript recognizes standard JavaScript runtime checks and uses them to narrow types automatically.
+
+*   **`typeof` (For Primitives):** Narrows basic JavaScript primitives (`string`, `number`, `boolean`, `function`).
+    ```typescript
+    function printId(id: string | number) {
+      if (typeof id === 'string') {
+        console.log(id.toUpperCase()); // TS knows 'id' is a string
+      } else {
+        console.log(id.toFixed(2));    // TS knows 'id' is a number
+      }
+    }
+    ```
+*   **`instanceof` (For Classes):** Narrows objects instantiated from a `class` (does *not* work for `interface` or `type`).
+    ```typescript
+    function handleError(error: Error | HttpErrorResponse) {
+      if (error instanceof HttpErrorResponse) {
+        console.log(`API Failed with status: ${error.status}`); // Safe access
+      }
+    }
+    ```
+*   **`in` Operator (For Interfaces/Objects):** Checks if a specific property key exists in an object.
+    ```typescript
+    interface Admin { role: string; privileges: string[]; }
+    interface Customer { role: string; subscriptionId: string; }
+
+    function routeUser(user: Admin | Customer) {
+      if ('privileges' in user) {
+        user.privileges.forEach(p => console.log(p)); // TS knows it's an Admin
+      }
+    }
+    ```
+
+### B. Custom Type Guard Functions (`is`)
+When extraction complex type-checking logic into a reusable function, a simple `boolean` return type isn't enough for TypeScript to narrow the type. You must use a **Type Predicate** (`arg is Type`).
+
+```typescript
+interface SecurityEvent { eventId: string; timestamp: string; }
+interface LoginAnomalyEvent extends SecurityEvent { reason: string; }
+
+// Custom Type Guard using 'is'
+function isLoginAnomaly(event: SecurityEvent): event is LoginAnomalyEvent {
+  return 'reason' in event;
+}
+
+function processEvent(event: SecurityEvent) {
+  if (isLoginAnomaly(event)) {
+    console.log(`Alert: ${event.reason}`); // TS knows it is a LoginAnomalyEvent
+  }
+}
+```
+
+### C. Discriminated Unions (The Enterprise Standard)
+When managing complex state (like Angular feature stores), use a Discriminated Union. Give every interface in the union a common, literal property (e.g., `status`).
+
+```typescript
+interface LoadingState { status: 'loading'; }
+interface SuccessState { status: 'success'; data: User[]; }
+interface ErrorState   { status: 'error'; errorMessage: string; }
+
+type StoreState = LoadingState | SuccessState | ErrorState;
+
+function renderUI(state: StoreState) {
+  switch (state.status) {
+    case 'loading':
+      showSpinner();
+      break;
+    case 'success':
+      renderTable(state.data); // TS knows this is SuccessState
+      break;
+    case 'error':
+      showErrorToast(state.errorMessage);
+      break;
+    default:
+      // Exhaustiveness checking! Warns if a new status is added to StoreState.
+      const _exhaustiveCheck: never = state;
+  }
+}
+```
+
+## 4. Naming
 - **`UpperCamelCase`:** For classes, interfaces, types, enums, and decorators.
 - **`lowerCamelCase`:** For variables, parameters, functions, methods, and properties.
 - **`CONSTANT_CASE`:** For global constant values, including enum values.
 - **`_` Prefix/Suffix:** **Do not use `_` as a prefix or suffix** for identifiers, including for private properties.
 
-## 4. Type System
+## 5. Type System
 - **Type Inference:** Rely on type inference for simple, obvious types. Be explicit for complex types.
 - **`undefined` and `null`:** Both are supported. Be consistent within your project.
 - **Optional vs. `|undefined`:** Prefer optional parameters and fields (`?`) over adding `|undefined` to the type.
 - **`Array<T>` Type:** Use `T[]` for simple types. Use `Array<T>` for more complex union types (e.g., `Array<string | number>`).
 - **`{}` Type:** **Do not use `{}`**. Prefer `unknown`, `Record<string, unknown>`, or `object`.
 
-## 5. Comments and Documentation
+## 6. Comments and Documentation
 - **JSDoc:** Use `/** JSDoc */` for documentation, `//` for implementation comments.
 - **Redundancy:** **Do not declare types in `@param` or `@return` blocks** (e.g., `/** @param {string} user */`). This is redundant in TypeScript.
 - **Add Information:** Comments must add information, not just restate the code.

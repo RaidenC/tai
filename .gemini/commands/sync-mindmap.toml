@@ -1,0 +1,7 @@
+description = "Updates the companion mindmap file by extracting and summarizing the latest content from a knowledge base markdown file."
+prompt = """
+1. Read the provided markdown file.
+2. Read `conductor/knowledge-base/reference/MARKMAP_TEMPLATE.md` to get the mindmap rules and YAML frontmatter.
+3. Generate (or overwrite) the corresponding `-mindmap.md` file, strictly following the formatting rules.
+4. Ensure you extract 2-3 concise bullet points for the deepest nodes based on the new content.
+"""
