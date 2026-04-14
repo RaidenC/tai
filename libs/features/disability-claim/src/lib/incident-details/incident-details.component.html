@@ -1,0 +1,132 @@
+<!--
+  Step 2: Incident Details Form
+
+  - Date of Disability
+  - Disability Type (select)
+  - Is Work Related (toggle) → conditional sub-form
+  - Description (textarea)
+-->
+
+<form [formGroup]="form" (ngSubmit)="onNext()">
+  <h2 class="step-title">[2] Incident Details</h2>
+
+  <!-- Error summary -->
+  @if (form.touched && form.invalid) {
+    <div class="alert alert-error">
+      Please fill in all required fields correctly.
+    </div>
+  }
+
+  <!-- Date of Disability + Type -->
+  <div class="form-row">
+    <div class="form-group">
+      <label class="form-label required" for="dateOfDisability">Date of Disability</label>
+      <input
+        type="date"
+        id="dateOfDisability"
+        formControlName="dateOfDisability"
+        class="form-input"
+        [class.error]="form.get('dateOfDisability')?.touched && form.get('dateOfDisability')?.invalid"
+      />
+      @if (form.get('dateOfDisability')?.touched && form.get('dateOfDisability')?.errors?.['required']) {
+        <span class="form-error">Date is required</span>
+      }
+    </div>
+
+    <div class="form-group">
+      <label class="form-label required" for="disabilityType">Type of Disability</label>
+      <select
+        id="disabilityType"
+        formControlName="disabilityType"
+        class="form-input"
+        [class.error]="form.get('disabilityType')?.touched && form.get('disabilityType')?.invalid"
+      >
+        <option [ngValue]="null">Select type...</option>
+        @for (type of disabilityTypes; track type) {
+          <option [value]="type">{{ type }}</option>
+        }
+      </select>
+      @if (form.get('disabilityType')?.touched && form.get('disabilityType')?.errors?.['required']) {
+        <span class="form-error">Disability type is required</span>
+      }
+    </div>
+  </div>
+
+  <!-- Is Work Related (toggle) -->
+  <div class="form-group">
+    <label class="checkbox-label">
+      <input
+        type="checkbox"
+        formControlName="isWorkRelated"
+        (change)="onWorkRelatedChange($any($event.target).checked)"
+      />
+      <span>This is a work-related injury/illness</span>
+    </label>
+  </div>
+
+  <!-- Conditional: Workers Comp Claim Number -->
+  @if (form.get('isWorkRelated')?.value) {
+    <div class="form-group">
+      <label class="form-label required" for="workersCompClaimNumber">
+        Workers' Comp Claim Number
+      </label>
+      <div class="input-with-status">
+        <input
+          type="text"
+          id="workersCompClaimNumber"
+          formControlName="workersCompClaimNumber"
+          class="form-input"
+          placeholder="e.g., WC-2026-12345"
+          [class.error]="form.get('workersCompClaimNumber')?.touched && form.get('workersCompClaimNumber')?.invalid"
+        />
+        @if (workersCompLoading) {
+          <span class="input-status">
+            <span class="spinner"></span>
+            Loading template...
+          </span>
+        }
+      </div>
+      @if (form.get('workersCompClaimNumber')?.touched && form.get('workersCompClaimNumber')?.errors?.['required']) {
+        <span class="form-error">Workers' Comp claim number is required for work-related claims</span>
+      }
+      <span class="form-hint">
+        This will be used to fetch the appropriate leave form template.
+      </span>
+    </div>
+  }
+
+  <!-- Description -->
+  <div class="form-group">
+    <label class="form-label required" for="description">Description</label>
+    <textarea
+      id="description"
+      formControlName="description"
+      class="form-input textarea"
+      rows="4"
+      placeholder="Please describe how the disability occurred..."
+      [class.error]="form.get('description')?.touched && form.get('description')?.invalid"
+    ></textarea>
+    @if (form.get('description')?.touched && form.get('description')?.errors?.['required']) {
+      <span class="form-error">Description is required</span>
+    }
+    @if (form.get('description')?.touched && form.get('description')?.errors?.['minlength']) {
+      <span class="form-error">Please provide at least 10 characters</span>
+    }
+  </div>
+
+  <!-- Navigation -->
+  <div class="btn-row">
+    <button type="button" class="btn btn-secondary" (click)="onBack()">
+      <svg class="arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <path d="M19 12H5M12 19l-7-7 7-7"/>
+      </svg>
+      Back
+    </button>
+    <button type="submit" class="btn btn-primary">
+      Next
+      <svg class="arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <path d="M5 12h14M12 5l7 7-7 7"/>
+      </svg>
+    </button>
+  </div>
+</form>

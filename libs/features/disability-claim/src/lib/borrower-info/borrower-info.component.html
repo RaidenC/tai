@@ -1,0 +1,121 @@
+<!--
+  Step 1: Borrower Verification Form
+
+  Two-column layout: First/Last name side by side
+  SSN and Phone side by side
+  Email full-width
+-->
+
+<form [formGroup]="form" (ngSubmit)="onNext()">
+  <h2 class="step-title">[1] Borrower Information</h2>
+
+  <!-- Error summary -->
+  @if (form.touched && form.invalid) {
+    <div class="alert alert-error">
+      Please fill in all required fields correctly.
+    </div>
+  }
+
+  <!-- First Name + Last Name -->
+  <div class="form-row">
+    <div class="form-group">
+      <label class="form-label required" for="firstName">First Name</label>
+      <input
+        type="text"
+        id="firstName"
+        formControlName="firstName"
+        class="form-input"
+        [class.error]="form.get('firstName')?.touched && form.get('firstName')?.invalid"
+        (blur)="onFieldBlur('firstName')"
+      />
+      @if (form.get('firstName')?.touched && form.get('firstName')?.errors?.['required']) {
+        <span class="form-error">First name is required</span>
+      }
+    </div>
+
+    <div class="form-group">
+      <label class="form-label required" for="lastName">Last Name</label>
+      <input
+        type="text"
+        id="lastName"
+        formControlName="lastName"
+        class="form-input"
+        [class.error]="form.get('lastName')?.touched && form.get('lastName')?.invalid"
+        (blur)="onFieldBlur('lastName')"
+      />
+      @if (form.get('lastName')?.touched && form.get('lastName')?.errors?.['required']) {
+        <span class="form-error">Last name is required</span>
+      }
+    </div>
+  </div>
+
+  <!-- SSN (Last 4) + Phone -->
+  <div class="form-row">
+    <div class="form-group">
+      <label class="form-label required" for="ssnLastFour">SSN (Last 4)</label>
+      <input
+        type="password"
+        id="ssnLastFour"
+        formControlName="ssnLastFour"
+        class="form-input"
+        maxlength="4"
+        placeholder="****"
+        [class.error]="form.get('ssnLastFour')?.touched && form.get('ssnLastFour')?.invalid"
+        (blur)="onFieldBlur('ssnLastFour')"
+      />
+      @if (form.get('ssnLastFour')?.touched && form.get('ssnLastFour')?.errors?.['required']) {
+        <span class="form-error">SSN is required</span>
+      }
+      @if (form.get('ssnLastFour')?.touched && form.get('ssnLastFour')?.errors?.['pattern']) {
+        <span class="form-error">Must be exactly 4 digits</span>
+      }
+    </div>
+
+    <div class="form-group">
+      <label class="form-label required" for="phone">Phone</label>
+      <input
+        type="tel"
+        id="phone"
+        formControlName="phone"
+        class="form-input"
+        placeholder="(555) 555-5555"
+        [class.error]="form.get('phone')?.touched && form.get('phone')?.invalid"
+        (blur)="onFieldBlur('phone')"
+      />
+      @if (form.get('phone')?.touched && form.get('phone')?.errors?.['required']) {
+        <span class="form-error">Phone is required</span>
+      }
+    </div>
+  </div>
+
+  <!-- Email (full width) -->
+  <div class="form-group">
+    <label class="form-label required" for="email">Email</label>
+    <input
+      type="email"
+      id="email"
+      formControlName="email"
+      class="form-input"
+      placeholder="john.doe@example.com"
+      [class.error]="form.get('email')?.touched && form.get('email')?.invalid"
+      (blur)="onFieldBlur('email')"
+    />
+    @if (form.get('email')?.touched && form.get('email')?.errors?.['required']) {
+      <span class="form-error">Email is required</span>
+    }
+    @if (form.get('email')?.touched && form.get('email')?.errors?.['email']) {
+      <span class="form-error">Please enter a valid email address</span>
+    }
+  </div>
+
+  <!-- Navigation -->
+  <div class="btn-row">
+    <div></div>
+    <button type="submit" class="btn btn-primary">
+      Next
+      <svg class="arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+        <path d="M5 12h14M12 5l7 7-7 7"/>
+      </svg>
+    </button>
+  </div>
+</form>

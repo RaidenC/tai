@@ -1,1 +1,131 @@
-<p>DisabilityClaim works!</p>
+<!--
+  DISABILITY CLAIM WIZARD — Main Container
+
+  This is the parent component that orchestrates the 4-step wizard.
+  It contains:
+  1. Header with logo + "Borrower Portal" title
+  2. Welcome message (first visit only)
+  3. CDK Stepper with clickable indicators
+  4. Router outlet for step content (renders the active step component)
+-->
+
+<div class="claim-wizard">
+  <!-- Header -->
+  <header class="wizard-header">
+    <div class="logo">
+      <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+      <span class="logo-text">Borrower Portal</span>
+    </div>
+  </header>
+
+  <!-- Welcome Message (first visit) -->
+  @if (showWelcome) {
+    <div class="welcome-banner">
+      <h2>File a Disability Claim</h2>
+      <p>This takes about 10 minutes. Your progress is saved automatically.</p>
+    </div>
+  }
+
+  <!-- Stepper -->
+  <nav class="stepper" role="tablist" aria-label="Claim progress">
+    @if (stepValidity$ | async; as validity) {
+      <!-- Step 1: Borrower Info -->
+      <button
+        class="step-item"
+        [class.completed]="validity.step1"
+        [class.active]="(currentStep$ | async) === 1"
+        (click)="navigateToStep(1)"
+        role="tab"
+        [attr.aria-selected]="(currentStep$ | async) === 1"
+        [attr.tabindex]="validity.step1 || (currentStep$ | async) === 1 ? 0 : -1"
+      >
+        <span class="step-indicator">
+          @if (validity.step1) {
+            <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          } @else {
+            <span>1</span>
+          }
+        </span>
+        <span class="step-label">Borrower Info</span>
+      </button>
+
+      <!-- Step 2: Incident Details -->
+      <button
+        class="step-item"
+        [class.completed]="validity.step2"
+        [class.active]="(currentStep$ | async) === 2"
+        [class.disabled]="!validity.step1 && (currentStep$ | async) !== 2"
+        (click)="validity.step1 && navigateToStep(2)"
+        role="tab"
+        [attr.aria-selected]="(currentStep$ | async) === 2"
+        [attr.tabindex]="validity.step1 ? 0 : -1"
+      >
+        <span class="step-indicator">
+          @if (validity.step2) {
+            <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          } @else {
+            <span>2</span>
+          }
+        </span>
+        <span class="step-label">Incident</span>
+      </button>
+
+      <!-- Step 3: Medical Providers -->
+      <button
+        class="step-item"
+        [class.completed]="validity.step3"
+        [class.active]="(currentStep$ | async) === 3"
+        [class.disabled]="!validity.step2 && (currentStep$ | async) !== 3"
+        (click)="validity.step2 && navigateToStep(3)"
+        role="tab"
+        [attr.aria-selected]="(currentStep$ | async) === 3"
+        [attr.tabindex]="validity.step2 ? 0 : -1"
+      >
+        <span class="step-indicator">
+          @if (validity.step3) {
+            <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          } @else {
+            <span>3</span>
+          }
+        </span>
+        <span class="step-label">Medical Providers</span>
+      </button>
+
+      <!-- Step 4: Review & Sign -->
+      <button
+        class="step-item"
+        [class.completed]="validity.step4"
+        [class.active]="(currentStep$ | async) === 4"
+        [class.disabled]="!validity.step3 && (currentStep$ | async) !== 4"
+        (click)="validity.step3 && navigateToStep(4)"
+        role="tab"
+        [attr.aria-selected]="(currentStep$ | async) === 4"
+        [attr.tabindex]="validity.step3 ? 0 : -1"
+      >
+        <span class="step-indicator">
+          @if (validity.step4) {
+            <svg class="check-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          } @else {
+            <span>4</span>
+          }
+        </span>
+        <span class="step-label">Review & Submit</span>
+      </button>
+    }
+  </nav>
+
+  <!-- Step Content -->
+  <main class="step-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>
