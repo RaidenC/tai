@@ -15,7 +15,8 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@tai/ui-design-system": ["libs/ui/design-system/src/index.ts"]
+      "@tai/ui-design-system": ["libs/ui/design-system/src/index.ts"],
+      "disability-claim": ["libs/features/disability-claim/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

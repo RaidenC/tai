@@ -54,3 +54,4 @@ test-results/.last-run.json
 
 # Playwright auth state
 .auth/
+.gstack/
