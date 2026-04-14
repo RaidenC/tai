@@ -1,10 +1,11 @@
 import { Route } from '@angular/router';
+import { claimRoutes } from 'disability-claim';
 
 /**
  * App Routes — Borrower Portal Wizard
  *
- * Lazy-loads the disability-claim feature library.
- * Each step is a child route with ClaimStepGuard protecting navigation.
+ * The disability-claim feature is eagerly loaded because NgRx store
+ * initialization happens in app.config.ts for localStorage hydration.
  */
 export const appRoutes: Route[] = [
   {
@@ -14,7 +15,6 @@ export const appRoutes: Route[] = [
   },
   {
     path: 'claim',
-    loadChildren: () =>
-      import('disability-claim').then((m) => m.claimRoutes),
+    children: claimRoutes,
   },
 ];
