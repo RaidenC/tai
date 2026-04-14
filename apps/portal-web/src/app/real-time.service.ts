@@ -117,10 +117,28 @@ export class RealTimeService implements OnDestroy {
    * 2. Fetch full details via REST API
    * 3. Emit to subscribers
    */
-  private handleSecurityEvent(payload: SecurityEventPayload): void {
-    // Extract the event ID and type from the payload
-    const eventId = payload.EventId;
-    const eventType = payload.EventType;
+  private handleSecurityEvent(data: any): void {
+    console.log('RealTimeService: Full payload:', JSON.stringify(data));
+
+    // Handle nested payload from SignalR - could be any case
+    const eventType = data.EventType || data.eventType || data.EventType?.toString();
+    const innerPayload = data.Payload || data.payload;
+
+    // Get eventId - check all possible locations and cases
+    let eventId: string | undefined;
+    let reason: string | undefined;
+
+    if (innerPayload) {
+      // Check inside Payload object
+      eventId = innerPayload.eventId || innerPayload.EventId || innerPayload.id || innerPayload.Id;
+      reason = innerPayload.reason || innerPayload.Reason;
+    } else {
+      // Check at top level
+      eventId = data.eventId || data.EventId || data.id || data.Id;
+      reason = data.reason || data.Reason;
+    }
+
+    console.log('RealTimeService: eventId:', eventId, 'eventType:', eventType, 'reason:', reason);
 
     if (!eventId) {
       console.warn('RealTimeService: Received SecurityEvent without EventId');
@@ -129,15 +147,18 @@ export class RealTimeService implements OnDestroy {
 
     // Show toast immediately for critical events
     if (eventType === 'LoginAnomaly' || eventType === 'PrivilegeChange') {
+      console.log('RealTimeService: Showing toast for', eventType);
       this.toastService.show(
-        `${eventType}: ${payload.Reason || 'Security alert'}`,
+        `${eventType}: ${reason || 'Security alert'}`,
         'critical'
       );
     }
 
     // Fetch full details using Claim Check pattern
+    console.log('RealTimeService: Fetching audit log details for:', eventId);
     this.fetchAuditLogDetails(eventId).subscribe({
       next: (details) => {
+        console.log('RealTimeService: Got details:', details);
         // Add eventType to the details for downstream consumers
         const detailsWithType: AuditLogDetails = {
           ...details,
@@ -146,6 +167,7 @@ export class RealTimeService implements OnDestroy {
         // Emit the full details inside Angular zone to trigger change detection
         this.ngZone.run(() => {
           this.store.addEvent(detailsWithType);
+          console.log('RealTimeService: Added event to store:', detailsWithType);
         });
       },
       error: (err) => {
@@ -158,8 +180,11 @@ export class RealTimeService implements OnDestroy {
    * Fetch full audit log details from REST API (Claim Check).
    */
   private fetchAuditLogDetails(eventId: string) {
-    const apiUrl = `http://${window.location.hostname}:5217/api/audit-logs/${eventId}`;
-    return this.http.get<AuditLogDetails>(apiUrl, { withCredentials: true });
+    const apiUrl = `http://${window.location.hostname}:5217/api/AuditLogs/${eventId}`;
+    return this.http.get<AuditLogDetails>(apiUrl, {
+      withCredentials: true,
+      headers: { 'X-Bypass-Tenant': 'true' }
+    });
   }
 
   private stopConnection(): void {

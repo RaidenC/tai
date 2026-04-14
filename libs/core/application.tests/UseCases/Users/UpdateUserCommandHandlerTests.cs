@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
+using MediatR;
 using Moq;
 using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Application.UseCases.Users;
@@ -17,11 +18,13 @@ namespace Tai.Portal.Core.Application.Tests.UseCases.Users;
 
 public class UpdateUserCommandHandlerTests {
   private readonly Mock<IIdentityService> _mockIdentityService;
+  private readonly Mock<IMediator> _mockMediator;
   private readonly UpdateUserCommandHandler _handler;
 
   public UpdateUserCommandHandlerTests() {
     _mockIdentityService = new Mock<IIdentityService>();
-    _handler = new UpdateUserCommandHandler(_mockIdentityService.Object);
+    _mockMediator = new Mock<IMediator>();
+    _handler = new UpdateUserCommandHandler(_mockIdentityService.Object, _mockMediator.Object);
   }
 
   private void SetRowVersion(ApplicationUser user, uint version) {
