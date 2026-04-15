@@ -26,7 +26,7 @@ import {
   localStorageMetaReducer,
   fetchWorkersCompTemplate,
   submitClaim,
-} from 'disability-claim';
+} from './claim/+state';
 
 export const appConfig: ApplicationConfig = {
   providers: [

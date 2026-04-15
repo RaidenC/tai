@@ -1,0 +1,45 @@
+<div class="wizard max-w-3xl mx-auto p-8">
+  <header class="wizard-header mb-6">
+    @if (title) {
+      <h1 class="text-2xl font-semibold text-gray-900">{{ title }}</h1>
+    }
+  </header>
+
+  <nav class="wizard-stepper mb-8" aria-label="Wizard progress">
+    <ol class="flex items-center list-none p-0 m-0">
+      @for (step of steps; track step.path; let i = $index; let last = $last) {
+        <li
+          class="step-item flex-1 flex items-center relative cursor-pointer text-inherit no-underline"
+          [routerLink]="step.path"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: false }"
+        >
+          <span
+            class="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0 step-number"
+            [class.bg-blue-600]="step.path === '/claim/' + step.path"
+            [class.text-white]="step.path === '/claim/' + step.path"
+            routerLinkActive="bg-blue-600 text-white"
+          >
+            {{ i + 1 }}
+          </span>
+          <span
+            class="ml-2 text-sm whitespace-nowrap step-label"
+            routerLinkActive="text-gray-900 font-medium"
+          >
+            {{ step.label }}
+          </span>
+        </li>
+        @if (!last) {
+          <div
+            class="flex-1 h-0.5 mx-2 step-connector bg-gray-200"
+            routerLinkActive="bg-blue-600"
+          ></div>
+        }
+      }
+    </ol>
+  </nav>
+
+  <main class="wizard-content min-h-[400px]">
+    <ng-content></ng-content>
+  </main>
+</div>

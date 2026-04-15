@@ -6,21 +6,28 @@
   "sourceRoot": "apps/borrower-portal/src",
   "tags": [],
   "targets": {
+    "build-tailwind": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tailwindcss -i apps/borrower-portal/src/styles.scss -o apps/borrower-portal/src/styles.css --content \"apps/borrower-portal/src/**/*.{html,ts},libs/ui/design-system/src/**/*.{html,ts}\""
+      }
+    },
     "build": {
       "executor": "@angular/build:application",
       "outputs": ["{options.outputPath}"],
+      "dependsOn": ["build-tailwind"],
       "options": {
         "outputPath": "dist/apps/borrower-portal",
         "browser": "apps/borrower-portal/src/main.ts",
         "tsConfig": "apps/borrower-portal/tsconfig.app.json",
-        "inlineStyleLanguage": "scss",
+        "inlineStyleLanguage": "css",
         "assets": [
           {
             "glob": "**/*",
             "input": "apps/borrower-portal/public"
           }
         ],
-        "styles": ["apps/borrower-portal/src/styles.scss"]
+        "styles": ["apps/borrower-portal/src/styles.css"]
       },
       "configurations": {
         "production": {
@@ -49,6 +56,7 @@
     "serve": {
       "continuous": true,
       "executor": "@angular/build:dev-server",
+      "dependsOn": ["build-tailwind"],
       "options": {
         "port": 4202
       },

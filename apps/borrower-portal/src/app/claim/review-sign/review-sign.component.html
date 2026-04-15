@@ -1,0 +1,241 @@
+<!--
+  Step 4: Review & Sign
+
+  - Summary of all 4 steps (read-only)
+  - [Edit] links to navigate back
+  - Document upload
+  - Certification checkbox
+  - Submit button
+-->
+
+<div class="review-step">
+  <h2 class="text-xl font-semibold mb-6 text-gray-900">[4] Review & Submit</h2>
+
+  <!-- Error message -->
+  @if (error$ | async; as error) {
+    <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
+      {{ error }}
+    </div>
+  }
+
+  <!-- Success message -->
+  @if (submittedClaimId) {
+    <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+      <div class="flex items-start gap-3">
+        <svg class="w-5 h-5 text-green-600 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+        <div>
+          <strong class="text-green-800">Claim Submitted!</strong>
+          <p class="text-green-700 mt-1">Your claim reference is <strong>{{ submittedClaimId }}</strong></p>
+          <p class="text-green-600 text-sm">Confirmation email sent to {{ (borrower$ | async)?.email }}</p>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Success: Start New Claim -->
+  @if (submittedClaimId) {
+    <div>
+      <button class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium" (click)="onNewClaim()">
+        Start New Claim
+      </button>
+    </div>
+  }
+
+  <!-- Review Content -->
+  @if (!submittedClaimId) {
+    <div>
+      <!-- Borrower Info Summary -->
+      @if (borrower$ | async; as borrower) {
+        <div class="mb-4 p-4 bg-white border border-gray-200 rounded-lg">
+          <div class="flex justify-between items-center mb-3">
+            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">BORROWER INFO</span>
+            <button type="button" class="text-sm text-blue-600 hover:text-blue-700 font-medium" (click)="editStep(1)">Edit</button>
+          </div>
+          <div class="space-y-2 text-sm">
+            <div class="flex">
+              <span class="text-gray-500 w-20">Name:</span>
+              <span class="text-gray-900">{{ borrower.firstName }} {{ borrower.lastName }}</span>
+            </div>
+            <div class="flex">
+              <span class="text-gray-500 w-20">SSN:</span>
+              <span class="text-gray-900">***-**-{{ borrower.ssnLastFour }}</span>
+            </div>
+            <div class="flex">
+              <span class="text-gray-500 w-20">Phone:</span>
+              <span class="text-gray-900">{{ borrower.phone }}</span>
+            </div>
+            <div class="flex">
+              <span class="text-gray-500 w-20">Email:</span>
+              <span class="text-gray-900">{{ borrower.email }}</span>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Incident Details Summary -->
+      @if (incident$ | async; as incident) {
+        <div class="mb-4 p-4 bg-white border border-gray-200 rounded-lg">
+          <div class="flex justify-between items-center mb-3">
+            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">INCIDENT DETAILS</span>
+            <button type="button" class="text-sm text-blue-600 hover:text-blue-700 font-medium" (click)="editStep(2)">Edit</button>
+          </div>
+          <div class="space-y-2 text-sm">
+            <div class="flex">
+              <span class="text-gray-500 w-32">Date:</span>
+              <span class="text-gray-900">{{ incident.dateOfDisability }}</span>
+            </div>
+            <div class="flex">
+              <span class="text-gray-500 w-32">Type:</span>
+              <span class="text-gray-900">{{ incident.disabilityType }}</span>
+            </div>
+            <div class="flex">
+              <span class="text-gray-500 w-32">Work Related:</span>
+              <span class="text-gray-900">{{ incident.isWorkRelated ? 'Yes' : 'No' }}</span>
+            </div>
+            @if (incident.isWorkRelated && incident.workersCompClaimNumber) {
+              <div class="flex">
+                <span class="text-gray-500 w-32">WC Claim #:</span>
+                <span class="text-gray-900">{{ incident.workersCompClaimNumber }}</span>
+              </div>
+            }
+            <div class="flex">
+              <span class="text-gray-500 w-32">Description:</span>
+              <span class="text-gray-900">{{ incident.description }}</span>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Medical Providers Summary -->
+      @if (providers$ | async; as providers) {
+        <div class="mb-4 p-4 bg-white border border-gray-200 rounded-lg">
+          <div class="flex justify-between items-center mb-3">
+            <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">MEDICAL PROVIDERS</span>
+            <button type="button" class="text-sm text-blue-600 hover:text-blue-700 font-medium" (click)="editStep(3)">Edit</button>
+          </div>
+          @if (providers.length > 0) {
+            <div class="space-y-3">
+              @for (provider of providers; track provider.id) {
+                <div class="p-3 bg-gray-50 rounded border border-gray-100">
+                  <div class="font-medium text-sm text-gray-900">{{ provider.doctorName }}</div>
+                  <div class="text-sm text-gray-600">{{ provider.clinicName }}</div>
+                  <div class="text-sm text-gray-500">{{ provider.phone }} - {{ provider.dateFirstTreated }}</div>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="text-sm text-gray-500">No providers added</p>
+          }
+        </div>
+      }
+
+      <!-- Documents Section -->
+      <div class="mb-6 p-4 bg-white border border-gray-200 rounded-lg">
+        <div class="flex justify-between items-center mb-3">
+          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">DOCUMENTS</span>
+        </div>
+
+        <!-- Employer Leave Form -->
+        <div class="mb-4">
+          <label for="employerLeaveForm" class="block text-sm font-medium text-gray-700 mb-2">Employer Leave Form</label>
+          @if (documents$ | async; as docs) {
+            @if (docs.employerLeaveForm) {
+              <div class="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div class="flex items-center gap-2">
+                  <svg class="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  <span class="text-sm text-gray-900">{{ docs.employerLeaveForm.fileName }}</span>
+                  <span class="text-xs text-gray-500">({{ formatFileSize(docs.employerLeaveForm.size) }})</span>
+                </div>
+                <button type="button" class="text-sm text-red-600 hover:text-red-700" (click)="onRemoveDocument('employerLeaveForm')">Remove</button>
+              </div>
+            } @else {
+              <input
+                id="employerLeaveForm"
+                type="file"
+                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                (change)="onFileUpload('employerLeaveForm', $event)"
+                accept=".pdf,.doc,.docx"
+              />
+            }
+          }
+        </div>
+
+        <!-- Attending Physician Statement -->
+        <div>
+          <label for="attendingPhysicianStatement" class="block text-sm font-medium text-gray-700 mb-2">Attending Physician Statement</label>
+          @if (documents$ | async; as docs) {
+            @if (docs.attendingPhysicianStatement) {
+              <div class="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                <div class="flex items-center gap-2">
+                  <svg class="w-5 h-5 text-green-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                  <span class="text-sm text-gray-900">{{ docs.attendingPhysicianStatement.fileName }}</span>
+                  <span class="text-xs text-gray-500">({{ formatFileSize(docs.attendingPhysicianStatement.size) }})</span>
+                </div>
+                <button type="button" class="text-sm text-red-600 hover:text-red-700" (click)="onRemoveDocument('attendingPhysicianStatement')">Remove</button>
+              </div>
+            } @else {
+              <input
+                type="file"
+                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                (change)="onFileUpload('attendingPhysicianStatement', $event)"
+                accept=".pdf,.doc,.docx"
+              />
+            }
+          }
+        </div>
+      </div>
+
+      <!-- Certification -->
+      <div class="mb-6">
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            [(ngModel)]="certified"
+            [ngModelOptions]="{standalone: true}"
+            (change)="onCertificationChange()"
+            class="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          />
+          <span class="text-sm text-gray-700">
+            I certify that the information provided is true and accurate to the best of my knowledge.
+            I understand that providing false information may result in denial of my claim.
+          </span>
+        </label>
+      </div>
+
+      <!-- Submit Button -->
+      <div class="flex justify-between items-center">
+        <button type="button" class="flex items-center px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium" (click)="onBack()">
+          <svg class="mr-1 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+          </svg>
+          Back
+        </button>
+        <button
+          type="button"
+          class="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          [disabled]="!certified || (isSubmitting$ | async)"
+          (click)="onSubmit()"
+        >
+          @if (isSubmitting$ | async) {
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Submitting...
+          } @else {
+            Submit Claim
+          }
+        </button>
+      </div>
+    </div>
+  }
+</div>
