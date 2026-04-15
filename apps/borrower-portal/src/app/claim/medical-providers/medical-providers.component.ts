@@ -26,20 +26,19 @@ import {
 import { Store } from '@ngrx/store';
 import { Subject, takeUntil } from 'rxjs';
 
-import { ClaimActions } from '../+state/claim.actions';
+import { ClaimActions } from '../+state';
 import {
   selectMedicalProviders,
   selectCanAddProvider,
   selectProviderCount,
-} from '../+state/claim.selectors';
-import { MedicalProvider, MAX_PROVIDERS } from '../+state/claim.models';
+} from '../+state';
+import { MedicalProvider, MAX_PROVIDERS } from '../+state';
 
 @Component({
-  selector: 'claim-medical-providers',
+  selector: 'bp-medical-providers',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './medical-providers.component.html',
-  styleUrl: './medical-providers.component.css',
 })
 export class MedicalProvidersComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);

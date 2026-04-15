@@ -23,7 +23,7 @@ import { FormsModule } from '@angular/forms';
 import { Store } from '@ngrx/store';
 import { Subject, takeUntil } from 'rxjs';
 
-import { ClaimActions } from '../+state/claim.actions';
+import { ClaimActions } from '../+state';
 import {
   selectBorrower,
   selectIncident,
@@ -33,15 +33,14 @@ import {
   selectIsSubmitting,
   selectClaimId,
   selectError,
-} from '../+state/claim.selectors';
-import { DocumentMeta } from '../+state/claim.models';
+} from '../+state';
+import { DocumentMeta } from '../+state';
 
 @Component({
-  selector: 'claim-review-sign',
+  selector: 'bp-review-sign',
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './review-sign.component.html',
-  styleUrl: './review-sign.component.css',
 })
 export class ReviewSignComponent implements OnInit, OnDestroy {
   private store = inject(Store);
@@ -118,6 +117,13 @@ export class ReviewSignComponent implements OnInit, OnDestroy {
    */
   onRemoveDocument(docType: 'employerLeaveForm' | 'attendingPhysicianStatement'): void {
     this.store.dispatch(ClaimActions.removeDocument({ docType }));
+  }
+
+  /**
+   * Handle "Back" button click
+   */
+  onBack(): void {
+    this.router.navigate(['/claim/medical-providers']);
   }
 
   /**

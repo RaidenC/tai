@@ -7,6 +7,7 @@ export * from './claim.actions';
 export * from './claim.reducer';
 export * from './claim.selectors';
 export * from './claim.effects';
+export { claimStepGuard } from './claim-step.guard';
 export {
   localStorageMetaReducer,
   STORAGE_KEY,

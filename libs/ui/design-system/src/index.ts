@@ -17,3 +17,4 @@ export * from './lib/design-system/notification-panel/notification-toggle.compon
 export * from './lib/design-system/notification-panel/notification-panel.component';
 export * from './lib/design-system/notification-panel/notification-panel.types';
 export * from './lib/design-system/toast/index';
+export * from './lib/wizard/wizard.component';

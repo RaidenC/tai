@@ -22,16 +22,15 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { Store } from '@ngrx/store';
 import { Subject, takeUntil } from 'rxjs';
 
-import { ClaimActions } from '../+state/claim.actions';
-import { selectIncident, selectIsWorkRelated } from '../+state/claim.selectors';
-import { IncidentDetails, DisabilityType } from '../+state/claim.models';
+import { ClaimActions } from '../+state';
+import { selectIncident, selectIsWorkRelated } from '../+state';
+import { IncidentDetails, DisabilityType } from '../+state';
 
 @Component({
-  selector: 'claim-incident-details',
+  selector: 'bp-incident-details',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './incident-details.component.html',
-  styleUrl: './incident-details.component.css',
 })
 export class IncidentDetailsComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);

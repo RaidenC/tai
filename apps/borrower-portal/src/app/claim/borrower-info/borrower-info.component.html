@@ -1,0 +1,130 @@
+<!--
+  Step 1: Borrower Verification Form
+
+  Two-column layout: First/Last name side by side
+  SSN and Phone side by side
+  Email full-width
+-->
+
+<form [formGroup]="form" (ngSubmit)="onNext()">
+  <h2 class="text-xl font-semibold mb-6 text-gray-900">[1] Borrower Information</h2>
+
+  <!-- Error summary -->
+  @if (form.touched && form.invalid) {
+    <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+      Please fill in all required fields correctly.
+    </div>
+  }
+
+  <!-- First Name + Last Name -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1" for="firstName">
+        First Name <span class="text-red-500">*</span>
+      </label>
+      <input
+        type="text"
+        id="firstName"
+        formControlName="firstName"
+        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+        [class.border-red-500]="form.get('firstName')?.touched && form.get('firstName')?.invalid"
+        (blur)="onFieldBlur('firstName')"
+      />
+      @if (form.get('firstName')?.touched && form.get('firstName')?.errors?.['required']) {
+        <span class="text-red-500 text-sm mt-1">First name is required</span>
+      }
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1" for="lastName">
+        Last Name <span class="text-red-500">*</span>
+      </label>
+      <input
+        type="text"
+        id="lastName"
+        formControlName="lastName"
+        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+        [class.border-red-500]="form.get('lastName')?.touched && form.get('lastName')?.invalid"
+        (blur)="onFieldBlur('lastName')"
+      />
+      @if (form.get('lastName')?.touched && form.get('lastName')?.errors?.['required']) {
+        <span class="text-red-500 text-sm mt-1">Last name is required</span>
+      }
+    </div>
+  </div>
+
+  <!-- SSN (Last 4) + Phone -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1" for="ssnLastFour">
+        SSN (Last 4) <span class="text-red-500">*</span>
+      </label>
+      <input
+        type="password"
+        id="ssnLastFour"
+        formControlName="ssnLastFour"
+        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+        maxlength="4"
+        placeholder="****"
+        [class.border-red-500]="form.get('ssnLastFour')?.touched && form.get('ssnLastFour')?.invalid"
+        (blur)="onFieldBlur('ssnLastFour')"
+      />
+      @if (form.get('ssnLastFour')?.touched && form.get('ssnLastFour')?.errors?.['required']) {
+        <span class="text-red-500 text-sm mt-1">SSN is required</span>
+      }
+      @if (form.get('ssnLastFour')?.touched && form.get('ssnLastFour')?.errors?.['pattern']) {
+        <span class="text-red-500 text-sm mt-1">Must be exactly 4 digits</span>
+      }
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1" for="phone">
+        Phone <span class="text-red-500">*</span>
+      </label>
+      <input
+        type="tel"
+        id="phone"
+        formControlName="phone"
+        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+        placeholder="(555) 555-5555"
+        [class.border-red-500]="form.get('phone')?.touched && form.get('phone')?.invalid"
+        (blur)="onFieldBlur('phone')"
+      />
+      @if (form.get('phone')?.touched && form.get('phone')?.errors?.['required']) {
+        <span class="text-red-500 text-sm mt-1">Phone is required</span>
+      }
+    </div>
+  </div>
+
+  <!-- Email (full width) -->
+  <div class="mb-6">
+    <label class="block text-sm font-medium text-gray-700 mb-1" for="email">
+      Email <span class="text-red-500">*</span>
+    </label>
+    <input
+      type="email"
+      id="email"
+      formControlName="email"
+      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+      placeholder="john.doe@example.com"
+      [class.border-red-500]="form.get('email')?.touched && form.get('email')?.invalid"
+      (blur)="onFieldBlur('email')"
+    />
+    @if (form.get('email')?.touched && form.get('email')?.errors?.['required']) {
+      <span class="text-red-500 text-sm mt-1">Email is required</span>
+    }
+    @if (form.get('email')?.touched && form.get('email')?.errors?.['email']) {
+      <span class="text-red-500 text-sm mt-1">Please enter a valid email address</span>
+    }
+  </div>
+
+  <!-- Navigation -->
+  <div class="flex justify-end">
+    <button type="submit" class="flex items-center px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium">
+      Next
+      <svg class="ml-1 w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M5 12h14M12 5l7 7-7 7"/>
+      </svg>
+    </button>
+  </div>
+</form>

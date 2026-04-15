@@ -23,16 +23,15 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { Store } from '@ngrx/store';
 import { Subject, takeUntil } from 'rxjs';
 
-import { ClaimActions } from '../+state/claim.actions';
-import { selectBorrower } from '../+state/claim.selectors';
-import { BorrowerInfo } from '../+state/claim.models';
+import { ClaimActions } from '../+state';
+import { selectBorrower } from '../+state';
+import { BorrowerInfo } from '../+state';
 
 @Component({
-  selector: 'claim-borrower-info',
+  selector: 'bp-borrower-info',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './borrower-info.component.html',
-  styleUrl: './borrower-info.component.css',
 })
 export class BorrowerInfoComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
