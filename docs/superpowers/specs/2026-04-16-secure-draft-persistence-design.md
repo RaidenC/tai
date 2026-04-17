@@ -514,32 +514,251 @@ When ready to add a real backend:
 
 This is the entire point of the mock interceptor approach: production-correct frontend code from day one.
 
-## Testing
+## Testing Strategy
 
-### Unit Tests
+### Methodology: Strict TDD (Red-Green-Refactor)
 
-1. **`sanitizeForPersistence()`** — input state with SSN → output state with `ssnLastFour: ''`
-2. **`CryptoStorageService.save/load`** — round-trip: save state, load state, assert deep equality
-3. **`CryptoStorageService` key loss** — save state, create new service instance, load → returns `null`
-4. **`CryptoStorageService` corrupt data** — tamper with sessionStorage content, load → returns `null`, sessionStorage cleared
-5. **Reducer `draftLoaded`** — merges draft, forces `ssnLastFour: ''`, resets `isSubmitting`
-6. **DevTools `stateSanitizer`** — state with SSN → sanitized state shows `****`
-7. **DevTools `actionSanitizer`** — `saveBorrowerInfo` action → SSN replaced with `****`
+Every implementation file is written test-first. No production code exists without a failing test that demanded it.
 
-### Effect Tests
+**Workflow per component:**
+1. **Red** — Write the test. Run it. Watch it fail (compile error or assertion failure).
+2. **Green** — Write the minimum production code to make the test pass. Nothing more.
+3. **Refactor** — Clean up duplication, improve naming, extract helpers. Tests stay green.
 
-8. **`autoSaveDraft`** — dispatches data-changing action → after 2s debounce → calls `draftService.saveDraft` with sanitized state
-9. **`autoSaveDraft` API failure** — `draftService.saveDraft` errors → `cryptoStorage.save()` called → dispatches `draftSaveError`
-10. **`autoSaveDraft` replay suppression** — `replayMode.active = true` → effect does not fire
-11. **`loadDraft`** — `ROOT_EFFECTS_INIT` → calls `draftService.loadDraft` → dispatches `draftLoaded`
-12. **`loadDraft` API failure, sessionStorage hit** — API errors → loads from `cryptoStorage` → dispatches `draftLoaded`
-13. **`loadDraft` both fail** — API and crypto both fail → dispatches `draftLoadError`
-14. **`clearDraftOnReset`** — `resetClaim` dispatched → clears sessionStorage and server draft
+**Enforcement rules:**
+- Test files are created BEFORE their corresponding implementation files.
+- Each test file covers a single unit (one service, one pure function, one effect, one reducer handler).
+- Tests must be runnable in isolation (`vitest run <file>`) and as a full suite.
+- No `skip`, `xit`, `xdescribe`, or `todo` tests in the final commit.
+- Coverage gate: 100% branch coverage on `sanitizeForPersistence()` and `CryptoStorageService`. These are security-critical paths where an untested branch could leak PII.
 
-### Integration Tests
+**Test tooling:** Vitest with `@angular/core/testing` (TestBed), `@ngrx/store/testing` (provideMockStore), `@ngrx/effects/testing` (provideMockActions). Consistent with existing `apps/borrower-portal/src/app/app.spec.ts`.
 
-15. **SSN re-entry flow** — hydrate draft without SSN → guard redirects to Step 1 → message shown → user enters SSN → can proceed to Step 2
-16. **Full round-trip** — fill Steps 1-3 → wait 2s → mock API receives sanitized draft → reload app → draft restored (minus SSN)
+### Test File Locations
+
+All test files live next to their implementation files, following Angular convention:
+
+| Test File | Tests For |
+|---|---|
+| `+state/claim.sanitize.spec.ts` | `sanitizeForPersistence()` |
+| `+state/claim.reducer.spec.ts` | `draftLoaded` reducer handler |
+| `+state/claim.effects.spec.ts` | `autoSaveDraft`, `loadDraft`, `clearDraftOnReset` |
+| `+state/claim.selectors.spec.ts` | `selectBorrowerValid` SSN-empty edge case |
+| `services/crypto-storage.service.spec.ts` | `CryptoStorageService` |
+| `services/claim-draft.service.spec.ts` | `ClaimDraftService` |
+| `services/mock-api.interceptor.spec.ts` | `mockApiInterceptor` |
+| `claim.devtools-sanitizers.spec.ts` | `stateSanitizer`, `actionSanitizer` |
+| `borrower-info/borrower-info.component.spec.ts` | SSN re-entry UX |
+| `claim.integration.spec.ts` | End-to-end persistence flows |
+
+---
+
+### A. Unit Tests — `sanitizeForPersistence()` (5 tests)
+
+**File:** `+state/claim.sanitize.spec.ts`
+
+| # | Test Name | Arrange | Act | Assert |
+|---|---|---|---|---|
+| 1 | strips ssnLastFour from populated state | State with `ssnLastFour: '1234'` | `sanitizeForPersistence(state)` | Result has `ssnLastFour: ''` |
+| 2 | preserves all non-PII fields | Full state with all fields populated | `sanitizeForPersistence(state)` | Every field except `ssnLastFour` matches input. Deep equality check on `incident`, `medicalProviders`, `documents`, `currentStep`. |
+| 3 | returns new object reference (immutability) | Any state | `sanitizeForPersistence(state)` | `result !== state` AND `result.borrower !== state.borrower` |
+| 4 | handles already-empty SSN (idempotent) | State with `ssnLastFour: ''` | `sanitizeForPersistence(state)` | Result has `ssnLastFour: ''`, no error thrown |
+| 5 | does not strip other borrower fields | State with `firstName: 'Jane'`, `email: 'j@x.com'` | `sanitizeForPersistence(state)` | `firstName`, `lastName`, `phone`, `email` all preserved |
+
+---
+
+### B. Unit Tests — `CryptoStorageService` (9 tests)
+
+**File:** `services/crypto-storage.service.spec.ts`
+
+| # | Test Name | Arrange | Act | Assert |
+|---|---|---|---|---|
+| 6 | save/load round-trip preserves state | Service instance, full claim state | `await save(state)`, then `await load()` | Loaded state deep-equals input state |
+| 7 | save writes to sessionStorage | Service instance | `await save(state)` | `sessionStorage.getItem('bp_draft_enc')` is not null |
+| 8 | stored value is not plaintext JSON | Service instance, state with `firstName: 'Jane'` | `await save(state)` | `sessionStorage.getItem('bp_draft_enc')` does NOT contain `'Jane'` |
+| 9 | stored value contains IV and data fields | Service instance | `await save(state)` | Parsed JSON has `iv` (string) and `data` (string) properties |
+| 10 | load returns null when sessionStorage is empty | Service instance, empty sessionStorage | `await load()` | Returns `null` |
+| 11 | load returns null after key loss (new instance) | Instance A saves, Instance B (new `CryptoStorageService()`) loads | `instanceB.load()` | Returns `null` |
+| 12 | load clears corrupt data from sessionStorage | Set `sessionStorage('bp_draft_enc', 'garbage')` | `await load()` | Returns `null` AND `sessionStorage.getItem('bp_draft_enc')` is `null` |
+| 13 | load returns null for tampered ciphertext | Save valid state, then flip a byte in stored `data` | `await load()` | Returns `null` (AES-GCM authentication failure) |
+| 14 | clear removes entry from sessionStorage | Save state, then `clear()` | `sessionStorage.getItem('bp_draft_enc')` | Returns `null` |
+
+**Note on test 11:** `CryptoStorageService` is `providedIn: 'root'`, so in real DI you get a singleton. The test creates a raw `new CryptoStorageService()` to simulate tab refresh (new key). This is the critical security property: key dies with the instance.
+
+---
+
+### C. Unit Tests — `ClaimDraftService` (4 tests)
+
+**File:** `services/claim-draft.service.spec.ts`
+
+| # | Test Name | Arrange | Act | Assert |
+|---|---|---|---|---|
+| 15 | saveDraft sends PATCH to /api/claims/draft | `HttpTestingController` | `service.saveDraft(draft)` | Intercept: method is `PATCH`, URL is `/api/claims/draft`, body matches draft |
+| 16 | saveDraft completes on 204 | Mock 204 response | Subscribe to `saveDraft()` | Observable completes without error |
+| 17 | loadDraft sends GET to /api/claims/draft | `HttpTestingController` | `service.loadDraft()` | Intercept: method is `GET`, URL is `/api/claims/draft` |
+| 18 | loadDraft returns draft on 200 | Mock 200 with draft body | Subscribe to `loadDraft()` | Emitted value deep-equals mock draft |
+
+---
+
+### D. Unit Tests — `mockApiInterceptor` (5 tests)
+
+**File:** `services/mock-api.interceptor.spec.ts`
+
+| # | Test Name | Arrange | Act | Assert |
+|---|---|---|---|---|
+| 19 | PATCH /api/claims/draft stores draft and returns 204 | HttpClient with interceptor | `http.patch('/api/claims/draft', draft)` | Response status conceptually 204. Subsequent GET returns the draft. |
+| 20 | GET /api/claims/draft returns 404 when no draft saved | Fresh interceptor state | `http.get('/api/claims/draft')` | Response is 404 error |
+| 21 | GET /api/claims/draft returns saved draft after PATCH | PATCH a draft first | `http.get('/api/claims/draft')` | Response body deep-equals the PATCHed draft |
+| 22 | PATCH overwrites previous draft | PATCH draft A, then PATCH draft B | `http.get('/api/claims/draft')` | Response body deep-equals draft B |
+| 23 | non-matching URLs pass through | HttpClient with interceptor | `http.get('/api/other')` | Request passes to `HttpTestingController` (not intercepted) |
+
+---
+
+### E. Unit Tests — Reducer `draftLoaded` handler (5 tests)
+
+**File:** `+state/claim.reducer.spec.ts`
+
+| # | Test Name | Arrange | Act | Assert |
+|---|---|---|---|---|
+| 24 | merges loaded draft into state | Initial state + draft with populated borrower/incident | `reducer(initialState, draftLoaded({ draft }))` | Result contains draft's `borrower.firstName`, `incident.disabilityType`, etc. |
+| 25 | forces ssnLastFour to empty string (defense-in-depth) | Draft with `ssnLastFour: '9999'` (shouldn't happen, but defense) | `reducer(initialState, draftLoaded({ draft }))` | `result.borrower.ssnLastFour === ''` |
+| 26 | resets isSubmitting to false | Draft with `isSubmitting: true` | `reducer(initialState, draftLoaded({ draft }))` | `result.isSubmitting === false` |
+| 27 | resets error to null | Draft with `error: 'stale error'` | `reducer(initialState, draftLoaded({ draft }))` | `result.error === null` |
+| 28 | returns new state reference | Any draft | `reducer(initialState, draftLoaded({ draft }))` | `result !== initialState` |
+
+---
+
+### F. Unit Tests — Selectors SSN edge case (2 tests)
+
+**File:** `+state/claim.selectors.spec.ts`
+
+| # | Test Name | Arrange | Act | Assert |
+|---|---|---|---|---|
+| 29 | selectBorrowerValid returns false when SSN is empty after hydration | Borrower with `firstName: 'Jane'`, `lastName: 'Doe'`, `ssnLastFour: ''`, valid phone/email | `selectBorrowerValid.projector(borrower)` | Returns `false` |
+| 30 | selectBorrowerValid returns true after SSN re-entered | Same borrower but `ssnLastFour: '1234'` | `selectBorrowerValid.projector(borrower)` | Returns `true` |
+
+---
+
+### G. Unit Tests — DevTools Sanitizers (4 tests)
+
+**File:** `claim.devtools-sanitizers.spec.ts`
+
+| # | Test Name | Arrange | Act | Assert |
+|---|---|---|---|---|
+| 31 | stateSanitizer masks SSN in state | State with `claim.borrower.ssnLastFour: '1234'` | `stateSanitizer(state)` | `result.claim.borrower.ssnLastFour === '****'` |
+| 32 | stateSanitizer preserves empty SSN as empty | State with `ssnLastFour: ''` | `stateSanitizer(state)` | `result.claim.borrower.ssnLastFour === ''` |
+| 33 | actionSanitizer masks SSN in saveBorrowerInfo action | Action `{ type: '[Claim] Save Borrower Info', borrower: { ssnLastFour: '5678' } }` | `actionSanitizer(action)` | `result.borrower.ssnLastFour === '****'` |
+| 34 | actionSanitizer passes non-borrower actions through unchanged | Action `{ type: '[Claim] Save Incident Details', incident: {...} }` | `actionSanitizer(action)` | `result` deep-equals input |
+
+---
+
+### H. Effect Tests — `autoSaveDraft` (7 tests)
+
+**File:** `+state/claim.effects.spec.ts` (autoSaveDraft section)
+
+Uses `provideMockActions()`, `fakeAsync`/`tick` for debounce timing, spy on `ClaimDraftService` and `CryptoStorageService`.
+
+| # | Test Name | Arrange | Act | Assert |
+|---|---|---|---|---|
+| 35 | saves sanitized draft to API after 2s debounce | Mock store with full state, `draftService.saveDraft` returns success | Dispatch `saveBorrowerInfo`, `tick(2000)` | `draftService.saveDraft` called once with state where `ssnLastFour === ''` |
+| 36 | dispatches draftSaved on API success | Same as above | Dispatch action, `tick(2000)` | Effect emits `ClaimActions.draftSaved()` |
+| 37 | falls back to encrypted sessionStorage on API failure | `draftService.saveDraft` returns `throwError` | Dispatch action, `tick(2000)` | `cryptoStorage.save` called with sanitized state |
+| 38 | dispatches draftSaveError on API failure | Same as above | Dispatch action, `tick(2000)` | Effect emits `ClaimActions.draftSaveError(...)` |
+| 39 | debounces rapid actions (only last wins) | Dispatch 3 `updateProvider` actions 500ms apart | `tick(500)`, dispatch, `tick(500)`, dispatch, `tick(2000)` | `draftService.saveDraft` called exactly once |
+| 40 | does not fire during replay mode | `replayMode.active = true` | Dispatch `saveBorrowerInfo`, `tick(2000)` | `draftService.saveDraft` never called |
+| 41 | ignores new triggers while save in flight (exhaustMap) | `draftService.saveDraft` returns delayed observable (1s) | Dispatch action, `tick(2000)`, dispatch another, `tick(1000)` | `draftService.saveDraft` called exactly once |
+
+---
+
+### I. Effect Tests — `loadDraft` (5 tests)
+
+**File:** `+state/claim.effects.spec.ts` (loadDraft section)
+
+| # | Test Name | Arrange | Act | Assert |
+|---|---|---|---|---|
+| 42 | loads draft from API on ROOT_EFFECTS_INIT | `draftService.loadDraft` returns mock draft | Dispatch `ROOT_EFFECTS_INIT` | Effect emits `ClaimActions.draftLoaded({ draft })` |
+| 43 | falls back to encrypted sessionStorage on API 404 | `draftService.loadDraft` returns error, `cryptoStorage.load` returns draft | Dispatch `ROOT_EFFECTS_INIT` | Effect emits `ClaimActions.draftLoaded({ draft })` |
+| 44 | dispatches draftLoadError when both fail | Both `draftService.loadDraft` and `cryptoStorage.load` fail | Dispatch `ROOT_EFFECTS_INIT` | Effect emits `ClaimActions.draftLoadError(...)` |
+| 45 | dispatches draftLoadError when API fails and sessionStorage empty | `draftService.loadDraft` errors, `cryptoStorage.load` returns `null` | Dispatch `ROOT_EFFECTS_INIT` | Effect emits `ClaimActions.draftLoadError(...)` |
+| 46 | does not fire during replay mode | `replayMode.active = true` | Dispatch `ROOT_EFFECTS_INIT` | Neither `draftService` nor `cryptoStorage` called |
+
+---
+
+### J. Effect Tests — `clearDraftOnReset` (3 tests)
+
+**File:** `+state/claim.effects.spec.ts` (clearDraftOnReset section)
+
+| # | Test Name | Arrange | Act | Assert |
+|---|---|---|---|---|
+| 47 | clears sessionStorage on resetClaim | Spy on `cryptoStorage.clear` | Dispatch `ClaimActions.resetClaim` | `cryptoStorage.clear` called |
+| 48 | sends reset to API on resetClaim | `draftService.saveDraft` returns success | Dispatch `ClaimActions.resetClaim` | `draftService.saveDraft` called with `initialClaimState` |
+| 49 | dispatches draftSaveError if API clear fails | `draftService.saveDraft` returns error | Dispatch `ClaimActions.resetClaim` | Effect emits `ClaimActions.draftSaveError(...)` AND `cryptoStorage.clear` was still called |
+
+---
+
+### K. Component Tests — SSN Re-Entry UX (4 tests)
+
+**File:** `borrower-info/borrower-info.component.spec.ts`
+
+Uses `provideMockStore` with selector overrides.
+
+| # | Test Name | Arrange | Act | Assert |
+|---|---|---|---|---|
+| 50 | shows SSN re-entry message when borrower hydrated without SSN | Override `selectBorrower` with `{ firstName: 'Jane', ..., ssnLastFour: '' }` | Render component | Element with test ID `ssn-reentry-message` is visible, contains "re-enter" text |
+| 51 | does not show re-entry message on fresh form | Override `selectBorrower` with all-empty fields | Render component | `ssn-reentry-message` element is not present |
+| 52 | does not show re-entry message when SSN is populated | Override `selectBorrower` with `ssnLastFour: '1234'` | Render component | `ssn-reentry-message` element is not present |
+| 53 | SSN field is empty and focused after hydration | Override with hydrated borrower (SSN empty) | Render component | SSN input value is `''` |
+
+---
+
+### L. Integration Tests — Persistence Flows (5 tests)
+
+**File:** `claim.integration.spec.ts`
+
+Full TestBed with real store, real effects, mock `ClaimDraftService`, real `CryptoStorageService`. These tests verify the full pipeline from action dispatch through effects to storage.
+
+| # | Test Name | Arrange | Act | Assert |
+|---|---|---|---|---|
+| 54 | full save round-trip: action → debounce → API → verify no SSN | Real store, spy on `draftService.saveDraft` | Dispatch `saveBorrowerInfo` with SSN, `tick(2000)` | `saveDraft` called with payload where `ssnLastFour === ''` |
+| 55 | full fallback round-trip: API fail → encrypt → decrypt → verify | `draftService.saveDraft` errors, `draftService.loadDraft` errors | Dispatch `saveBorrowerInfo`, `tick(2000)`, then trigger `loadDraft` | `draftLoaded` dispatched with original state (minus SSN) |
+| 56 | SSN never in sessionStorage plaintext after fallback save | Real `CryptoStorageService`, state with `ssnLastFour: '1234'` | Dispatch `saveBorrowerInfo`, `tick(2000)`, API fails | `sessionStorage.getItem('bp_draft_enc')` does NOT contain `'1234'`, does NOT contain `'ssnLastFour'` as readable text |
+| 57 | SSN never in localStorage at any point | Full flow: save, load, reset | After each step, check `localStorage` | `localStorage.length === 0` OR no key contains SSN-related data |
+| 58 | reset clears all persisted state | Save a draft (API + sessionStorage fallback), then dispatch `resetClaim` | Check storage | `sessionStorage.getItem('bp_draft_enc')` is `null`, `draftService.saveDraft` called with `initialClaimState` |
+
+---
+
+### Test Summary
+
+| Category | Count | File |
+|---|---|---|
+| A. `sanitizeForPersistence()` | 5 | `claim.sanitize.spec.ts` |
+| B. `CryptoStorageService` | 9 | `crypto-storage.service.spec.ts` |
+| C. `ClaimDraftService` | 4 | `claim-draft.service.spec.ts` |
+| D. `mockApiInterceptor` | 5 | `mock-api.interceptor.spec.ts` |
+| E. Reducer `draftLoaded` | 5 | `claim.reducer.spec.ts` |
+| F. Selectors SSN edge case | 2 | `claim.selectors.spec.ts` |
+| G. DevTools Sanitizers | 4 | `claim.devtools-sanitizers.spec.ts` |
+| H. Effect `autoSaveDraft` | 7 | `claim.effects.spec.ts` |
+| I. Effect `loadDraft` | 5 | `claim.effects.spec.ts` |
+| J. Effect `clearDraftOnReset` | 3 | `claim.effects.spec.ts` |
+| K. Component SSN Re-Entry | 4 | `borrower-info.component.spec.ts` |
+| L. Integration Flows | 5 | `claim.integration.spec.ts` |
+| **Total** | **58** | |
+
+### TDD Implementation Order
+
+Tests are written in dependency order. Each layer's tests are written and passing before the next layer begins.
+
+1. **`sanitizeForPersistence`** (tests 1-5) — pure function, zero dependencies. TDD starting point.
+2. **`CryptoStorageService`** (tests 6-14) — depends only on Web Crypto API.
+3. **`ClaimDraftService`** (tests 15-18) — depends only on HttpClient.
+4. **`mockApiInterceptor`** (tests 19-23) — depends on HttpClient testing.
+5. **Reducer `draftLoaded`** (tests 24-28) — pure function, depends on action definition.
+6. **Selectors** (tests 29-30) — pure projector tests, depends on model types.
+7. **DevTools sanitizers** (tests 31-34) — pure functions, depends on state shape.
+8. **Effects** (tests 35-49) — depends on services from steps 2-3. This is where the async orchestration lives.
+9. **Component** (tests 50-53) — depends on store selectors from step 6.
+10. **Integration** (tests 54-58) — full pipeline. Written last, validates the assembled system.
 
 ## Acceptance Criteria
 
@@ -551,5 +770,8 @@ This is the entire point of the mock interceptor approach: production-correct fr
 - [ ] DevTools state/action views show `****` instead of SSN
 - [ ] SSN re-entry UX message appears after hydration
 - [ ] Draft cleared from all storage on claim reset/submit
-- [ ] All 16 tests pass
+- [ ] All 58 tests pass
+- [ ] No `skip`, `xit`, `xdescribe`, or `todo` tests
+- [ ] 100% branch coverage on `sanitizeForPersistence()` and `CryptoStorageService`
+- [ ] Every production file has a corresponding `.spec.ts` created BEFORE it
 - [ ] No PII/PHI in browser developer tools, application storage, or console
