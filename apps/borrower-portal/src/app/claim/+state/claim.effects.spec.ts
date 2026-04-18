@@ -115,9 +115,10 @@ describe('Claim Effects — autoSaveDraft', () => {
     vi.useRealTimers();
   });
 
-  it('dispatches draftSaveError on API failure', async () => {
+  it('dispatches draftSaveError when both API and crypto fail', async () => {
     vi.useFakeTimers();
     draftService.saveDraft.mockReturnValue(throwError(() => new Error('API down')));
+    cryptoStorage.save.mockReturnValue(Promise.reject(new Error('crypto failed')));
     actions$ = of(ClaimActions.saveBorrowerInfo({ borrower: testState.borrower }));
 
     let results: Action[] = [];

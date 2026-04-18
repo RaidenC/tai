@@ -196,6 +196,7 @@ export const autoSaveDraft = createEffect(
     draftService = inject(ClaimDraftService),
     cryptoStorage = inject(CryptoStorageService),
     securityLogger = inject(SecurityLoggerService),
+    replayMode = inject(REPLAY_MODE),
   ) => {
     return actions$.pipe(
       ofType(
@@ -209,6 +210,8 @@ export const autoSaveDraft = createEffect(
         ClaimActions.removeDocument,
         ClaimActions.setCurrentStep,
       ),
+      // SECURITY: Skip auto-save during DevTools time-travel replay
+      filter(() => !replayMode.active),
       debounceTime(2000),
       withLatestFrom(store.select(selectClaimState)),
       exhaustMap(([, claimState]) => {
@@ -218,18 +221,24 @@ export const autoSaveDraft = createEffect(
 
         return draftService.saveDraft(sanitized).pipe(
           map(() => ClaimActions.draftSaved()),
-          catchError(() => {
-            // Fallback to encrypted sessionStorage on API failure
-            from(cryptoStorage.save(sanitized)).pipe(
-              tap(() => securityLogger.log('DRAFT_ENCRYPTED', 'Fallback to sessionStorage')),
-              catchError((err) => {
-                securityLogger.log('ENCRYPT_FAILED', err?.message);
-                return EMPTY;
+          catchError((apiError) => {
+            // SECURITY: Fallback to encrypted sessionStorage on API failure
+            // Log the API failure first
+            securityLogger.log('ENCRYPT_FAILED', `API error: ${apiError.message}`);
+
+            // Attempt encrypted sessionStorage fallback
+            return from(cryptoStorage.save(sanitized)).pipe(
+              tap(() => securityLogger.log('DRAFT_ENCRYPTED', 'Fallback to sessionStorage succeeded')),
+              map(() => ClaimActions.draftSaved()),
+              catchError((cryptoError) => {
+                // SECURITY: If both API and crypto fail, log error and notify user
+                // Do NOT silently fail - user must know their data is not saved
+                securityLogger.log('ENCRYPT_FAILED', `Crypto fallback failed: ${cryptoError.message}`);
+                return of(ClaimActions.draftSaveError({
+                  message: 'Could not save draft. Please check your connection.',
+                }));
               }),
-            ).subscribe();
-            return of(ClaimActions.draftSaveError({
-              message: 'Draft saved locally (encrypted).',
-            }));
+            );
           }),
         );
       }),
@@ -249,9 +258,12 @@ export const loadDraft = createEffect(
     actions$ = inject(Actions),
     draftService = inject(ClaimDraftService),
     cryptoStorage = inject(CryptoStorageService),
+    replayMode = inject(REPLAY_MODE),
   ) => {
     return actions$.pipe(
       ofType(ROOT_EFFECTS_INIT),
+      // SECURITY: Skip loading during DevTools time-travel replay
+      filter(() => !replayMode.active),
       switchMap(() =>
         draftService.loadDraft().pipe(
           map((draft) => ClaimActions.draftLoaded({ draft })),
