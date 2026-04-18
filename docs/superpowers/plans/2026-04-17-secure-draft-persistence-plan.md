@@ -12,7 +12,7 @@
 
 ---
 
-## Completed Tasks (27/35) — As of 2026-04-17
+## Completed Tasks (35/35) — As of 2026-04-18
 
 | Task | Description | Commit | Status |
 |------|-------------|--------|--------|
@@ -40,9 +40,17 @@
 | 22 | DevTools Sanitizers tests | `b35bcc3` | ✅ |
 | 23 | DevTools Sanitizers impl | `b35bcc3` | ✅ |
 | 24 | Effects tests | `aa440d5` | ✅ |
-| 25 | Effects impl | `aa440d5`,`7c3ecf1` | ✅ |
+| 25 | Effects impl | `7c3ecf1` | ✅ |
 | 26 | Barrel exports + delete meta-reducer | `471f7bf` | ✅ |
 | 27 | Wire up app.config.ts | `75197cb` | ✅ |
+| 28 | CSP Meta Tag | `947da1f` | ✅ |
+| 29 | Crypto Availability Check | `6202d02` | ✅ |
+| 30 | SSN Re-Entry UX tests | `b3d46c7` | ✅ |
+| 31 | SSN Re-Entry UX impl | `b3d46c7` | ✅ |
+| 32 | Negative Security Tests | `aac083a` | ✅ |
+| 33 | Integration Tests | `e7ea288` | ✅ |
+| 34 | Run Full Test Suite | `780a882` | ✅ |
+| 35 | Smoke Test in Browser | `ac85520` | ✅ |
 
 **TDD Gap Note:** Task 18 was originally direct modification without test-first. Tests added in commit `79f9e61` to close the gap.
 
