@@ -23,7 +23,6 @@ import { provideStoreDevtools } from '@ngrx/store-devtools';
 import { appRoutes } from './app.routes';
 import {
   claimFeature,
-  localStorageMetaReducer,
   fetchWorkersCompTemplate,
   submitClaim,
 } from './claim/+state';
@@ -37,15 +36,11 @@ export const appConfig: ApplicationConfig = {
      * provideStore() sets up the global NgRx store.
      *
      * The first argument registers feature reducers. We register the claim
-     * feature here (not via provideState in a lazy route) so the meta-reducer
-     * can hydrate the claim slice on app startup.
-     *
-     * The second argument provides store configuration, including meta-reducers.
-     * The localStorageMetaReducer wraps ALL reducers and handles persistence.
+     * feature here (not via provideState in a lazy route) so it can
+     * initialize on app startup.
      */
     provideStore(
-      { [claimFeature.name]: claimFeature.reducer },
-      { metaReducers: [localStorageMetaReducer] }
+      { [claimFeature.name]: claimFeature.reducer }
     ),
 
     /**
