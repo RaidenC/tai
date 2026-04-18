@@ -22,4 +22,17 @@ describe('selectBorrowerValid — SSN edge cases', () => {
     };
     expect(selectBorrowerValid.projector(borrower)).toBe(true);
   });
+
+  // Edge cases - defensive tests
+  it('returns false when borrower is null', () => {
+    expect(selectBorrowerValid.projector(null as any)).toBe(false);
+  });
+
+  it('returns false when borrower is undefined', () => {
+    expect(selectBorrowerValid.projector(undefined as any)).toBe(false);
+  });
+
+  it('returns false when borrower is empty object', () => {
+    expect(selectBorrowerValid.projector({} as any)).toBe(false);
+  });
 });
