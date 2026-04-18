@@ -62,9 +62,9 @@ export class CryptoStorageService {
       }
 
       const decrypted = await crypto.subtle.decrypt(
-        { name: CryptoStorageService.ALGORITHM, iv: this.fromBase64(iv) },
+        { name: CryptoStorageService.ALGORITHM, iv: this.fromBase64(iv) as BufferSource },
         key,
-        this.fromBase64(data),
+        this.fromBase64(data) as BufferSource,
       );
       const parsed = JSON.parse(new TextDecoder().decode(decrypted));
       if (typeof parsed.currentStep !== 'number') return null;
