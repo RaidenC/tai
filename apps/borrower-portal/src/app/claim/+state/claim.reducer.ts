@@ -191,6 +191,19 @@ export const claimFeature = createFeature({
     on(ClaimActions.resetClaim, (): DisabilityClaimDraft => ({
       ...initialClaimState,
     })),
+
+    // ── Draft Persistence ───────────────────────────
+
+    on(ClaimActions.draftLoaded, (state, { draft }): DisabilityClaimDraft => ({
+      ...state,
+      ...draft,
+      borrower: {
+        ...draft.borrower,
+        ssnLastFour: '', // Defense-in-depth: ensure SSN is never loaded from persisted data
+      },
+      isSubmitting: false,
+      error: null,
+    })),
   ),
 });
 
