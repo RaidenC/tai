@@ -12,6 +12,42 @@
 
 ---
 
+## Completed Tasks (27/35) — As of 2026-04-17
+
+| Task | Description | Commit | Status |
+|------|-------------|--------|--------|
+| 1 | Install fast-check | `9542dea` | ✅ |
+| 2 | sanitizeForPersistence tests | `1de72ce` | ✅ |
+| 3 | sanitizeForPersistence impl | `1de72ce` | ✅ |
+| 4 | SecurityLoggerService tests | `bacbdf3` | ✅ |
+| 5 | SecurityLoggerService impl | `bacbdf3` | ✅ |
+| 6 | CryptoStorageService tests | `067403e` | ✅ |
+| 7 | CryptoStorageService impl | `067403e` | ✅ |
+| 8 | ClaimDraftService tests | `775d21b` | ✅ |
+| 9 | ClaimDraftService impl | `775d21b` | ✅ |
+| 10 | mockApiInterceptor tests | `949b83e` | ✅ |
+| 11 | mockApiInterceptor impl | `949b83e` | ✅ |
+| 12 | SecurityAlertComponent tests | `c32d22c` | ✅ |
+| 13 | SecurityAlertComponent impl | `c32d22c` | ✅ |
+| 14 | SecurityAlertComponent Storybook | `7bc288d` | ✅ |
+| 15 | CryptoUnavailableComponent tests | `d74443b` | ✅ |
+| 16 | CryptoUnavailableComponent impl+stories | `d74443b` | ✅ |
+| 17 | Export design system components | `475b8a5` | ✅ |
+| 18 | Add draft persistence actions | `79f9e61` | ✅ |
+| 19 | Reducer draftLoaded tests | `6ec4b88` | ✅ |
+| 20 | Reducer draftLoaded impl | `6ec4b88` | ✅ |
+| 21 | Selector SSN edge case tests | `4e09cde` | ✅ |
+| 22 | DevTools Sanitizers tests | `b35bcc3` | ✅ |
+| 23 | DevTools Sanitizers impl | `b35bcc3` | ✅ |
+| 24 | Effects tests | `aa440d5` | ✅ |
+| 25 | Effects impl | `aa440d5`,`7c3ecf1` | ✅ |
+| 26 | Barrel exports + delete meta-reducer | `471f7bf` | ✅ |
+| 27 | Wire up app.config.ts | `75197cb` | ✅ |
+
+**TDD Gap Note:** Task 18 was originally direct modification without test-first. Tests added in commit `79f9e61` to close the gap.
+
+---
+
 ## File Map
 
 | File | Action | Responsibility |
@@ -60,14 +96,14 @@
 **Files:**
 - Modify: `package.json`
 
-- [ ] **Step 1: Install fast-check as dev dependency**
+- [x] **Step 1: Install fast-check as dev dependency** (commit `9542dea`)
 
 ```bash
 cd /home/matt/War\ Room/War\ Room/01_Projects/Portal_POC/tai-portal/.worktrees/frontend-workspace
 npm install --save-dev fast-check
 ```
 
-- [ ] **Step 2: Verify installation**
+- [x] **Step 2: Verify installation**
 
 ```bash
 npx fast-check --version
@@ -75,7 +111,7 @@ npx fast-check --version
 
 Expected: Version number printed (e.g., `3.x.x`)
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add package.json package-lock.json
@@ -89,7 +125,7 @@ git commit -m "chore: add fast-check for property-based testing"
 **Files:**
 - Create: `apps/borrower-portal/src/app/claim/+state/claim.sanitize.spec.ts`
 
-- [ ] **Step 1: Write all sanitizer unit tests (RED)**
+- [x] **Step 1: Write all sanitizer unit tests (RED)** (commit `1de72ce`)
 
 ```typescript
 import { sanitizeForPersistence } from './claim.sanitize';

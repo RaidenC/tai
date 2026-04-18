@@ -12,7 +12,7 @@ Completed 20 of 35 tasks (57%). Core infrastructure (services, NgRx actions/redu
 
 ---
 
-## Completed Tasks (20/35)
+## Completed Tasks (27/35)
 
 | Task | Description | Commit | Status |
 |------|-------------|--------|--------|
@@ -33,9 +33,16 @@ Completed 20 of 35 tasks (57%). Core infrastructure (services, NgRx actions/redu
 | 15 | CryptoUnavailableComponent tests (RED) | d74443b | ✅ |
 | 16 | CryptoUnavailableComponent impl + stories | d74443b | ✅ |
 | 17 | Export design system components | 475b8a5 | ✅ |
-| 18 | Add draft persistence actions | 4a6e3e1 | ✅ |
+| 18 | Add draft persistence actions | 79f9e61 (TDD gap closure) | ✅ |
 | 19 | Reducer draftLoaded tests (RED) | 6ec4b88 | ✅ |
 | 20 | Reducer draftLoaded impl (GREEN) | 6ec4b88 | ✅ |
+| 21 | Selector SSN edge case tests | 4e09cde | ✅ |
+| 22 | DevTools Sanitizers tests (RED) | b35bcc3 | ✅ |
+| 23 | DevTools Sanitizers impl (GREEN) | b35bcc3 | ✅ |
+| 24 | Effects tests (RED) | aa440d5 | ✅ |
+| 25 | Effects impl (GREEN) | 7c3ecf1 | ✅ |
+| 26 | Update barrel exports + delete meta-reducer | 471f7bf | ✅ |
+| 27 | Wire up app.config.ts | 75197cb | ✅ |
 
 ---
 
@@ -127,13 +134,37 @@ apps/borrower-portal/vitest.setup.ts
 
 ---
 
-## Remaining Tasks (15)
+## Debugging Session: Persistence Not Working (2026-04-17)
 
-- Task 21: Selector SSN Edge Case Tests
-- Tasks 22-23: DevTools Sanitizers (test + impl)
-- Tasks 24-25: Effects (test + impl)  
-- Task 26: Update Barrel Exports + Delete Meta-Reducer
-- Task 27: Wire Up app.config.ts
+### Symptom
+- Effects triggered: "[Claim] Save Borrower Info" appears in console when typing
+- "[Claim] Draft Saved" appears in Redux DevTools after ~3 seconds
+- NO network request to `/api/claims/draft` in Network tab
+- NO sessionStorage key `bp_ddraft_enc` created
+
+### Investigation Performed
+1. ✅ Clean rebuild (`rm -rf .nx dist`) - no change
+2. ✅ Hard refresh - no change
+3. ✅ Incognito mode - no change
+4. ✅ Verified HTTP works via `fetch()` - returns 200
+5. ✅ Verified actions fire in DevTools - they do
+6. ✅ Tests pass (vitest shows all effects tests passing)
+
+### Root Cause
+The autoSaveDraft effect was filtering out actions during replay mode, and the functional effect was being instantiated incorrectly with the dependency injection pattern.
+
+### Fix Applied (by Opus 4.7)
+- Rewrote autoSaveDraft to use proper NgRx 21 functional effect pattern with `inject()` for dependencies
+- Fixed replayMode filter to work with the new functional effect pattern
+- Fixed silent fallback failure: now logs ENCRYPT_FAIL and dispatches error when both API and crypto fail
+
+### Files Modified During Debug
+- `apps/borrower-portal/src/app/claim/+state/claim.effects.ts` - Fixed functional effect DI and replayMode handling
+
+---
+
+## Remaining Tasks (8)
+
 - Task 28: CSP Meta Tag
 - Task 29: Crypto Availability Check in AppComponent
 - Tasks 30-31: SSN Re-Entry UX (test + impl)
@@ -147,6 +178,6 @@ apps/borrower-portal/vitest.setup.ts
 ## Decision Required
 
 Options for remaining work:
-1. **Resume subagent-driven:** Fix Agent tool issues and dispatch subagents for remaining 15 tasks
-2. **Continue manual:** Execute remaining tasks with direct tool calls (current approach)
-3. **Hybrid:** Use subagents for complex tasks (effects, integration tests), manual for simpler ones
+1. **Resume subagent-driven:** Continue using subagents for remaining 8 tasks
+2. **Continue manual:** Execute remaining tasks with direct tool calls
+3. **Hybrid:** Use subagents for complex tasks, manual for simpler ones
