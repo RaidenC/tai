@@ -9,6 +9,14 @@
 <form [formGroup]="form" (ngSubmit)="onNext()">
   <h2 class="text-xl font-semibold mb-6 text-gray-900">[1] Borrower Information</h2>
 
+  <!-- SSN Re-Entry Alert (shown after hydration from encrypted storage) -->
+  @if (ssnReEntryRequired) {
+    <tai-security-alert
+      message="For your security, your SSN was not saved. Please re-enter the last 4 digits to continue."
+      severity="warning"
+    ></tai-security-alert>
+  }
+
   <!-- Error summary -->
   @if (form.touched && form.invalid) {
     <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">

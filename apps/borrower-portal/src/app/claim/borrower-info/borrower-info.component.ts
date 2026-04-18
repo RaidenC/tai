@@ -16,7 +16,7 @@
  * still persisting data reliably.
  */
 
-import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -26,11 +26,12 @@ import { Subject, takeUntil } from 'rxjs';
 import { ClaimActions } from '../+state';
 import { selectBorrower } from '../+state';
 import { BorrowerInfo } from '../+state';
+import { SecurityAlertComponent } from '@tai/ui-design-system';
 
 @Component({
   selector: 'bp-borrower-info',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, SecurityAlertComponent],
   templateUrl: './borrower-info.component.html',
 })
 export class BorrowerInfoComponent implements OnInit, OnDestroy {
@@ -40,6 +41,7 @@ export class BorrowerInfoComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   form!: FormGroup;
+  ssnReEntryRequired = false;
 
   ngOnInit(): void {
     this.initForm();
@@ -52,6 +54,9 @@ export class BorrowerInfoComponent implements OnInit, OnDestroy {
         // Only patch if there's data and form is pristine (first load)
         if (borrower.firstName || borrower.lastName) {
           this.form.patchValue(borrower, { emitEvent: false });
+          // Detect hydration scenario: data exists but SSN stripped
+          this.ssnReEntryRequired =
+            borrower.firstName.length > 0 && borrower.ssnLastFour.length === 0;
         }
       });
   }
