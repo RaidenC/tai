@@ -1531,6 +1531,8 @@ git add apps/borrower-portal/src/app/claim/+state/claim.actions.ts
 git commit -m "feat: add draft persistence actions (draftSaved, draftLoaded, etc.)"
 ```
 
+> **TDD Gap Note (2026-04-17):** Task 18 was originally implemented as a direct modification without test-first TDD. Tests added in follow-up commit `79f9e61` to close this gap — see `claim.actions.spec.ts`.
+
 ---
 
 ### Task 19: Reducer `draftLoaded` Handler — Test First
