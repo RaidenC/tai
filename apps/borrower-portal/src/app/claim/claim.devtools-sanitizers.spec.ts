@@ -21,6 +21,30 @@ describe('DevTools Sanitizers', () => {
       const result = stateSanitizer(state);
       expect(result.claim.borrower.ssnLastFour).toBe('');
     });
+
+    // Edge cases - null safety
+    it('returns state unchanged when state is null', () => {
+      const result = stateSanitizer(null);
+      expect(result).toBeNull();
+    });
+
+    it('returns state unchanged when state has no claim property', () => {
+      const state = { otherData: 'value' };
+      const result = stateSanitizer(state);
+      expect(result).toEqual(state);
+    });
+
+    it('returns state unchanged when claim is null', () => {
+      const state = { claim: null };
+      const result = stateSanitizer(state);
+      expect(result).toEqual(state);
+    });
+
+    it('returns state unchanged when claim.borrower is null', () => {
+      const state = { claim: { borrower: null } };
+      const result = stateSanitizer(state);
+      expect(result).toEqual(state);
+    });
   });
 
   describe('actionSanitizer', () => {
@@ -40,6 +64,21 @@ describe('DevTools Sanitizers', () => {
       };
       const result = actionSanitizer(action);
       expect(result).toEqual(action);
+    });
+
+    // Edge cases - null safety
+    it('handles action with null borrower', () => {
+      const action = {
+        type: '[Claim] Save Borrower Info',
+        borrower: null,
+      };
+      const result = actionSanitizer(action);
+      expect(result).toEqual(action);
+    });
+
+    it('handles null action', () => {
+      const result = actionSanitizer(null as any);
+      expect(result).toBeNull();
     });
   });
 });

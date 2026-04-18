@@ -19,11 +19,11 @@ export function stateSanitizer(state: any): any {
 }
 
 export function actionSanitizer(action: any): any {
-  if (action.type === '[Claim] Save Borrower Info' && action.borrower) {
-    return {
-      ...action,
-      borrower: { ...action.borrower, ssnLastFour: '****' },
-    };
+  if (!action || action.type !== '[Claim] Save Borrower Info' || !action.borrower) {
+    return action;
   }
-  return action;
+  return {
+    ...action,
+    borrower: { ...action.borrower, ssnLastFour: '****' },
+  };
 }
