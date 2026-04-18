@@ -25,18 +25,29 @@
 
 import { inject, InjectionToken } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
+import { ROOT_EFFECTS_INIT } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
 import {
   catchError,
+  debounceTime,
   delay,
+  exhaustMap,
   filter,
+  from,
   map,
   of,
   switchMap,
+  tap,
   withLatestFrom,
+  EMPTY,
 } from 'rxjs';
 import { ClaimActions } from './claim.actions';
 import { selectClaimState, selectIsWorkRelated } from './claim.selectors';
+import { ClaimDraftService } from '../services/claim-draft.service';
+import { CryptoStorageService } from '../services/crypto-storage.service';
+import { SecurityLoggerService } from '../services/security-logger.service';
+import { sanitizeForPersistence } from './claim.sanitize';
+import { initialClaimState } from './claim.models';
 
 /**
  * REPLAY_MODE Injection Token
@@ -169,4 +180,126 @@ export const submitClaim = createEffect(
     );
   },
   { functional: true }
+);
+
+/**
+ * autoSaveDraft$
+ *
+ * Debounced auto-save effect that triggers on any claim state change.
+ * SECURITY: Always sanitizes data BEFORE persistence to strip SSN.
+ * Falls back to encrypted sessionStorage if API fails.
+ */
+export const autoSaveDraft = createEffect(
+  (
+    actions$ = inject(Actions),
+    store = inject(Store),
+    draftService = inject(ClaimDraftService),
+    cryptoStorage = inject(CryptoStorageService),
+    securityLogger = inject(SecurityLoggerService),
+  ) => {
+    return actions$.pipe(
+      ofType(
+        ClaimActions.saveBorrowerInfo,
+        ClaimActions.saveIncidentDetails,
+        ClaimActions.setWorkRelated,
+        ClaimActions.addProvider,
+        ClaimActions.updateProvider,
+        ClaimActions.removeProvider,
+        ClaimActions.saveDocumentMeta,
+        ClaimActions.removeDocument,
+        ClaimActions.setCurrentStep,
+      ),
+      debounceTime(2000),
+      withLatestFrom(store.select(selectClaimState)),
+      exhaustMap(([, claimState]) => {
+        // SECURITY: Always sanitize before any write
+        const sanitized = sanitizeForPersistence(claimState);
+        securityLogger.log('PII_STRIPPED', 'ssnLastFour removed before persistence');
+
+        return draftService.saveDraft(sanitized).pipe(
+          map(() => ClaimActions.draftSaved()),
+          catchError(() => {
+            // Fallback to encrypted sessionStorage on API failure
+            from(cryptoStorage.save(sanitized)).pipe(
+              tap(() => securityLogger.log('DRAFT_ENCRYPTED', 'Fallback to sessionStorage')),
+              catchError((err) => {
+                securityLogger.log('ENCRYPT_FAILED', err?.message);
+                return EMPTY;
+              }),
+            ).subscribe();
+            return of(ClaimActions.draftSaveError({
+              message: 'Draft saved locally (encrypted).',
+            }));
+          }),
+        );
+      }),
+    );
+  },
+  { functional: true },
+);
+
+/**
+ * loadDraft$
+ *
+ * Loads draft on app initialization. Tries API first (primary),
+ * falls back to encrypted sessionStorage on 404/error.
+ */
+export const loadDraft = createEffect(
+  (
+    actions$ = inject(Actions),
+    draftService = inject(ClaimDraftService),
+    cryptoStorage = inject(CryptoStorageService),
+  ) => {
+    return actions$.pipe(
+      ofType(ROOT_EFFECTS_INIT),
+      switchMap(() =>
+        draftService.loadDraft().pipe(
+          map((draft) => ClaimActions.draftLoaded({ draft })),
+          catchError(() =>
+            from(cryptoStorage.load()).pipe(
+              map((draft) =>
+                draft
+                  ? ClaimActions.draftLoaded({ draft })
+                  : ClaimActions.draftLoadError({ message: 'No saved draft found.' }),
+              ),
+              catchError(() =>
+                of(ClaimActions.draftLoadError({ message: 'Could not restore draft.' })),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  },
+  { functional: true },
+);
+
+/**
+ * clearDraftOnReset$
+ *
+ * Clears both API and local storage on claim reset.
+ * Writes initial state to API to clear server draft.
+ */
+export const clearDraftOnReset = createEffect(
+  (
+    actions$ = inject(Actions),
+    draftService = inject(ClaimDraftService),
+    cryptoStorage = inject(CryptoStorageService),
+  ) => {
+    return actions$.pipe(
+      ofType(ClaimActions.resetClaim),
+      tap(() => cryptoStorage.clear()),
+      switchMap(() =>
+        draftService.saveDraft(initialClaimState).pipe(
+          map(() => ClaimActions.draftSaved()),
+          catchError(() =>
+            of(ClaimActions.draftSaveError({
+              message: 'Could not clear server draft.',
+            })),
+          ),
+        ),
+      ),
+    );
+  },
+  { functional: true },
 );
