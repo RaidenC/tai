@@ -19,11 +19,24 @@ export function stateSanitizer(state: any): any {
 }
 
 export function actionSanitizer(action: any): any {
-  if (!action || action.type !== '[Claim] Save Borrower Info' || !action.borrower) {
-    return action;
+  if (!action) return action;
+
+  if (action.type === '[Claim] Save Borrower Info' && action.borrower) {
+    return {
+      ...action,
+      borrower: { ...action.borrower, ssnLastFour: '****' },
+    };
   }
-  return {
-    ...action,
-    borrower: { ...action.borrower, ssnLastFour: '****' },
-  };
+
+  if (action.type === '[Claim] Draft Loaded' && action.draft?.borrower) {
+    return {
+      ...action,
+      draft: {
+        ...action.draft,
+        borrower: { ...action.draft.borrower, ssnLastFour: '****' },
+      },
+    };
+  }
+
+  return action;
 }

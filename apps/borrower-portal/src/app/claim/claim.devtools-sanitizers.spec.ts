@@ -80,5 +80,25 @@ describe('DevTools Sanitizers', () => {
       const result = actionSanitizer(null as any);
       expect(result).toBeNull();
     });
+
+    it('masks SSN in draftLoaded action', () => {
+      const action = {
+        type: '[Claim] Draft Loaded',
+        draft: {
+          borrower: { firstName: 'Jane', ssnLastFour: '1234' },
+          currentStep: 2,
+        },
+      };
+      const result = actionSanitizer(action);
+      expect(result.draft.borrower.ssnLastFour).toBe('****');
+      // Non-SSN fields untouched
+      expect(result.draft.borrower.firstName).toBe('Jane');
+      expect(result.draft.currentStep).toBe(2);
+    });
+
+    it('handles draftLoaded with no borrower gracefully', () => {
+      const action = { type: '[Claim] Draft Loaded', draft: {} };
+      expect(() => actionSanitizer(action)).not.toThrow();
+    });
   });
 });
