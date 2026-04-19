@@ -16,12 +16,12 @@
  * still persisting data reliably.
  */
 
-import { Component, inject, OnInit, OnDestroy, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Store } from '@ngrx/store';
-import { Subject, takeUntil } from 'rxjs';
+import { first } from 'rxjs/operators';
 
 import { ClaimActions } from '../+state';
 import { selectBorrower } from '../+state';
@@ -34,11 +34,10 @@ import { SecurityAlertComponent } from '@tai/ui-design-system';
   imports: [CommonModule, ReactiveFormsModule, SecurityAlertComponent],
   templateUrl: './borrower-info.component.html',
 })
-export class BorrowerInfoComponent implements OnInit, OnDestroy {
+export class BorrowerInfoComponent implements OnInit {
   private fb = inject(FormBuilder);
   private store = inject(Store);
   private router = inject(Router);
-  private destroy$ = new Subject<void>();
 
   form!: FormGroup;
   ssnReEntryRequired = false;
@@ -46,24 +45,18 @@ export class BorrowerInfoComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.initForm();
 
-    // Rehydrate from store on init
+    // Hydrate once from the store. Subsequent state changes must not
+    // overwrite values the user is actively typing.
     this.store
       .select(selectBorrower)
-      .pipe(takeUntil(this.destroy$))
+      .pipe(first())
       .subscribe((borrower) => {
-        // Only patch if there's data and form is pristine (first load)
         if (borrower.firstName || borrower.lastName) {
           this.form.patchValue(borrower, { emitEvent: false });
-          // Detect hydration scenario: data exists but SSN stripped
           this.ssnReEntryRequired =
             borrower.firstName.length > 0 && borrower.ssnLastFour.length === 0;
         }
       });
-  }
-
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
   }
 
   /**

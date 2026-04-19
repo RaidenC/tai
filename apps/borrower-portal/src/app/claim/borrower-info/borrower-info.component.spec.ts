@@ -9,23 +9,48 @@ describe('BorrowerInfoComponent — SSN Re-Entry UX', () => {
   let fixture: ComponentFixture<BorrowerInfoComponent>;
   let store: MockStore;
 
-  function createComponent(borrowerOverride: any) {
-    TestBed.configureTestingModule({
+  async function createComponent(borrowerOverride: any) {
+    await TestBed.configureTestingModule({
       imports: [BorrowerInfoComponent, ReactiveFormsModule, RouterTestingModule],
       providers: [
         provideMockStore({
           selectors: [{ selector: selectBorrower, value: borrowerOverride }],
         }),
       ],
-    });
+    }).compileComponents();
 
-    TestBed.compileComponents();
     store = TestBed.inject(MockStore);
     fixture = TestBed.createComponent(BorrowerInfoComponent);
     fixture.detectChanges();
   }
 
-  it('shows SSN re-entry message when borrower hydrated without SSN', () => {
+  it('does not overwrite user-typed firstName when store emits a new borrower value', async () => {
+    createComponent({
+      firstName: 'Jane',
+      lastName: 'Doe',
+      ssnLastFour: '',
+      phone: '5551234567',
+      email: 'jane@example.com',
+    });
+
+    // User starts editing
+    fixture.componentInstance.form.patchValue({ firstName: 'Janet' });
+
+    // Store emits a new borrower slice (e.g. an auto-save round-trip)
+    store.overrideSelector(selectBorrower, {
+      firstName: 'Jane',
+      lastName: 'Doe',
+      ssnLastFour: '',
+      phone: '5551234567',
+      email: 'jane@example.com',
+    });
+    store.refreshState();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.form.get('firstName')?.value).toBe('Janet');
+  });
+
+  it('shows SSN re-entry message when borrower hydrated without SSN', async () => {
     createComponent({
       firstName: 'Jane',
       lastName: 'Doe',
@@ -37,7 +62,7 @@ describe('BorrowerInfoComponent — SSN Re-Entry UX', () => {
     expect(alert).toBeTruthy();
   });
 
-  it('does not show re-entry message on fresh form', () => {
+  it('does not show re-entry message on fresh form', async () => {
     createComponent({
       firstName: '',
       lastName: '',
@@ -49,7 +74,7 @@ describe('BorrowerInfoComponent — SSN Re-Entry UX', () => {
     expect(alert).toBeNull();
   });
 
-  it('does not show re-entry message when SSN is populated', () => {
+  it('does not show re-entry message when SSN is populated', async () => {
     createComponent({
       firstName: 'Jane',
       lastName: 'Doe',
@@ -61,7 +86,7 @@ describe('BorrowerInfoComponent — SSN Re-Entry UX', () => {
     expect(alert).toBeNull();
   });
 
-  it('SSN field is empty after hydration', () => {
+  it('SSN field is empty after hydration', async () => {
     createComponent({
       firstName: 'Jane',
       lastName: 'Doe',
