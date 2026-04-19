@@ -1,7 +1,8 @@
-import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import { provideStore, Store } from '@ngrx/store';
 import { provideEffects } from '@ngrx/effects';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { throwError } from 'rxjs';
 import {
   claimFeature,
   ClaimActions,
@@ -13,7 +14,6 @@ import {
   submitClaim,
 } from './+state';
 import { mockApiInterceptor } from './services/mock-api.interceptor';
-import { CryptoStorageService } from './services/crypto-storage.service';
 import { SecurityLoggerService } from './services/security-logger.service';
 import { ClaimDraftService } from './services/claim-draft.service';
 
@@ -46,7 +46,7 @@ describe('Integration Tests — Persistence Flows', () => {
     sessionStorage.clear();
   });
 
-  it('full save round-trip: action -> debounce -> API -> verify no SSN', fakeAsync(() => {
+  it('full save round-trip: action -> debounce -> API -> verify no SSN', async () => {
     const draftService = TestBed.inject(ClaimDraftService);
     const spy = vi.spyOn(draftService, 'saveDraft');
 
@@ -61,18 +61,17 @@ describe('Integration Tests — Persistence Flows', () => {
         },
       }),
     );
-    tick(2000);
+    await new Promise((r) => setTimeout(r, 2100)); // Wait for debounce
 
     if (spy.mock.calls.length > 0) {
       expect(spy.mock.calls[0][0].borrower.ssnLastFour).toBe('');
     }
-  }));
+  });
 
-  it('SSN never in sessionStorage plaintext after fallback save', fakeAsync(() => {
-    // Force API failure to trigger crypto fallback
+  it('SSN never in sessionStorage plaintext after fallback save', async () => {
     const draftService = TestBed.inject(ClaimDraftService);
     vi.spyOn(draftService, 'saveDraft').mockReturnValue(
-      new (require('rxjs').Observable)((sub: any) => sub.error(new Error('API down'))),
+      throwError(() => new Error('API down')),
     );
 
     store.dispatch(
@@ -86,76 +85,78 @@ describe('Integration Tests — Persistence Flows', () => {
         },
       }),
     );
-    tick(2000);
+    await new Promise((r) => setTimeout(r, 2100)); // Wait for debounce
 
     const stored = sessionStorage.getItem('bp_draft_enc');
     if (stored) {
       expect(stored).not.toContain('1234');
       expect(stored).not.toContain('"ssnLastFour"');
     }
-  }));
+  });
 
-  it('SSN never in localStorage at any point', fakeAsync(() => {
+  it('SSN never in localStorage at any point', async () => {
     const originalSetItem = localStorage.setItem;
     const calls: string[] = [];
     localStorage.setItem = (key: string, value: string) => {
       calls.push(key);
-      return originalSetItem.apply(localStorage, [key, value]);
+      return originalSetItem(key, value);
     };
 
-    store.dispatch(
-      ClaimActions.saveBorrowerInfo({
-        borrower: {
-          firstName: 'Jane',
-          lastName: 'Doe',
-          ssnLastFour: '1234',
-          phone: '5551234567',
-          email: 'jane@example.com',
-        },
-      }),
-    );
-    tick(2000);
+    try {
+      store.dispatch(
+        ClaimActions.saveBorrowerInfo({
+          borrower: {
+            firstName: 'Jane',
+            lastName: 'Doe',
+            ssnLastFour: '1234',
+            phone: '5551234567',
+            email: 'jane@example.com',
+          },
+        }),
+      );
+      await new Promise((r) => setTimeout(r, 2100)); // Wait for debounce
 
-    const ssnInLocalStorage = calls.some((key) => {
-      const value = localStorage.getItem(key);
-      return value?.includes('1234');
-    });
-    expect(ssnInLocalStorage).toBe(false);
+      const ssnInLocalStorage = calls.some((key) => {
+        const value = localStorage.getItem(key);
+        return value?.includes('1234');
+      });
+      expect(ssnInLocalStorage).toBe(false);
+    } finally {
+      localStorage.setItem = originalSetItem;
+    }
+  });
 
-    localStorage.setItem = originalSetItem;
-  }));
-
-  it('reset clears all persisted state', fakeAsync(() => {
+  it('reset clears all persisted state', async () => {
     store.dispatch(
       ClaimActions.saveBorrowerInfo({
         borrower: { ...initialClaimState.borrower, firstName: 'Jane' },
       }),
     );
-    tick(2000);
+    await new Promise((r) => setTimeout(r, 2100)); // Wait for debounce
 
     store.dispatch(ClaimActions.resetClaim());
-    tick(100);
+    await new Promise((r) => setTimeout(r, 100));
 
     expect(sessionStorage.getItem('bp_draft_enc')).toBeNull();
-  }));
+  });
 
-  it('audit trail records full save lifecycle', fakeAsync(() => {
+  it('audit trail records full save lifecycle', async () => {
     store.dispatch(
       ClaimActions.saveBorrowerInfo({
         borrower: { ...initialClaimState.borrower, firstName: 'Jane' },
       }),
     );
-    tick(2000);
+    await new Promise((r) => setTimeout(r, 2100)); // Wait for debounce
 
     const events = securityLogger.getEvents();
     const piiStripped = events.find((e) => e.type === 'PII_STRIPPED');
     expect(piiStripped).toBeTruthy();
-  }));
+  });
 
-  it('audit trail records encrypt fallback on API failure', fakeAsync(() => {
+  it('audit trail records encrypt fallback on API failure', async () => {
     const draftService = TestBed.inject(ClaimDraftService);
     vi.spyOn(draftService, 'saveDraft').mockReturnValue(
-      new (require('rxjs').Observable)((sub: any) => sub.error(new Error('API down'))),
+      throwError(() => new Error('API down')),
     );
 
     store.dispatch(
@@ -163,11 +164,11 @@ describe('Integration Tests — Persistence Flows', () => {
         borrower: { ...initialClaimState.borrower, firstName: 'Jane' },
       }),
     );
-    tick(2000);
+    await new Promise((r) => setTimeout(r, 2100)); // Wait for debounce
 
     const events = securityLogger.getEvents();
     const types = events.map((e) => e.type);
     expect(types).toContain('PII_STRIPPED');
     expect(types).toContain('DRAFT_ENCRYPTED');
-  }));
+  });
 });

@@ -1,4 +1,4 @@
-import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import { provideStore, Store } from '@ngrx/store';
 import { provideEffects } from '@ngrx/effects';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
@@ -13,7 +13,6 @@ import {
   fetchWorkersCompTemplate,
   submitClaim,
 } from './+state';
-import { sanitizeForPersistence } from './+state/claim.sanitize';
 import { CryptoStorageService } from './services/crypto-storage.service';
 import { ClaimDraftService } from './services/claim-draft.service';
 import { mockApiInterceptor } from './services/mock-api.interceptor';
@@ -40,7 +39,7 @@ describe('Negative Security Tests', () => {
     expect(result.firstName).toBe('Jane');
   });
 
-  it('sanitizeForPersistence is the only code path writing to draftService', fakeAsync(() => {
+  it('sanitizeForPersistence is the only code path writing to draftService', async () => {
     TestBed.configureTestingModule({
       providers: [
         provideStore({ [claimFeature.name]: claimFeature.reducer }),
@@ -63,51 +62,53 @@ describe('Negative Security Tests', () => {
         borrower: { ...initialClaimState.borrower, firstName: 'Jane', ssnLastFour: '1234' },
       }),
     );
-    tick(2000);
+    await new Promise((r) => setTimeout(r, 2100)); // Wait for debounce
 
     if (saveSpy.mock.calls.length > 0) {
       const savedDraft = saveSpy.mock.calls[0][0];
       expect(savedDraft.borrower.ssnLastFour).toBe('');
     }
-  }));
+  });
 
-  it('localStorage is never written to by any code path', fakeAsync(() => {
-    const originalSetItem = localStorage.setItem;
-    const calls: any[][] = [];
-    localStorage.setItem = (...args: any[]) => {
-      calls.push(args);
-      return originalSetItem.apply(localStorage, args);
+  it('localStorage is never written to by any code path', async () => {
+    const originalSetItem = localStorage.setItem.bind(localStorage);
+    const calls: [string, string][] = [];
+    localStorage.setItem = (key: string, value: string) => {
+      calls.push([key, value]);
+      originalSetItem(key, value);
     };
 
-    TestBed.configureTestingModule({
-      providers: [
-        provideStore({ [claimFeature.name]: claimFeature.reducer }),
-        provideEffects({
-          autoSaveDraft,
-          loadDraft,
-          clearDraftOnReset,
-          fetchWorkersCompTemplate,
-          submitClaim,
+    try {
+      TestBed.configureTestingModule({
+        providers: [
+          provideStore({ [claimFeature.name]: claimFeature.reducer }),
+          provideEffects({
+            autoSaveDraft,
+            loadDraft,
+            clearDraftOnReset,
+            fetchWorkersCompTemplate,
+            submitClaim,
+          }),
+          provideHttpClient(withInterceptors([mockApiInterceptor])),
+        ],
+      });
+      const store = TestBed.inject(Store);
+
+      store.dispatch(
+        ClaimActions.saveBorrowerInfo({
+          borrower: { ...initialClaimState.borrower, firstName: 'Jane' },
         }),
-        provideHttpClient(withInterceptors([mockApiInterceptor])),
-      ],
-    });
-    const store = TestBed.inject(Store);
+      );
+      await new Promise((r) => setTimeout(r, 2100)); // Wait for debounce
 
-    store.dispatch(
-      ClaimActions.saveBorrowerInfo({
-        borrower: { ...initialClaimState.borrower, firstName: 'Jane' },
-      }),
-    );
-    tick(2000);
-
-    const localStorageCalls = calls.filter(
-      ([key], i) => key !== 'nx-runfile-cache' && typeof key === 'string' && !key.startsWith('__nx_')
-    );
-    expect(localStorageCalls.length).toBe(0);
-
-    localStorage.setItem = originalSetItem;
-  }));
+      const localStorageCalls = calls.filter(
+        ([key]) => key !== 'nx-runfile-cache' && typeof key === 'string' && !key.startsWith('__nx_')
+      );
+      expect(localStorageCalls.length).toBe(0);
+    } finally {
+      localStorage.setItem = originalSetItem;
+    }
+  });
 
   it('expired TTL draft cannot be loaded even with valid key', async () => {
     const service = new CryptoStorageService();
@@ -132,14 +133,16 @@ describe('Negative Security Tests', () => {
       configurable: true,
     });
 
-    const service = new CryptoStorageService();
-    await expect(service.save(initialClaimState)).rejects.toThrow();
-    expect(sessionStorage.getItem('bp_draft_enc')).toBeNull();
-
-    Object.defineProperty(globalThis.crypto, 'subtle', {
-      value: original,
-      writable: true,
-      configurable: true,
-    });
+    try {
+      const service = new CryptoStorageService();
+      await expect(service.save(initialClaimState)).rejects.toThrow();
+      expect(sessionStorage.getItem('bp_draft_enc')).toBeNull();
+    } finally {
+      Object.defineProperty(globalThis.crypto, 'subtle', {
+        value: original,
+        writable: true,
+        configurable: true,
+      });
+    }
   });
 });
