@@ -24,4 +24,12 @@ describe('CryptoUnavailableComponent', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.textContent).toContain('Please use Chrome or Edge');
   });
+
+  it('has role="alert" and aria-live="assertive"', () => {
+    fixture = TestBed.createComponent(CryptoUnavailableComponent);
+    fixture.detectChanges();
+    const el = fixture.nativeElement.querySelector('[data-testid="crypto-unavailable"]');
+    expect(el.getAttribute('role')).toBe('alert');
+    expect(el.getAttribute('aria-live')).toBe('assertive');
+  });
 });

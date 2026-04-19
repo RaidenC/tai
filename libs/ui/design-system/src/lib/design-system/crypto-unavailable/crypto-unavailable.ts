@@ -4,7 +4,12 @@ import { Component, input } from '@angular/core';
   selector: 'tai-crypto-unavailable',
   standalone: true,
   template: `
-    <div class="crypto-unavailable" data-testid="crypto-unavailable">
+    <div
+      class="crypto-unavailable"
+      role="alert"
+      aria-live="assertive"
+      data-testid="crypto-unavailable"
+    >
       <h2>Secure Connection Required</h2>
       <p>{{ message() }}</p>
       <p>Please ensure you are accessing this application over HTTPS.</p>
