@@ -9,13 +9,17 @@ import { Component, input, output } from '@angular/core';
         class="security-alert"
         [class.security-alert--warning]="severity() === 'warning'"
         [class.security-alert--info]="severity() === 'info'"
+        role="alert"
+        aria-live="polite"
         data-testid="security-alert"
       >
-        <span class="security-alert__icon">&#x1f512;</span>
+        <span class="security-alert__icon" aria-hidden="true">&#x1f512;</span>
         <span class="security-alert__message">{{ message() }}</span>
         @if (dismissible()) {
           <button
+            type="button"
             class="security-alert__dismiss"
+            aria-label="Dismiss alert"
             (click)="dismissed.emit()"
             data-testid="security-alert-dismiss"
           >

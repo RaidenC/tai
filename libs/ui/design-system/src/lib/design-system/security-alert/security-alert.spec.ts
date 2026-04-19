@@ -51,4 +51,24 @@ describe('SecurityAlertComponent', () => {
     btn.click();
     expect(dismissed).toBe(true);
   });
+
+  it('has role="alert" and aria-live="polite" when visible', () => {
+    fixture = TestBed.createComponent(SecurityAlertComponent);
+    fixture.componentRef.setInput('message', 'Re-enter SSN');
+    fixture.componentRef.setInput('visible', true);
+    fixture.detectChanges();
+    const alert = fixture.nativeElement.querySelector('[data-testid="security-alert"]');
+    expect(alert.getAttribute('role')).toBe('alert');
+    expect(alert.getAttribute('aria-live')).toBe('polite');
+  });
+
+  it('dismiss button has aria-label', () => {
+    fixture = TestBed.createComponent(SecurityAlertComponent);
+    fixture.componentRef.setInput('message', 'Dismiss me');
+    fixture.componentRef.setInput('visible', true);
+    fixture.componentRef.setInput('dismissible', true);
+    fixture.detectChanges();
+    const btn = fixture.nativeElement.querySelector('[data-testid="security-alert-dismiss"]');
+    expect(btn.getAttribute('aria-label')).toBe('Dismiss alert');
+  });
 });
