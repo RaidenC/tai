@@ -1,3 +1,4 @@
+import { TestBed } from '@angular/core/testing';
 import { HttpClient } from '@angular/common/http';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ClaimDraftService } from './claim-draft.service';
@@ -15,16 +16,24 @@ describe('ClaimDraftService', () => {
     borrower: { ...initialClaimState.borrower, firstName: 'Jane' },
   } as any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     patchSpy = vi.fn().mockReturnValue({ subscribe: (cb: any) => cb() });
     getSpy = vi.fn().mockReturnValue({ subscribe: (cb: any) => cb(mockDraft) });
 
-    httpClient = {
-      patch: patchSpy,
-      get: getSpy,
-    } as any;
+    const TestProvider = {
+      provide: HttpClient,
+      useValue: {
+        patch: patchSpy,
+        get: getSpy,
+      },
+    };
 
-    service = new ClaimDraftService(httpClient);
+    TestBed.configureTestingModule({
+      providers: [ClaimDraftService, TestProvider],
+    });
+
+    service = TestBed.inject(ClaimDraftService);
+    httpClient = TestBed.inject(HttpClient);
   });
 
   it('saveDraft sends PATCH to /api/claims/draft', () => {

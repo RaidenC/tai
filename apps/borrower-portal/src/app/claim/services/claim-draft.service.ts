@@ -1,11 +1,11 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { DisabilityClaimDraft } from '../+state/claim.models';
 
 @Injectable({ providedIn: 'root' })
 export class ClaimDraftService {
-  constructor(private http: HttpClient) {}
+  private readonly http = inject(HttpClient);
 
   saveDraft(draft: DisabilityClaimDraft): Observable<void> {
     return this.http.patch<void>('/api/claims/draft', draft);
