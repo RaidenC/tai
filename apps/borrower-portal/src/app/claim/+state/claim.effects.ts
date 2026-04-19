@@ -223,16 +223,17 @@ export const autoSaveDraft = createEffect(
           map(() => ClaimActions.draftSaved()),
           catchError((apiError) => {
             // SECURITY: Fallback to encrypted sessionStorage on API failure
-            // Log the API failure first
             securityLogger.log('ENCRYPT_FAIL', `API error: ${apiError.message}`);
 
             // Attempt encrypted sessionStorage fallback
             return from(cryptoStorage.save(sanitized)).pipe(
               tap(() => securityLogger.log('DRAFT_ENCRYPTED', 'Fallback to sessionStorage succeeded')),
-              map(() => ClaimActions.draftSaved()),
+              map(() =>
+                ClaimActions.draftSaveError({
+                  message: 'Draft saved locally (encrypted). Reconnect to sync.',
+                }),
+              ),
               catchError((cryptoError) => {
-                // SECURITY: If both API and crypto fail, log error and notify user
-                // Do NOT silently fail - user must know their data is not saved
                 securityLogger.log('ENCRYPT_FAIL', `Crypto fallback failed: ${cryptoError.message}`);
                 return of(ClaimActions.draftSaveError({
                   message: 'Could not save draft. Please check your connection.',

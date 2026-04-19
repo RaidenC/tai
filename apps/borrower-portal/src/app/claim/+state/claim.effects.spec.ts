@@ -115,6 +115,28 @@ describe('Claim Effects — autoSaveDraft', () => {
     vi.useRealTimers();
   });
 
+  it('dispatches draftSaveError with "saved locally" message when API fails but crypto fallback succeeds', async () => {
+    vi.useFakeTimers();
+    draftService.saveDraft.mockReturnValue(throwError(() => new Error('API down')));
+    cryptoStorage.save.mockResolvedValue(undefined);
+    actions$ = of(ClaimActions.saveBorrowerInfo({ borrower: testState.borrower }));
+
+    const results: Action[] = [];
+    TestBed.runInInjectionContext(() => {
+      const effect = autoSaveDraft(actions$, store, draftService, cryptoStorage, securityLogger);
+      effect.subscribe((a) => results.push(a));
+    });
+
+    vi.advanceTimersByTime(2000);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(cryptoStorage.save).toHaveBeenCalled();
+    expect(results[0].type).toBe('[Claim] Draft Save Error');
+    expect((results[0] as any).message).toContain('locally');
+    vi.useRealTimers();
+  });
+
   it('dispatches draftSaveError when both API and crypto fail', async () => {
     vi.useFakeTimers();
     draftService.saveDraft.mockReturnValue(throwError(() => new Error('API down')));
