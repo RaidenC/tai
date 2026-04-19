@@ -16,8 +16,9 @@
  *
  * Why not just use component state or a BehaviorSubject service?
  * Because this state must survive route navigation (the user jumps between
- * 4 different Angular routes), survive page refresh (via localStorage
- * meta-reducer), and be composable across steps (selectCanSubmit needs
+ * 4 different Angular routes), survive page refresh (via the encrypted
+ * sessionStorage fallback managed by the autoSaveDraft/loadDraft effects),
+ * and be composable across steps (selectCanSubmit needs
  * data from ALL 4 steps). NgRx gives us all three for free.
  */
 
@@ -96,7 +97,8 @@ export interface ClaimDocuments {
  *   maps step numbers to routes, keeping state decoupled from routing.
  * - `documents` stores METADATA only (filename, size, timestamp).
  *   Actual file blobs live in IndexedDB via DocumentStorageService.
- *   This keeps the NgRx state small enough for localStorage (~1KB).
+ *   This keeps the NgRx state small enough for the encrypted
+ *   sessionStorage fallback (~1KB).
  * - `medicalProviders` is a plain array, not @ngrx/entity EntityState.
  *   With a max of 5 items, the normalized ids[]/entities{} pattern
  *   would add complexity without performance benefit.
@@ -119,8 +121,8 @@ export interface DisabilityClaimDraft {
 
 /**
  * Initial state — every field starts empty/default.
- * The localStorage meta-reducer will overwrite this with saved data
- * on app startup if a previous draft exists.
+ * The `loadDraft` effect will overwrite this with saved data on app
+ * startup if a previous draft exists (API-first, crypto fallback).
  */
 export const initialClaimState: DisabilityClaimDraft = {
   claimId: null,

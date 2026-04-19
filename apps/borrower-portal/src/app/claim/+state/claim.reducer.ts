@@ -185,8 +185,9 @@ export const claimFeature = createFeature({
 
     /**
      * Nuclear option: returns to the initial blank state.
-     * The meta-reducer will persist this to localStorage too,
-     * effectively wiping the saved draft.
+     * The `clearDraftOnReset` effect picks up this action and clears
+     * both the server-side draft (via API PATCH with initial state)
+     * and the encrypted sessionStorage fallback.
      */
     on(ClaimActions.resetClaim, (): DisabilityClaimDraft => ({
       ...initialClaimState,

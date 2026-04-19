@@ -3,7 +3,8 @@
  *
  * NgRx Concept: Effects as Side-Effect Managers
  * Effects listen for specific actions and perform side-effects: API calls,
- * localStorage writes, navigation, logging. They are the ONLY place where
+ * encrypted sessionStorage writes, navigation, logging. They are the ONLY
+ * place where
  * async or impure operations should happen in an NgRx app.
  *
  * Why not put API calls in components?

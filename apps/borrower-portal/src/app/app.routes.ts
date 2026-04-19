@@ -5,8 +5,9 @@ import { ClaimWizardComponent } from './claim/claim-wizard.component';
 /**
  * App Routes — Borrower Portal Wizard
  *
- * The claim state is eagerly loaded because NgRx store
- * initialization happens in app.config.ts for localStorage hydration.
+ * The claim state is eagerly loaded because NgRx store initialization
+ * runs the `loadDraft` effect on ROOT_EFFECTS_INIT (API-first, encrypted
+ * sessionStorage fallback).
  *
  * Step components live in the app layer to access design-system
  * components like secure-input.
