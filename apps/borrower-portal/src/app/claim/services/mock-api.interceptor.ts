@@ -3,9 +3,17 @@ import {
   HttpResponse,
   HttpErrorResponse,
 } from '@angular/common/http';
-import { Observable, of, throwError } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { DisabilityClaimDraft } from '../+state/claim.models';
 
+/**
+ * In-memory store simulating a real backend for the draft API.
+ *
+ * SECURITY: We intentionally do NOT use sessionStorage here. The spec
+ * forbids any unencrypted persistence of draft PII. The crypto fallback
+ * path (CryptoStorageService) is the only authorized cross-refresh store
+ * and it uses AES-GCM. This mock only lives for the lifetime of the tab.
+ */
 const draftStore = new Map<string, DisabilityClaimDraft>();
 const MOCK_USER_ID = 'mock-user-001';
 
