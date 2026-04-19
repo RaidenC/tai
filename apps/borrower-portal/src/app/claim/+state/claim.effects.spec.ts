@@ -171,6 +171,28 @@ describe('Claim Effects — autoSaveDraft', () => {
     expect(securityLogger.log).toHaveBeenCalledWith('PII_STRIPPED', expect.any(String));
     vi.useRealTimers();
   });
+
+  it('does not log ENCRYPT_FAILED when only the API fails', async () => {
+    vi.useFakeTimers();
+    draftService.saveDraft = vi.fn().mockReturnValue(throwError(() => new Error('API down')));
+    cryptoStorage.save = vi.fn().mockResolvedValue(undefined);
+
+    actions$ = of(ClaimActions.saveBorrowerInfo({ borrower: testState.borrower }));
+
+    TestBed.runInInjectionContext(() => {
+      const effect = autoSaveDraft(actions$, store, draftService, cryptoStorage, securityLogger);
+      effect.subscribe();
+    });
+
+    vi.advanceTimersByTime(2000);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    const loggedTypes = (securityLogger.log as any).mock.calls.map((c: any[]) => c[0]);
+    expect(loggedTypes).not.toContain('ENCRYPT_FAILED');
+    expect(loggedTypes).toContain('DRAFT_ENCRYPTED'); // fallback success is logged
+    vi.useRealTimers();
+  });
 });
 
 describe('Claim Effects — loadDraft', () => {

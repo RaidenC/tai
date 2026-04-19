@@ -222,8 +222,11 @@ export const autoSaveDraft = createEffect(
         return draftService.saveDraft(sanitized).pipe(
           map(() => ClaimActions.draftSaved()),
           catchError((apiError) => {
-            // SECURITY: Fallback to encrypted sessionStorage on API failure
-            securityLogger.log('ENCRYPT_FAILED', `API error: ${apiError.message}`);
+            // SECURITY: Fallback to encrypted sessionStorage on API failure.
+            // We do NOT log an encryption failure here — the failure is the
+            // API, not the crypto layer. The fallback pipeline will log
+            // DRAFT_ENCRYPTED on success or ENCRYPT_FAILED on real crypto error.
+            void apiError;
 
             // Attempt encrypted sessionStorage fallback
             return from(cryptoStorage.save(sanitized)).pipe(
