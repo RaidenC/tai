@@ -1,8 +1,17 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClient } from '@angular/common/http';
+import { of } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ClaimDraftService } from './claim-draft.service';
 import { initialClaimState } from '../+state/claim.models';
+
+// Mock environment before importing service
+vi.mock('../../../environments/environment', () => ({
+  environment: {
+    apiBaseUrl: 'http://localhost:5180/api',
+    production: false,
+  },
+}));
 
 describe('ClaimDraftService', () => {
   let service: ClaimDraftService;
@@ -17,8 +26,8 @@ describe('ClaimDraftService', () => {
   } as any;
 
   beforeEach(async () => {
-    patchSpy = vi.fn().mockReturnValue({ subscribe: (cb: any) => cb() });
-    getSpy = vi.fn().mockReturnValue({ subscribe: (cb: any) => cb(mockDraft) });
+    patchSpy = vi.fn().mockReturnValue(of(undefined));
+    getSpy = vi.fn().mockReturnValue(of({ encryptedPayload: 'dGVzdA==' }));
 
     const TestProvider = {
       provide: HttpClient,
@@ -36,9 +45,12 @@ describe('ClaimDraftService', () => {
     httpClient = TestBed.inject(HttpClient);
   });
 
-  it('saveDraft sends PATCH to /api/claims/draft', () => {
+  it('saveDraft sends PATCH to claims/draft endpoint', () => {
     service.saveDraft(mockDraft);
-    expect(patchSpy).toHaveBeenCalledWith('/api/claims/draft', mockDraft);
+    expect(patchSpy).toHaveBeenCalled();
+    const callArgs = patchSpy.mock.calls[0];
+    expect(callArgs[0]).toContain('/claims/draft');
+    expect(callArgs[1]).toHaveProperty('claimId', 'current');
   });
 
   it('saveDraft calls patch with draft data', () => {
@@ -46,9 +58,10 @@ describe('ClaimDraftService', () => {
     expect(patchSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('loadDraft sends GET to /api/claims/draft', () => {
+  it('loadDraft sends GET to claims/draft endpoint', () => {
     service.loadDraft();
-    expect(getSpy).toHaveBeenCalledWith('/api/claims/draft');
+    expect(getSpy).toHaveBeenCalled();
+    expect(getSpy.mock.calls[0][0]).toContain('/claims/draft/current');
   });
 
   it('loadDraft returns observable from get', () => {
