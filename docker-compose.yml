@@ -2,9 +2,6 @@ services:
   postgres:
     image: postgres:17
     container_name: portal-db
-    # Hosts two schemas: 'public' (PortalDbContext / portal-api) and
-    # 'payment_protection' (PaymentProtectionDbContext / borrower-portal-api).
-    # Each DbContext owns its own __EFMigrationsHistory table inside its schema.
     environment:
       POSTGRES_DB: portal
       POSTGRES_USER: postgres
@@ -14,5 +11,18 @@ services:
     volumes:
       - portal-data:/var/lib/postgresql/data
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: portal-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: portal
+      RABBITMQ_DEFAULT_PASS: portal
+    ports:
+      - "5672:5672"        # AMQP
+      - "15672:15672"      # Management UI: http://localhost:15672 (portal/portal)
+    volumes:
+      - portal-rabbitmq:/var/lib/rabbitmq
+
 volumes:
   portal-data:
+  portal-rabbitmq:
