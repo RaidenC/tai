@@ -40,6 +40,7 @@ public class ClaimDraft : IAuditableEntity {
     ClaimId = claimId;
     EncryptedPayload = encryptedPayload;
     ExpiresAt = expiresAt;
+    CreatedAt = DateTimeOffset.UtcNow;
   }
 
   public void Update(byte[] encryptedPayload, DateTimeOffset expiresAt) {
@@ -48,6 +49,7 @@ public class ClaimDraft : IAuditableEntity {
     }
     EncryptedPayload = encryptedPayload;
     ExpiresAt = expiresAt;
+    LastModifiedAt = DateTimeOffset.UtcNow;
   }
 
   public bool IsExpired(DateTimeOffset now) => now >= ExpiresAt;
