@@ -56,11 +56,11 @@ export const {
 export const selectBorrowerValid = createSelector(
   selectBorrower,
   (borrower) =>
-    borrower.firstName.trim().length > 0 &&
-    borrower.lastName.trim().length > 0 &&
-    borrower.ssnLastFour.trim().length === 4 &&
-    borrower.phone.trim().length > 0 &&
-    borrower.email.trim().length > 0
+    borrower?.firstName?.trim()?.length > 0 &&
+    borrower?.lastName?.trim()?.length > 0 &&
+    borrower?.ssnLastFour?.trim()?.length === 4 &&
+    borrower?.phone?.trim()?.length > 0 &&
+    borrower?.email?.trim()?.length > 0
 );
 
 /**

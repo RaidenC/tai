@@ -23,6 +23,7 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
 import {
   BorrowerInfo,
+  DisabilityClaimDraft,
   DocumentMeta,
   IncidentDetails,
   MedicalProvider,
@@ -158,5 +159,11 @@ export const ClaimActions = createActionGroup({
      * when the user explicitly clears their draft.
      */
     'Reset Claim': emptyProps(),
+
+    // ── Draft Persistence ───────────────────────────
+    'Draft Saved': emptyProps(),
+    'Draft Save Error': props<{ message: string }>(),
+    'Draft Loaded': props<{ draft: DisabilityClaimDraft }>(),
+    'Draft Load Error': props<{ message: string }>(),
   },
 });

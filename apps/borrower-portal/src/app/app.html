@@ -1,1 +1,5 @@
-<router-outlet></router-outlet>
+@if (cryptoAvailable()) {
+  <router-outlet></router-outlet>
+} @else {
+  <tai-crypto-unavailable></tai-crypto-unavailable>
+}

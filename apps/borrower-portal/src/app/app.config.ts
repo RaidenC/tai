@@ -1,21 +1,10 @@
-/**
- * BORROWER PORTAL — Application Configuration
- *
- * This is where NgRx is bootstrapped for the entire app.
- * provideStore() creates the global store with the meta-reducer.
- * provideEffects() registers the claim effects.
- * provideStoreDevtools() enables Redux DevTools (dev-only).
- *
- * The claim feature state is registered here at the app level
- * (not lazy-loaded) because the meta-reducer needs to hydrate
- * from localStorage on app startup, before any routes load.
- */
 import {
   ApplicationConfig,
   isDevMode,
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import { provideRouter } from '@angular/router';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideStore } from '@ngrx/store';
 import { provideEffects } from '@ngrx/effects';
 import { provideStoreDevtools } from '@ngrx/store-devtools';
@@ -23,47 +12,41 @@ import { provideStoreDevtools } from '@ngrx/store-devtools';
 import { appRoutes } from './app.routes';
 import {
   claimFeature,
-  localStorageMetaReducer,
   fetchWorkersCompTemplate,
   submitClaim,
+  autoSaveDraft,
+  loadDraft,
+  clearDraftOnReset,
 } from './claim/+state';
+import { mockApiInterceptor } from './claim/services/mock-api.interceptor';
+import {
+  stateSanitizer,
+  actionSanitizer,
+} from './claim/claim.devtools-sanitizers';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes),
 
-    /**
-     * provideStore() sets up the global NgRx store.
-     *
-     * The first argument registers feature reducers. We register the claim
-     * feature here (not via provideState in a lazy route) so the meta-reducer
-     * can hydrate the claim slice on app startup.
-     *
-     * The second argument provides store configuration, including meta-reducers.
-     * The localStorageMetaReducer wraps ALL reducers and handles persistence.
-     */
-    provideStore(
-      { [claimFeature.name]: claimFeature.reducer },
-      { metaReducers: [localStorageMetaReducer] }
-    ),
+    provideHttpClient(withInterceptors([mockApiInterceptor])),
 
-    /**
-     * provideEffects() registers side-effect handlers.
-     * These are functional effects (NgRx v15+ pattern) — just functions,
-     * no classes needed.
-     */
-    provideEffects({ fetchWorkersCompTemplate, submitClaim }),
+    provideStore({ [claimFeature.name]: claimFeature.reducer }),
 
-    /**
-     * Redux DevTools integration — only in development.
-     * Opens the browser extension's time-travel debugger.
-     * maxAge limits the action history to 50 entries to avoid memory bloat.
-     */
+    provideEffects({
+      fetchWorkersCompTemplate,
+      submitClaim,
+      autoSaveDraft,
+      loadDraft,
+      clearDraftOnReset,
+    }),
+
     provideStoreDevtools({
       maxAge: 50,
       logOnly: !isDevMode(),
       name: 'Borrower Portal — NgRx Store',
+      stateSanitizer,
+      actionSanitizer,
     }),
   ],
 };

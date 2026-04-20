@@ -18,8 +18,9 @@
  *
  * Edge case: Deep links. If the user navigates directly to /claim/medical-providers
  * (step 3), the guard checks steps 1 and 2. If they're invalid, the guard blocks
- * and redirects to step 1. The localStorage meta-reducer ensures the store has
- * the user's previous data even on a fresh page load.
+ * and redirects to step 1. The `loadDraft` effect (dispatched from
+ * ROOT_EFFECTS_INIT) ensures the store has the user's previous data even on a
+ * fresh page load.
  */
 
 import { inject } from '@angular/core';

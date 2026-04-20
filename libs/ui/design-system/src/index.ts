@@ -18,3 +18,5 @@ export * from './lib/design-system/notification-panel/notification-panel.compone
 export * from './lib/design-system/notification-panel/notification-panel.types';
 export * from './lib/design-system/toast/index';
 export * from './lib/wizard/wizard.component';
+export * from './lib/design-system/security-alert/security-alert';
+export * from './lib/design-system/crypto-unavailable/crypto-unavailable';

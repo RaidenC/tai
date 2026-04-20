@@ -3,7 +3,8 @@
  *
  * NgRx Concept: Effects as Side-Effect Managers
  * Effects listen for specific actions and perform side-effects: API calls,
- * localStorage writes, navigation, logging. They are the ONLY place where
+ * encrypted sessionStorage writes, navigation, logging. They are the ONLY
+ * place where
  * async or impure operations should happen in an NgRx app.
  *
  * Why not put API calls in components?
@@ -25,18 +26,28 @@
 
 import { inject, InjectionToken } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
+import { ROOT_EFFECTS_INIT } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
 import {
   catchError,
+  debounceTime,
   delay,
+  exhaustMap,
   filter,
+  from,
   map,
   of,
   switchMap,
+  tap,
   withLatestFrom,
 } from 'rxjs';
 import { ClaimActions } from './claim.actions';
 import { selectClaimState, selectIsWorkRelated } from './claim.selectors';
+import { ClaimDraftService } from '../services/claim-draft.service';
+import { CryptoStorageService } from '../services/crypto-storage.service';
+import { SecurityLoggerService } from '../services/security-logger.service';
+import { sanitizeForPersistence } from './claim.sanitize';
+import { initialClaimState } from './claim.models';
 
 /**
  * REPLAY_MODE Injection Token
@@ -169,4 +180,142 @@ export const submitClaim = createEffect(
     );
   },
   { functional: true }
+);
+
+/**
+ * autoSaveDraft$
+ *
+ * Debounced auto-save effect that triggers on any claim state change.
+ * SECURITY: Always sanitizes data BEFORE persistence to strip SSN.
+ * Falls back to encrypted sessionStorage if API fails.
+ */
+export const autoSaveDraft = createEffect(
+  (
+    actions$ = inject(Actions),
+    store = inject(Store),
+    draftService = inject(ClaimDraftService),
+    cryptoStorage = inject(CryptoStorageService),
+    securityLogger = inject(SecurityLoggerService),
+    replayMode = inject(REPLAY_MODE),
+  ) => {
+    return actions$.pipe(
+      ofType(
+        ClaimActions.saveBorrowerInfo,
+        ClaimActions.saveIncidentDetails,
+        ClaimActions.setWorkRelated,
+        ClaimActions.addProvider,
+        ClaimActions.updateProvider,
+        ClaimActions.removeProvider,
+        ClaimActions.saveDocumentMeta,
+        ClaimActions.removeDocument,
+        ClaimActions.setCurrentStep,
+      ),
+      // SECURITY: Skip auto-save during DevTools time-travel replay
+      filter(() => !replayMode.active),
+      debounceTime(2000),
+      withLatestFrom(store.select(selectClaimState)),
+      exhaustMap(([, claimState]) => {
+        // SECURITY: Always sanitize before any write
+        const sanitized = sanitizeForPersistence(claimState);
+        securityLogger.log('PII_STRIPPED', 'ssnLastFour removed before persistence');
+
+        return draftService.saveDraft(sanitized).pipe(
+          map(() => ClaimActions.draftSaved()),
+          catchError((apiError) => {
+            // SECURITY: Fallback to encrypted sessionStorage on API failure.
+            // We do NOT log an encryption failure here — the failure is the
+            // API, not the crypto layer. The fallback pipeline will log
+            // DRAFT_ENCRYPTED on success or ENCRYPT_FAILED on real crypto error.
+            void apiError;
+
+            // Attempt encrypted sessionStorage fallback
+            return from(cryptoStorage.save(sanitized)).pipe(
+              tap(() => securityLogger.log('DRAFT_ENCRYPTED', 'Fallback to sessionStorage succeeded')),
+              map(() =>
+                ClaimActions.draftSaveError({
+                  message: 'Draft saved locally (encrypted). Reconnect to sync.',
+                }),
+              ),
+              catchError((cryptoError) => {
+                securityLogger.log('ENCRYPT_FAILED', `Crypto fallback failed: ${cryptoError.message}`);
+                return of(ClaimActions.draftSaveError({
+                  message: 'Could not save draft. Please check your connection.',
+                }));
+              }),
+            );
+          }),
+        );
+      }),
+    );
+  },
+  { functional: true },
+);
+
+/**
+ * loadDraft$
+ *
+ * Loads draft on app initialization. Tries API first (primary),
+ * falls back to encrypted sessionStorage on 404/error.
+ */
+export const loadDraft = createEffect(
+  (
+    actions$ = inject(Actions),
+    draftService = inject(ClaimDraftService),
+    cryptoStorage = inject(CryptoStorageService),
+    replayMode = inject(REPLAY_MODE),
+  ) => {
+    return actions$.pipe(
+      ofType(ROOT_EFFECTS_INIT),
+      // SECURITY: Skip loading during DevTools time-travel replay
+      filter(() => !replayMode.active),
+      switchMap(() =>
+        draftService.loadDraft().pipe(
+          map((draft) => ClaimActions.draftLoaded({ draft })),
+          catchError(() =>
+            from(cryptoStorage.load()).pipe(
+              map((draft) =>
+                draft
+                  ? ClaimActions.draftLoaded({ draft })
+                  : ClaimActions.draftLoadError({ message: 'No saved draft found.' }),
+              ),
+              catchError(() =>
+                of(ClaimActions.draftLoadError({ message: 'Could not restore draft.' })),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  },
+  { functional: true },
+);
+
+/**
+ * clearDraftOnReset$
+ *
+ * Clears both API and local storage on claim reset.
+ * Writes initial state to API to clear server draft.
+ */
+export const clearDraftOnReset = createEffect(
+  (
+    actions$ = inject(Actions),
+    draftService = inject(ClaimDraftService),
+    cryptoStorage = inject(CryptoStorageService),
+  ) => {
+    return actions$.pipe(
+      ofType(ClaimActions.resetClaim),
+      tap(() => cryptoStorage.clear()),
+      switchMap(() =>
+        draftService.saveDraft(initialClaimState).pipe(
+          map(() => ClaimActions.draftSaved()),
+          catchError(() =>
+            of(ClaimActions.draftSaveError({
+              message: 'Could not clear server draft.',
+            })),
+          ),
+        ),
+      ),
+    );
+  },
+  { functional: true },
 );

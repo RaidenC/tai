@@ -62,14 +62,14 @@
 **Files:**
 - Modify: `package.json`
 
-- [ ] **Step 1: Install fast-check as dev dependency**
+- [x] **Step 1: Install fast-check as dev dependency** (commit `9542dea`)
 
 ```bash
 cd /home/matt/War\ Room/War\ Room/01_Projects/Portal_POC/tai-portal/.worktrees/frontend-workspace
 npm install --save-dev fast-check
 ```
 
-- [ ] **Step 2: Verify installation**
+- [x] **Step 2: Verify installation**
 
 ```bash
 npx fast-check --version
@@ -77,7 +77,7 @@ npx fast-check --version
 
 Expected: Version number printed (e.g., `3.x.x`)
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add package.json package-lock.json
@@ -91,7 +91,7 @@ git commit -m "chore: add fast-check for property-based testing"
 **Files:**
 - Create: `apps/borrower-portal/src/app/claim/+state/claim.sanitize.spec.ts`
 
-- [ ] **Step 1: Write all sanitizer unit tests (RED)**
+- [x] **Step 1: Write all sanitizer unit tests (RED)** (commit `1de72ce`)
 
 ```typescript
 import { sanitizeForPersistence } from './claim.sanitize';
