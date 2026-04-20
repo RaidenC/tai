@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -7,6 +8,7 @@ using System.Threading.Tasks;
 using MediatR;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Application.Models;
 using Tai.Portal.Core.Domain.Entities;
@@ -18,6 +20,8 @@ using Tai.Portal.Core.Infrastructure.Persistence.Entities;
 namespace Tai.Portal.Core.Infrastructure.Persistence;
 
 public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
+  private readonly ILogger<PortalDbContext>? _logger;
+  private readonly List<Func<CancellationToken, Task>> _postCommitActions = new();
   private readonly ITenantService _tenantService;
   private readonly IServiceProvider _serviceProvider;
 
@@ -33,10 +37,28 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
   public PortalDbContext(
       DbContextOptions<PortalDbContext> options,
       ITenantService tenantService,
-      IServiceProvider serviceProvider)
+      IServiceProvider serviceProvider,
+      ILogger<PortalDbContext>? logger = null)
       : base(options) {
     _tenantService = tenantService;
     _serviceProvider = serviceProvider;
+    _logger = logger;
+  }
+
+  /// <summary>
+  /// Registers a callback to execute AFTER the current Unit of Work commits successfully.
+  /// Cleared automatically on rollback so nothing fires for a failed transaction.
+  /// </summary>
+  /// <remarks>
+  /// JUNIOR RATIONALE (Post-commit side effects):
+  /// Any side effect that should happen "only if the DB write succeeded"
+  /// (SignalR push, email send, external API call) MUST be registered here,
+  /// NOT called inline in a handler. Inline calls happen BEFORE commit, so
+  /// they fire even when the transaction later fails — same dual-write
+  /// hazard the outbox pattern exists to fix.
+  /// </remarks>
+  public void RegisterPostCommitAction(Func<CancellationToken, Task> action) {
+    _postCommitActions.Add(action);
   }
 
   public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) {
