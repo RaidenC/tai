@@ -5,6 +5,7 @@ import { DisabilityClaimDraft } from '../+state/claim.models';
 export class CryptoStorageService {
   private key: CryptoKey | null = null;
   private static readonly STORAGE_KEY = 'bp_draft_enc';
+  private static readonly KEY_STORAGE_KEY = 'bp_draft_key';
   private static readonly ALGORITHM = 'AES-GCM';
   private static readonly DRAFT_TTL_MS = 30 * 60 * 1000;
 
@@ -16,11 +17,30 @@ export class CryptoStorageService {
 
   private async getOrCreateKey(): Promise<CryptoKey> {
     if (!this.key) {
-      this.key = await crypto.subtle.generateKey(
-        { name: CryptoStorageService.ALGORITHM, length: 256 },
-        false,
-        ['encrypt', 'decrypt'],
-      );
+      // Try to load existing key from sessionStorage
+      const storedKey = sessionStorage.getItem(CryptoStorageService.KEY_STORAGE_KEY);
+      if (storedKey) {
+        const keyData = JSON.parse(storedKey);
+        this.key = await crypto.subtle.importKey(
+          'jwk',
+          keyData,
+          { name: CryptoStorageService.ALGORITHM },
+          false,
+          ['encrypt', 'decrypt'],
+        );
+      } else {
+        // Generate new key and persist it
+        this.key = await crypto.subtle.generateKey(
+          { name: CryptoStorageService.ALGORITHM, length: 256 },
+          true, // extractable: true so we can export/import
+          ['encrypt', 'decrypt'],
+        );
+        const exportedKey = await crypto.subtle.exportKey('jwk', this.key);
+        sessionStorage.setItem(
+          CryptoStorageService.KEY_STORAGE_KEY,
+          JSON.stringify(exportedKey),
+        );
+      }
     }
     return this.key;
   }

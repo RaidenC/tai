@@ -58,11 +58,13 @@ describe('CryptoStorageService', () => {
     expect(result).toBeNull();
   });
 
-  it('load returns null after key loss (new instance)', async () => {
+  it('load restores data after key loss (new instance) - key is persisted', async () => {
     await service.save(testState);
+    // Simulate page refresh - new service instance with new key
     const newService = new CryptoStorageService();
     const result = await newService.load();
-    expect(result).toBeNull();
+    // With key persistence, data should be restored
+    expect(result).toEqual(testState);
   });
 
   it('load clears corrupt data from sessionStorage', async () => {

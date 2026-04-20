@@ -13,12 +13,31 @@ import { DisabilityClaimDraft } from '../+state/claim.models';
  * forbids any unencrypted persistence of draft PII. The crypto fallback
  * path (CryptoStorageService) is the only authorized cross-refresh store
  * and it uses AES-GCM. This mock only lives for the lifetime of the tab.
+ *
+ * TO TEST FAILURE FALLBACK:
+ *   sessionStorage.setItem('__mock_fail__', 'true')
+ * To re-enable success:
+ *   sessionStorage.removeItem('__mock_fail__')
  */
 const draftStore = new Map<string, DisabilityClaimDraft>();
 const MOCK_USER_ID = 'mock-user-001';
 
 export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
+  // Toggle failure mode via: sessionStorage.setItem('__mock_fail__', 'true')
+  // To disable: sessionStorage.removeItem('__mock_fail__')
+  const shouldFail = sessionStorage.getItem('__mock_fail__') === 'true';
+
   if (req.url === '/api/claims/draft') {
+    if (shouldFail) {
+      return throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 500,
+            statusText: 'Internal Server Error',
+            url: req.url,
+          }),
+      );
+    }
     if (req.method === 'PATCH') {
       draftStore.set(MOCK_USER_ID, req.body as DisabilityClaimDraft);
       return of(

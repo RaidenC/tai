@@ -57,6 +57,13 @@ export class BorrowerInfoComponent implements OnInit {
             borrower.firstName.length > 0 && borrower.ssnLastFour.length === 0;
         }
       });
+
+    // Clear ssnReEntryRequired when user enters valid SSN
+    this.form.get('ssnLastFour')?.valueChanges.subscribe((value) => {
+      if (value && value.length === 4) {
+        this.ssnReEntryRequired = false;
+      }
+    });
   }
 
   /**
