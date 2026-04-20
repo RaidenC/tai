@@ -2,6 +2,9 @@ services:
   postgres:
     image: postgres:17
     container_name: portal-db
+    # Hosts two schemas: 'public' (PortalDbContext / portal-api) and
+    # 'payment_protection' (PaymentProtectionDbContext / borrower-portal-api).
+    # Each DbContext owns its own __EFMigrationsHistory table inside its schema.
     environment:
       POSTGRES_DB: portal
       POSTGRES_USER: postgres
