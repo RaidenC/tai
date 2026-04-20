@@ -4,7 +4,7 @@ import {
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import { provideRouter } from '@angular/router';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideHttpClient } from '@angular/common/http';
 import { provideStore } from '@ngrx/store';
 import { provideEffects } from '@ngrx/effects';
 import { provideStoreDevtools } from '@ngrx/store-devtools';
@@ -18,7 +18,6 @@ import {
   loadDraft,
   clearDraftOnReset,
 } from './claim/+state';
-import { mockApiInterceptor } from './claim/services/mock-api.interceptor';
 import {
   stateSanitizer,
   actionSanitizer,
@@ -29,7 +28,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(appRoutes),
 
-    provideHttpClient(withInterceptors([mockApiInterceptor])),
+    provideHttpClient(),
 
     provideStore({ [claimFeature.name]: claimFeature.reducer }),
 

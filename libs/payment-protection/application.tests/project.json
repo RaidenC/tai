@@ -1,0 +1,13 @@
+{
+  "name": "payment-protection-application-tests",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/payment-protection/application.tests",
+  "projectType": "library",
+  "tags": ["type:test", "scope:payment-protection", "layer:application"],
+  "targets": {
+    "test": {
+      "executor": "@nx-dotnet/core:test",
+      "options": { "configuration": "Debug" }
+    }
+  }
+}

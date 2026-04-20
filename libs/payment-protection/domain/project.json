@@ -1,0 +1,19 @@
+{
+  "name": "payment-protection-domain",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/payment-protection/domain",
+  "projectType": "library",
+  "tags": ["type:lib", "scope:payment-protection", "layer:domain"],
+  "targets": {
+    "build": {
+      "executor": "@nx-dotnet/core:build",
+      "options": {
+        "configuration": "Debug",
+        "noDependencies": true
+      },
+      "configurations": {
+        "production": { "configuration": "Release" }
+      }
+    }
+  }
+}

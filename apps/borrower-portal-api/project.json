@@ -1,0 +1,18 @@
+{
+  "name": "borrower-portal-api",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/borrower-portal-api",
+  "projectType": "application",
+  "tags": ["type:api", "scope:payment-protection"],
+  "targets": {
+    "build": {
+      "executor": "@nx-dotnet/core:build",
+      "options": { "configuration": "Debug", "noDependencies": true },
+      "configurations": { "production": { "configuration": "Release" } }
+    },
+    "serve": {
+      "executor": "@nx-dotnet/core:serve",
+      "options": { "launchProfile": "http" }
+    }
+  }
+}
