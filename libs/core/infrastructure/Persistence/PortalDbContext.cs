@@ -13,6 +13,7 @@ using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.Interfaces;
 using Tai.Portal.Core.Domain.ValueObjects;
 using Tai.Portal.Core.Infrastructure.Persistence.Interceptors;
+using Tai.Portal.Core.Infrastructure.Persistence.Entities;
 
 namespace Tai.Portal.Core.Infrastructure.Persistence;
 
@@ -27,6 +28,7 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
   public DbSet<AuditEntry> AuditLogs { get; set; }
   public DbSet<Privilege> Privileges { get; set; }
   public DbSet<UserPrivilege> UserPrivileges { get; set; }
+  public DbSet<OutboxMessage> OutboxMessages { get; set; }
 
   public PortalDbContext(
       DbContextOptions<PortalDbContext> options,
@@ -118,8 +120,8 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
       b.HasIndex(t => t.TenantHostname).IsUnique();
 
       // JUNIOR RATIONALE (Global Query Filter):
-      // This is our "Safety Net." It automatically adds "WHERE TenantId = ..." 
-      // to every query you write. You don't have to remember to filter data; 
+      // This is our "Safety Net." It automatically adds "WHERE TenantId = ..."
+      // to every query you write. You don't have to remember to filter data;
       // the database engine does it for you.
       b.HasQueryFilter(t => _tenantService.IsGlobalAccess || t.Id == _tenantService.TenantId);
     });
@@ -225,6 +227,29 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
         .HasForeignKey(up => up.PrivilegeId)
         .IsRequired()
         .OnDelete(DeleteBehavior.Cascade);
+    });
+
+    // Configure OutboxMessage — Transactional Outbox pattern (Stage 1B).
+    builder.Entity<OutboxMessage>(b => {
+      b.HasKey(m => m.Id);
+      b.Property(m => m.EventType).IsRequired().HasMaxLength(512);
+      b.Property(m => m.Payload).HasColumnType("jsonb").IsRequired();
+      b.Property(m => m.OccurredAt).IsRequired();
+      b.Property(m => m.Error).HasMaxLength(2000);
+
+      // JUNIOR RATIONALE (Partial Index):
+      // The publisher worker ONLY queries unprocessed rows
+      // (ProcessedAt IS NULL). A partial index is ~99% smaller than a
+      // full index on a table that's mostly processed history. Fast
+      // lookup on hot rows, tiny write overhead since the index entry
+      // only exists while the row is unprocessed and is removed when
+      // ProcessedAt transitions null -> timestamp.
+      b.HasIndex(m => m.OccurredAt)
+       .HasFilter("\"ProcessedAt\" IS NULL")
+       .HasDatabaseName("IX_OutboxMessages_Unprocessed");
+
+      // No multi-tenant query filter — outbox is an infrastructure-level
+      // table; the worker reads it as System.
     });
   }
 }
