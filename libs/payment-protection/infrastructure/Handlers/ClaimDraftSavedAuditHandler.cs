@@ -24,6 +24,11 @@ public class ClaimDraftSavedAuditHandler : INotificationHandler<ClaimDraftSavedE
   public async Task Handle(ClaimDraftSavedEvent notification, CancellationToken cancellationToken) {
     _logger.LogInformation("ClaimDraft saved: user={UserId} claim={ClaimId} at={SavedAt}",
       notification.UserId, notification.ClaimId, notification.SavedAt);
-    await _bus.PublishAsync(notification, cancellationToken);
+
+    try {
+      await _bus.PublishAsync(notification, cancellationToken);
+    } catch (Exception ex) {
+      _logger.LogError(ex, "Failed to publish ClaimDraftSavedEvent for claim {ClaimId}", notification.ClaimId);
+    }
   }
 }
