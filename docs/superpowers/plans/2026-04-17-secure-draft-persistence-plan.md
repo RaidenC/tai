@@ -14,50 +14,6 @@
 
 ---
 
-## Completed Tasks (35/35) — As of 2026-04-18
-
-| Task | Description | Commit | Status |
-|------|-------------|--------|--------|
-| 1 | Install fast-check | `9542dea` | ✅ |
-| 2 | sanitizeForPersistence tests | `1de72ce` | ✅ |
-| 3 | sanitizeForPersistence impl | `1de72ce` | ✅ |
-| 4 | SecurityLoggerService tests | `bacbdf3` | ✅ |
-| 5 | SecurityLoggerService impl | `bacbdf3` | ✅ |
-| 6 | CryptoStorageService tests | `067403e` | ✅ |
-| 7 | CryptoStorageService impl | `067403e` | ✅ |
-| 8 | ClaimDraftService tests | `775d21b` | ✅ |
-| 9 | ClaimDraftService impl | `775d21b` | ✅ |
-| 10 | mockApiInterceptor tests | `949b83e` | ✅ |
-| 11 | mockApiInterceptor impl | `949b83e` | ✅ |
-| 12 | SecurityAlertComponent tests | `c32d22c` | ✅ |
-| 13 | SecurityAlertComponent impl | `c32d22c` | ✅ |
-| 14 | SecurityAlertComponent Storybook | `7bc288d` | ✅ |
-| 15 | CryptoUnavailableComponent tests | `d74443b` | ✅ |
-| 16 | CryptoUnavailableComponent impl+stories | `d74443b` | ✅ |
-| 17 | Export design system components | `475b8a5` | ✅ |
-| 18 | Add draft persistence actions | `79f9e61` | ✅ |
-| 19 | Reducer draftLoaded tests | `6ec4b88` | ✅ |
-| 20 | Reducer draftLoaded impl | `6ec4b88` | ✅ |
-| 21 | Selector SSN edge case tests | `4e09cde` | ✅ |
-| 22 | DevTools Sanitizers tests | `b35bcc3` | ✅ |
-| 23 | DevTools Sanitizers impl | `b35bcc3` | ✅ |
-| 24 | Effects tests | `aa440d5` | ✅ |
-| 25 | Effects impl | `7c3ecf1` | ✅ |
-| 26 | Barrel exports + delete meta-reducer | `471f7bf` | ✅ |
-| 27 | Wire up app.config.ts | `75197cb` | ✅ |
-| 28 | CSP Meta Tag | `947da1f` | ✅ |
-| 29 | Crypto Availability Check | `6202d02` | ✅ |
-| 30 | SSN Re-Entry UX tests | `b3d46c7` | ✅ |
-| 31 | SSN Re-Entry UX impl | `b3d46c7` | ✅ |
-| 32 | Negative Security Tests | `aac083a` | ✅ |
-| 33 | Integration Tests | `e7ea288` | ✅ |
-| 34 | Run Full Test Suite | `780a882` | ✅ |
-| 35 | Smoke Test in Browser | `ac85520` | ✅ |
-
-**TDD Gap Note:** Task 18 was originally direct modification without test-first. Tests added in commit `79f9e61` to close the gap.
-
----
-
 ## File Map
 
 | File | Action | Responsibility |
