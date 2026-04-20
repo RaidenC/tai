@@ -66,7 +66,7 @@ describe('Claim Effects — autoSaveDraft', () => {
     vi.useFakeTimers();
     actions$ = of(ClaimActions.saveBorrowerInfo({ borrower: testState.borrower }));
 
-    let results: Action[] = [];
+    const results: Action[] = [];
     TestBed.runInInjectionContext(() => {
       const effect = autoSaveDraft(actions$, store, draftService, cryptoStorage, securityLogger);
       effect.subscribe((a) => results.push(a));
@@ -85,7 +85,7 @@ describe('Claim Effects — autoSaveDraft', () => {
     vi.useFakeTimers();
     actions$ = of(ClaimActions.saveBorrowerInfo({ borrower: testState.borrower }));
 
-    let results: Action[] = [];
+    const results: Action[] = [];
     TestBed.runInInjectionContext(() => {
       const effect = autoSaveDraft(actions$, store, draftService, cryptoStorage, securityLogger);
       effect.subscribe((a) => results.push(a));
@@ -143,7 +143,7 @@ describe('Claim Effects — autoSaveDraft', () => {
     cryptoStorage.save.mockReturnValue(Promise.reject(new Error('crypto failed')));
     actions$ = of(ClaimActions.saveBorrowerInfo({ borrower: testState.borrower }));
 
-    let results: Action[] = [];
+    const results: Action[] = [];
     TestBed.runInInjectionContext(() => {
       const effect = autoSaveDraft(actions$, store, draftService, cryptoStorage, securityLogger);
       effect.subscribe((a) => results.push(a));
@@ -217,7 +217,7 @@ describe('Claim Effects — loadDraft', () => {
     draftService.loadDraft.mockReturnValue(of(mockDraft));
     actions$ = of({ type: '@ngrx/effects/init' });
 
-    let results: Action[] = [];
+    const results: Action[] = [];
     TestBed.runInInjectionContext(() => {
       const effect = loadDraft(actions$, draftService, cryptoStorage);
       effect.subscribe((a) => results.push(a));
@@ -232,7 +232,7 @@ describe('Claim Effects — loadDraft', () => {
     cryptoStorage.load.mockResolvedValue(mockDraft);
     actions$ = of({ type: '@ngrx/effects/init' });
 
-    let results: Action[] = [];
+    const results: Action[] = [];
     TestBed.runInInjectionContext(() => {
       const effect = loadDraft(actions$, draftService, cryptoStorage);
       effect.subscribe((a) => results.push(a));
@@ -249,7 +249,7 @@ describe('Claim Effects — loadDraft', () => {
     cryptoStorage.load.mockRejectedValue(new Error('crypto'));
     actions$ = of({ type: '@ngrx/effects/init' });
 
-    let results: Action[] = [];
+    const results: Action[] = [];
     TestBed.runInInjectionContext(() => {
       const effect = loadDraft(actions$, draftService, cryptoStorage);
       effect.subscribe((a) => results.push(a));
@@ -305,7 +305,7 @@ describe('Claim Effects — clearDraftOnReset', () => {
     draftService.saveDraft.mockReturnValue(throwError(() => new Error('fail')));
     actions$ = of(ClaimActions.resetClaim());
 
-    let results: Action[] = [];
+    const results: Action[] = [];
     TestBed.runInInjectionContext(() => {
       const effect = clearDraftOnReset(actions$, draftService, cryptoStorage);
       effect.subscribe((a) => results.push(a));

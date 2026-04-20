@@ -1,4 +1,4 @@
-import { SecurityLoggerService, SecurityEventType } from './security-logger.service';
+import { SecurityLoggerService } from './security-logger.service';
 
 describe('SecurityLoggerService', () => {
   let service: SecurityLoggerService;
@@ -42,7 +42,9 @@ describe('SecurityLoggerService', () => {
   });
 
   it('console.info called in dev mode', () => {
-    const spy = vi.spyOn(console, 'info').mockImplementation(() => {});
+    const spy = vi.spyOn(console, 'info').mockImplementation(() => {
+      // intentional mock
+    });
     service.log('TAMPER_DETECTED', 'integrity check failed');
     expect(spy).toHaveBeenCalledWith(
       '[SECURITY]',

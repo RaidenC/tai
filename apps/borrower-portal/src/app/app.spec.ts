@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { App } from './app';
 import { CryptoStorageService } from './claim/services/crypto-storage.service';
 import { SecurityLoggerService } from './claim/services/security-logger.service';

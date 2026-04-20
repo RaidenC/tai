@@ -40,7 +40,6 @@ import {
   switchMap,
   tap,
   withLatestFrom,
-  EMPTY,
 } from 'rxjs';
 import { ClaimActions } from './claim.actions';
 import { selectClaimState, selectIsWorkRelated } from './claim.selectors';
