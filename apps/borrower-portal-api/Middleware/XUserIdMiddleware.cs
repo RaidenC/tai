@@ -22,12 +22,21 @@ public class XUserIdMiddleware {
   public async Task InvokeAsync(HttpContext context) {
     if (!context.Request.Headers.TryGetValue(HeaderName, out var userIdValues) || string.IsNullOrWhiteSpace(userIdValues)) {
       context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+      context.Response.ContentType = "text/plain";
+      await context.Response.WriteAsync($"Missing {HeaderName} header.");
+      return;
+    }
+
+    var userId = userIdValues.FirstOrDefault();
+    if (string.IsNullOrWhiteSpace(userId)) {
+      context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+      context.Response.ContentType = "text/plain";
       await context.Response.WriteAsync($"Missing {HeaderName} header.");
       return;
     }
 
     var identity = new ClaimsIdentity(authenticationType: "XUserIdStub");
-    identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, userIdValues!));
+    identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, userId));
     context.User = new ClaimsPrincipal(identity);
 
     await _next(context);
