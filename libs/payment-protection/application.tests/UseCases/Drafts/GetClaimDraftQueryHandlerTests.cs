@@ -47,4 +47,49 @@ public class GetClaimDraftQueryHandlerTests {
 
     result.Should().BeNull();
   }
+
+  [Theory]
+  [InlineData(null, "claim-1")]
+  [InlineData("", "claim-1")]
+  [InlineData("user-1", null)]
+  [InlineData("user-1", "")]
+  public async Task Handle_NullOrEmptyIds_ReturnsNull(string? userId, string? claimId) {
+    // Should handle gracefully - query returns null for invalid input
+    var result = await _handler.Handle(new GetClaimDraftQuery(userId!, claimId!), CancellationToken.None);
+    result.Should().BeNull();
+  }
+
+  [Fact]
+  public async Task Handle_StoreThrows_Throws() {
+    _store.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+          .ThrowsAsync(new InvalidOperationException("Database error"));
+
+    var act = () => _handler.Handle(new GetClaimDraftQuery("user-1", "claim-1"), CancellationToken.None);
+
+    await act.Should().ThrowAsync<InvalidOperationException>();
+  }
+
+  [Fact]
+  public async Task Handle_DraftExpiresAtBoundary_ReturnsNull() {
+    // Exactly at expiry time
+    var exactlyAtExpiry = DateTimeOffset.UtcNow;
+    var draft = new ClaimDraft("user-1", "claim-1", new byte[] { 1 }, exactlyAtExpiry);
+    _store.Setup(s => s.GetAsync("user-1", "claim-1", It.IsAny<CancellationToken>())).ReturnsAsync(draft);
+
+    var result = await _handler.Handle(new GetClaimDraftQuery("user-1", "claim-1"), CancellationToken.None);
+
+    result.Should().BeNull();
+  }
+
+  [Fact]
+  public async Task Handle_DraftExpiresOneSecondLater_ReturnsNull() {
+    // One second after expiry = still expired
+    var oneSecondBefore = DateTimeOffset.UtcNow.AddSeconds(-1);
+    var draft = new ClaimDraft("user-1", "claim-1", new byte[] { 1 }, oneSecondBefore);
+    _store.Setup(s => s.GetAsync("user-1", "claim-1", It.IsAny<CancellationToken>())).ReturnsAsync(draft);
+
+    var result = await _handler.Handle(new GetClaimDraftQuery("user-1", "claim-1"), CancellationToken.None);
+
+    result.Should().BeNull();
+  }
 }

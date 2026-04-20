@@ -32,4 +32,40 @@ public class DeleteClaimDraftCommandHandlerTests {
     result.IsValid.Should().BeFalse();
     result.Errors.Should().Contain(e => e.PropertyName == field);
   }
+
+  [Fact]
+  public async Task Handle_StoreThrows_Throws() {
+    _store.Setup(s => s.DeleteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+          .ThrowsAsync(new InvalidOperationException("Database error"));
+
+    var act = () => _handler.Handle(new DeleteClaimDraftCommand("user-1", "claim-1"), CancellationToken.None);
+
+    await act.Should().ThrowAsync<InvalidOperationException>();
+  }
+
+  [Fact]
+  public async Task Handle_WhitespaceIds_Validates() {
+    // Whitespace-only IDs should be handled by validator
+    var result = _validator.Validate(new DeleteClaimDraftCommand("   ", "claim-1"));
+    result.IsValid.Should().BeFalse();
+
+    result = _validator.Validate(new DeleteClaimDraftCommand("user-1", "   "));
+    result.IsValid.Should().BeFalse();
+  }
+
+  [Fact]
+  public void Validator_AcceptsValidInput() {
+    var result = _validator.Validate(new DeleteClaimDraftCommand("user-123", "claim-456"));
+    result.IsValid.Should().BeTrue();
+  }
+
+  [Theory]
+  [InlineData("user-id")]
+  [InlineData("claim-id")]
+  [InlineData("a")]
+  [InlineData("special-chars-123_abc")]
+  public void Validator_AcceptsVariousIdFormats(string claimId) {
+    var result = _validator.Validate(new DeleteClaimDraftCommand("user-1", claimId));
+    result.IsValid.Should().BeTrue();
+  }
 }

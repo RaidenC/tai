@@ -72,4 +72,69 @@ public class SaveClaimDraftCommandHandlerTests {
     result.IsValid.Should().BeFalse();
     result.Errors.Should().Contain(e => e.PropertyName == "EncryptedPayload");
   }
+
+  [Fact]
+  public async Task Handle_StoreThrowsException_Throws() {
+    var command = new SaveClaimDraftCommand("user-1", "claim-1", new byte[] { 1 }, TimeSpan.FromHours(1));
+    _store.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+          .ReturnsAsync((ClaimDraft?)null);
+    _store.Setup(s => s.SaveAsync(It.IsAny<ClaimDraft>(), It.IsAny<CancellationToken>()))
+          .ThrowsAsync(new InvalidOperationException("Database error"));
+
+    var act = () => _handler.Handle(command, CancellationToken.None);
+
+    await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Database error");
+  }
+
+  [Fact]
+  public async Task Handle_PublisherThrows_Propagates() {
+    // The handler propagates publisher exceptions
+    var command = new SaveClaimDraftCommand("user-1", "claim-1", new byte[] { 1 }, TimeSpan.FromHours(24));
+    _store.Setup(s => s.GetAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+          .ReturnsAsync((ClaimDraft?)null);
+    _publisher.Setup(p => p.Publish(It.IsAny<ClaimDraftSavedEvent>(), It.IsAny<CancellationToken>()))
+              .ThrowsAsync(new InvalidOperationException("Event bus error"));
+
+    var act = () => _handler.Handle(command, CancellationToken.None);
+
+    await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Event bus error");
+    _store.Verify(s => s.SaveAsync(It.IsAny<ClaimDraft>(), It.IsAny<CancellationToken>()), Times.Once);
+  }
+
+  [Theory]
+  [InlineData("0")]
+  [InlineData("-1")]
+  public void Validator_RejectsInvalidTtl_ZeroAndNegative(string ttlString) {
+    var ttl = TimeSpan.Parse(ttlString);
+    var cmd = new SaveClaimDraftCommand("user-1", "claim-1", new byte[] { 1 }, ttl);
+    var result = _validator.Validate(cmd);
+    result.IsValid.Should().BeFalse();
+    result.Errors.Should().Contain(e => e.PropertyName == "Ttl");
+  }
+
+  [Theory]
+  [InlineData("-1:00:00")]
+  [InlineData("00:00:00")]
+  public void Validator_RejectsInvalidTtl_String(string ttlString) {
+    var ttl = TimeSpan.Parse(ttlString);
+    var cmd = new SaveClaimDraftCommand("user-1", "claim-1", new byte[] { 1 }, ttl);
+    var result = _validator.Validate(cmd);
+    result.IsValid.Should().BeFalse();
+    result.Errors.Should().Contain(e => e.PropertyName == "Ttl");
+  }
+
+  [Fact]
+  public void Validator_RejectsNullPayload() {
+    var cmd = new SaveClaimDraftCommand("user-1", "claim-1", null!, TimeSpan.FromHours(1));
+    var result = _validator.Validate(cmd);
+    result.IsValid.Should().BeFalse();
+  }
+
+  [Fact]
+  public void Validator_AcceptsMaxTtl() {
+    var maxTtl = TimeSpan.FromDays(365);
+    var cmd = new SaveClaimDraftCommand("user-1", "claim-1", new byte[] { 1 }, maxTtl);
+    var result = _validator.Validate(cmd);
+    result.IsValid.Should().BeTrue();
+  }
 }
