@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Tai.BorrowerPortal.Api</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
+    <PackageReference Include="MediatR" Version="14.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.3" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../libs/payment-protection/domain/Tai.PaymentProtection.Domain.csproj" />
+    <ProjectReference Include="../../libs/payment-protection/application/Tai.PaymentProtection.Application.csproj" />
+    <ProjectReference Include="../../libs/payment-protection/infrastructure/Tai.PaymentProtection.Infrastructure.csproj" />
+    <ProjectReference Include="../../libs/core/application/Tai.Portal.Core.Application.csproj" />
+    <ProjectReference Include="../../libs/core/infrastructure/Tai.Portal.Core.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
