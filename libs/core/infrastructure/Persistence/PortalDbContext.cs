@@ -117,8 +117,7 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
       await ExecutePostCommitActionsAsync(cancellationToken);
 
       return result;
-    }
-    catch {
+    } catch {
       // Rollback is implicit on exception — DbContext disposes the transaction.
       // Post-commit actions must NOT run on failure.
       _postCommitActions.Clear();
@@ -135,8 +134,7 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
     foreach (var action in actions) {
       try {
         await action(cancellationToken);
-      }
-      catch (Exception ex) {
+      } catch (Exception ex) {
         // Log but do not re-throw — the DB work already committed.
         _logger?.LogError(ex, "Post-commit action failed");
       }
