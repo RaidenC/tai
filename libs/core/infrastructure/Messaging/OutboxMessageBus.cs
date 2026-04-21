@@ -40,9 +40,13 @@ public class OutboxMessageBus : IMessageBus {
     // the concrete subtype — classic System.Text.Json gotcha.
     var runtimeType = message.GetType();
 
+    // Use Name (e.g., "<>f__AnonymousType0`5") which is short for anonymous types
+    // and provides meaningful identification for concrete types.
+    var eventType = runtimeType.Name;
+
     _dbContext.OutboxMessages.Add(new OutboxMessage {
       Id = Guid.NewGuid(),
-      EventType = runtimeType.AssemblyQualifiedName ?? runtimeType.FullName ?? runtimeType.Name,
+      EventType = eventType,
       Payload = JsonSerializer.Serialize(message, runtimeType, _serializerOptions),
       OccurredAt = DateTimeOffset.UtcNow,
       CorrelationId = _currentUserService.CorrelationId,
