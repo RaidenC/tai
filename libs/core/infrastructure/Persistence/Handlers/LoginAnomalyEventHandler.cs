@@ -35,7 +35,7 @@ public class LoginAnomalyEventHandler : INotificationHandler<DomainEventNotifica
   public async Task Handle(DomainEventNotification<LoginAnomalyEvent> notification, CancellationToken cancellationToken) {
     var domainEvent = notification.DomainEvent;
 
-    // 1. Record immutable audit entry
+    // 1. Stage immutable audit entry — UoW commits.
     var auditEntry = new AuditEntry(
         domainEvent.TenantId,
         domainEvent.UserId,
@@ -45,23 +45,9 @@ public class LoginAnomalyEventHandler : INotificationHandler<DomainEventNotifica
         domainEvent.IpAddress,
         $"Login anomaly detected: {domainEvent.Reason}. {domainEvent.Details}"
     );
-
     _dbContext.AuditLogs.Add(auditEntry);
-    await _dbContext.SaveChangesAsync(cancellationToken);
 
-    // 2. Push privacy-first payload to SignalR (Claim Check pattern)
-    // Only send eventId and timestamp - full details fetched via REST
-    await _realTimeNotifier.SendSecurityEventAsync(
-        domainEvent.TenantId.Value.ToString(),
-        "LoginAnomaly",
-        new {
-          EventId = auditEntry.Id,
-          Timestamp = auditEntry.Timestamp,
-          Reason = domainEvent.Reason
-        },
-        cancellationToken);
-
-    // 3. Publish to IMessageBus for other apps (DocViewer, HR System)
+    // 2. Stage outbox row for cross-app delivery (SIEM, etc.).
     await _messageBus.PublishAsync(new {
       EventName = "LoginAnomaly",
       EventId = auditEntry.Id,
@@ -73,5 +59,17 @@ public class LoginAnomalyEventHandler : INotificationHandler<DomainEventNotifica
       Timestamp = auditEntry.Timestamp,
       CorrelationId = domainEvent.CorrelationId
     }, cancellationToken);
+
+    // 3. Defer SignalR push to AFTER commit.
+    _dbContext.RegisterPostCommitAction(ct =>
+      _realTimeNotifier.SendSecurityEventAsync(
+        domainEvent.TenantId.Value.ToString(),
+        "LoginAnomaly",
+        new {
+          EventId = auditEntry.Id,
+          Timestamp = auditEntry.Timestamp,
+          Reason = domainEvent.Reason
+        },
+        ct));
   }
 }
