@@ -61,14 +61,86 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
     _postCommitActions.Add(action);
   }
 
+  /// <summary>
+  /// Unit-of-Work orchestrator: wraps the entire save-dispatch-commit cycle in a transaction,
+  /// dispatches domain events AFTER the first base.SaveChangesAsync, and runs post-commit
+  /// actions only on successful commit.
+  /// </summary>
   public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) {
-    // 1. Automatically populate audit fields for auditable entities
-    PopulateAuditFields();
+    // Pre-flight: reject post-commit actions inside caller-managed transactions.
+    if (Database.CurrentTransaction != null) {
+      if (_postCommitActions.Count > 0) {
+        throw new InvalidOperationException(
+          "Post-commit actions cannot be used inside a caller-managed transaction. " +
+          "Use the DbContext-owned transaction pattern instead.");
+      }
+      // Fall through to base behavior for caller-managed transactions.
+      PopulateAuditFields();
+      await DispatchDomainEventsAsync(cancellationToken);
+      return await base.SaveChangesAsync(cancellationToken);
+    }
 
-    // 2. Dispatch events BEFORE saving to allow handlers to join the transaction.
-    await DispatchDomainEventsAsync(cancellationToken);
+    // UoW orchestration: wrap in transaction, save first, dispatch, save again if needed, commit, then post-commit.
+    var isRelational = Database.IsRelational();
+    if (!isRelational) {
+      // For in-memory databases, skip transaction wrapping but still run full orchestration.
+      PopulateAuditFields();
+      var result = await base.SaveChangesAsync(cancellationToken);
+      await DispatchDomainEventsAsync(cancellationToken);
+      if (ChangeTracker.HasChanges()) {
+        await base.SaveChangesAsync(cancellationToken);
+      }
+      await ExecutePostCommitActionsAsync(cancellationToken);
+      return result;
+    }
 
-    return await base.SaveChangesAsync(cancellationToken);
+    await using var dbTransaction = await Database.BeginTransactionAsync(cancellationToken);
+    try {
+      // 1. Populate audit fields
+      PopulateAuditFields();
+
+      // 2. First save: persist aggregate root changes
+      var result = await base.SaveChangesAsync(cancellationToken);
+
+      // 3. Dispatch events AFTER first save
+      await DispatchDomainEventsAsync(cancellationToken);
+
+      // 4. Second save: persist any new entities created by handlers
+      if (ChangeTracker.HasChanges()) {
+        await base.SaveChangesAsync(cancellationToken);
+      }
+
+      // 5. Commit transaction
+      await dbTransaction.CommitAsync(cancellationToken);
+
+      // 6. Execute post-commit actions (outside the transaction)
+      await ExecutePostCommitActionsAsync(cancellationToken);
+
+      return result;
+    }
+    catch {
+      // Rollback is implicit on exception — DbContext disposes the transaction.
+      // Post-commit actions must NOT run on failure.
+      _postCommitActions.Clear();
+      throw;
+    }
+  }
+
+  private async Task ExecutePostCommitActionsAsync(CancellationToken cancellationToken) {
+    if (_postCommitActions.Count == 0) return;
+
+    var actions = _postCommitActions.ToList();
+    _postCommitActions.Clear();
+
+    foreach (var action in actions) {
+      try {
+        await action(cancellationToken);
+      }
+      catch (Exception ex) {
+        // Log but do not re-throw — the DB work already committed.
+        _logger?.LogError(ex, "Post-commit action failed");
+      }
+    }
   }
 
   private void PopulateAuditFields() {
