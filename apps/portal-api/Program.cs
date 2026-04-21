@@ -16,6 +16,7 @@ using Tai.Portal.Api.Services;
 using Tai.Portal.Core.Application.UseCases.Onboarding;
 using Tai.Portal.Core.Infrastructure.Identity;
 using Tai.Portal.Core.Infrastructure.Middleware;
+using Tai.Portal.Core.Infrastructure.Messaging;
 using Tai.Portal.Core.Infrastructure.Services;
 using Tai.Portal.Core.Infrastructure.Persistence.Services;
 using Tai.Portal.Api.Hubs;
@@ -48,7 +49,7 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddScoped<IPrivilegeService, PrivilegeService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
-builder.Services.AddScoped<IMessageBus, LoggingMessageBus>();
+builder.Services.AddScoped<IMessageBus, OutboxMessageBus>();
 
 builder.Services.AddValidatorsFromAssembly(typeof(IApplicationAssemblyMarker).Assembly);
 
