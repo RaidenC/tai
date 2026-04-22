@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Tai.BorrowerPortal.Api.Middleware;
 using Tai.PaymentProtection.Application;
 using Tai.PaymentProtection.Application.Interfaces;
+using Tai.PaymentProtection.Infrastructure.Messaging;
 using Tai.PaymentProtection.Infrastructure.Persistence;
 using Tai.Portal.Core.Application.Behaviors;
 using Tai.Portal.Core.Application.Interfaces;
@@ -37,7 +38,7 @@ builder.Services.AddDbContext<PaymentProtectionDbContext>(options => {
 // Adapters
 builder.Services.AddScoped<IClaimDraftStore, EfClaimDraftStore>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
-builder.Services.AddScoped<IMessageBus, LoggingMessageBus>();
+builder.Services.AddScoped<IMessageBus, PaymentProtectionMessageBus>();
 
 // CORS — allow the Angular dev server (4200) to call us from a browser
 builder.Services.AddCors(options => {
