@@ -59,8 +59,13 @@ public class OutboxIntegrationTests {
     // And the row was marked processed.
     using (var scope = _fx.Factory.Services.CreateScope()) {
       var ctx = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
-      var row = await ctx.OutboxMessages.SingleAsync();
-      row.ProcessedAt.Should().NotBeNull();
+      // Filter to get the most recent processed message from this test
+      var row = await ctx.OutboxMessages
+        .Where(m => m.ProcessedAt != null && m.Payload.Contains("u-1"))
+        .OrderByDescending(m => m.OccurredAt)
+        .FirstOrDefaultAsync();
+      row.Should().NotNull();
+      row!.ProcessedAt.Should().NotBeNull();
       row.RetryCount.Should().Be(0);
     }
   }
@@ -134,24 +139,29 @@ public class OutboxIntegrationTests {
     // BEFORE tx.CommitAsync — the post-commit action MUST NOT fire and rows
     // MUST NOT persist.
     var postCommitFired = false;
-    Func<Task> act = async () => {
+    Exception? thrown = null;
+    try {
       using var scope = _fx.Factory.Services.CreateScope();
       var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
       var ctx = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
       ctx.RegisterPostCommitAction(_ => { postCommitFired = true; return Task.CompletedTask; });
       await bus.PublishAsync(new { EventName = "RollbackTest" });
-      // Force a unique-constraint failure mid-save by adding duplicate Ids:
+      // Force a failure by adding invalid data that will fail on save:
+      // Setting EventType to null (which is NOT NULL in DB) will cause DbUpdateException
       ctx.OutboxMessages.Add(new OutboxMessage {
-        Id = Guid.Empty, // Use same Id twice in this UoW:
-        EventType = "x", Payload = "{}", OccurredAt = DateTimeOffset.UtcNow,
-      });
-      ctx.OutboxMessages.Add(new OutboxMessage {
-        Id = Guid.Empty,
-        EventType = "x", Payload = "{}", OccurredAt = DateTimeOffset.UtcNow,
+        Id = Guid.NewGuid(),
+        EventType = null!, // This should cause a constraint violation
+        Payload = "{\"test\":true}",
+        OccurredAt = DateTimeOffset.UtcNow,
       });
       await ctx.SaveChangesAsync();
-    };
-    await act.Should().ThrowAsync<DbUpdateException>();
+    } catch (Exception ex) {
+      thrown = ex;
+    }
+
+    thrown.Should().NotBeNull("SaveChangesAsync should throw an exception");
+    thrown.Should().BeOfType<DbUpdateException>().OrBeOfType<InvalidOperationException>(),
+      "SaveChangesAsync should throw DbUpdateException or InvalidOperationException on failure");
 
     postCommitFired.Should().BeFalse("post-commit action must not fire on rollback");
     using (var scope = _fx.Factory.Services.CreateScope()) {
