@@ -51,6 +51,17 @@ builder.Services.AddScoped<IPrivilegeService, PrivilegeService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
 builder.Services.AddScoped<IMessageBus, OutboxMessageBus>();
 
+// Outbox + RabbitMQ wiring (Stage 1B).
+builder.Services.Configure<Tai.Portal.Core.Infrastructure.Messaging.RabbitMqOptions>(
+  builder.Configuration.GetSection(Tai.Portal.Core.Infrastructure.Messaging.RabbitMqOptions.SectionName));
+builder.Services.Configure<Tai.Portal.Core.Infrastructure.Messaging.OutboxOptions>(
+  builder.Configuration.GetSection(Tai.Portal.Core.Infrastructure.Messaging.OutboxOptions.SectionName));
+builder.Services.AddSingleton<Tai.Portal.Core.Infrastructure.Messaging.IRabbitMqConnectionProvider,
+                              Tai.Portal.Core.Infrastructure.Messaging.RabbitMqConnectionProvider>();
+builder.Services.AddSingleton<Tai.Portal.Core.Application.Interfaces.IIntegrationEventPublisher,
+                              Tai.Portal.Core.Infrastructure.Messaging.RabbitMqPublisher>();
+builder.Services.AddHostedService<Tai.Portal.Core.Infrastructure.Messaging.OutboxPublisherBackgroundService>();
+
 builder.Services.AddValidatorsFromAssembly(typeof(IApplicationAssemblyMarker).Assembly);
 
 builder.Services.AddMediatR(cfg => {
