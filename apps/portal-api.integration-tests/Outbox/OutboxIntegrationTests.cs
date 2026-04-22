@@ -59,10 +59,15 @@ public class OutboxIntegrationTests {
     // And the row was marked processed.
     using (var scope = _fx.Factory.Services.CreateScope()) {
       var ctx = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
-      // Filter to get the most recent processed message from this test
+      // Use raw SQL to query JSONB as text for the Contains check
+      // (EF.Functions.Like doesn't work directly with JSONB)
       var row = await ctx.OutboxMessages
-        .Where(m => m.ProcessedAt != null && m.Payload.Contains("u-1"))
-        .OrderByDescending(m => m.OccurredAt)
+        .FromSqlRaw(@"
+          SELECT * FROM ""OutboxMessages""
+          WHERE ""ProcessedAt"" IS NOT NULL
+            AND ""Payload""::text LIKE '%u-1%'
+          ORDER BY ""OccurredAt"" DESC
+          LIMIT 1")
         .FirstOrDefaultAsync();
       row.Should().NotBeNull();
       row!.ProcessedAt.Should().NotBeNull();
