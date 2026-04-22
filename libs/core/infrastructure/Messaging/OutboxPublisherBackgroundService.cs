@@ -58,11 +58,9 @@ public class OutboxPublisherBackgroundService : BackgroundService {
           await Task.Delay(_options.PollInterval, stoppingToken);
         }
         // Full batch -> loop immediately to drain backlog.
-      }
-      catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
+      } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
         break;
-      }
-      catch (Exception ex) {
+      } catch (Exception ex) {
         _logger.LogError(ex, "Outbox publisher loop error; backing off");
         await Task.Delay(_options.ErrorBackoff, stoppingToken);
       }
@@ -109,8 +107,7 @@ public class OutboxPublisherBackgroundService : BackgroundService {
           cancellationToken);
         msg.ProcessedAt = DateTimeOffset.UtcNow;
         msg.Error = null;
-      }
-      catch (Exception ex) {
+      } catch (Exception ex) {
         msg.RetryCount++;
         msg.Error = ex.Message.Length > 2000 ? ex.Message[..2000] : ex.Message;
         // ProcessedAt stays null -> retry on next poll.

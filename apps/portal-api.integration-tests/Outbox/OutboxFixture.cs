@@ -38,7 +38,7 @@ public class OutboxFixture : IAsyncLifetime {
       builder.ConfigureAppConfiguration((_, cfg) => {
         cfg.AddInMemoryCollection(new Dictionary<string, string?> {
           ["RabbitMq:HostName"] = Rabbit.Hostname,
-          ["RabbitMq:Port"]     = Rabbit.GetMappedPublicPort(5672).ToString(),
+          ["RabbitMq:Port"] = Rabbit.GetMappedPublicPort(5672).ToString(),
           ["RabbitMq:UserName"] = "portal",
           ["RabbitMq:Password"] = "portal",
           ["RabbitMq:ExchangeName"] = "portal.events",

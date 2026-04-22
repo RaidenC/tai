@@ -11,11 +11,9 @@ using Xunit;
 
 namespace Tai.Portal.Core.Infrastructure.Tests.Messaging;
 
-public class OutboxPublisherBackgroundServiceTests
-{
+public class OutboxPublisherBackgroundServiceTests {
   [Fact]
-  public void BackgroundService_ImplementsBackgroundService()
-  {
+  public void BackgroundService_ImplementsBackgroundService() {
     // Assert
     typeof(OutboxPublisherBackgroundService)
       .BaseType
@@ -24,8 +22,7 @@ public class OutboxPublisherBackgroundServiceTests
   }
 
   [Fact]
-  public void BackgroundService_HasCorrectConstructor()
-  {
+  public void BackgroundService_HasCorrectConstructor() {
     // Arrange
     var scopeFactory = Mock.Of<IServiceScopeFactory>();
     var publisher = Mock.Of<IIntegrationEventPublisher>();
@@ -44,11 +41,9 @@ public class OutboxPublisherBackgroundServiceTests
   }
 
   [Fact]
-  public void BackgroundService_OptionsAreApplied()
-  {
+  public void BackgroundService_OptionsAreApplied() {
     // Arrange
-    var mockOptions = new OutboxOptions
-    {
+    var mockOptions = new OutboxOptions {
       PollInterval = TimeSpan.FromSeconds(5),
       BatchSize = 100,
       ErrorBackoff = TimeSpan.FromSeconds(30)
@@ -75,8 +70,7 @@ public class OutboxPublisherBackgroundServiceTests
   }
 
   [Fact]
-  public void OutboxOptions_DefaultValues_AreCorrect()
-  {
+  public void OutboxOptions_DefaultValues_AreCorrect() {
     // Arrange & Act
     var options = new OutboxOptions();
 
@@ -87,12 +81,10 @@ public class OutboxPublisherBackgroundServiceTests
   }
 
   [Fact]
-  public void OutboxOptions_CanBindFromConfiguration()
-  {
+  public void OutboxOptions_CanBindFromConfiguration() {
     // Arrange
     var configuration = new ConfigurationBuilder()
-      .AddInMemoryCollection(new Dictionary<string, string?>
-      {
+      .AddInMemoryCollection(new Dictionary<string, string?> {
         ["Outbox:PollInterval"] = "00:00:05",
         ["Outbox:BatchSize"] = "100",
         ["Outbox:ErrorBackoff"] = "00:00:30",
@@ -110,8 +102,7 @@ public class OutboxPublisherBackgroundServiceTests
   }
 
   [Fact]
-  public void OutboxOptions_SectionName_IsCorrect()
-  {
+  public void OutboxOptions_SectionName_IsCorrect() {
     // Assert
     OutboxOptions.SectionName.Should().Be("Outbox");
   }
