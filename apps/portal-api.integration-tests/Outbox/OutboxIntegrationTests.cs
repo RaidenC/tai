@@ -64,7 +64,7 @@ public class OutboxIntegrationTests {
         .Where(m => m.ProcessedAt != null && m.Payload.Contains("u-1"))
         .OrderByDescending(m => m.OccurredAt)
         .FirstOrDefaultAsync();
-      row.Should().NotNull();
+      row.Should().NotBeNull();
       row!.ProcessedAt.Should().NotBeNull();
       row.RetryCount.Should().Be(0);
     }
@@ -160,7 +160,7 @@ public class OutboxIntegrationTests {
     }
 
     thrown.Should().NotBeNull("SaveChangesAsync should throw an exception");
-    thrown.Should().BeOfType<DbUpdateException>().OrBeOfType<InvalidOperationException>(),
+    (thrown is DbUpdateException || thrown is InvalidOperationException).Should().BeTrue(
       "SaveChangesAsync should throw DbUpdateException or InvalidOperationException on failure");
 
     postCommitFired.Should().BeFalse("post-commit action must not fire on rollback");
