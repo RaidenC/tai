@@ -74,6 +74,8 @@ Currently, `tai-portal` publishes domain events via MediatR directly inside `Sav
 3. A background worker (or CDC tool) constantly polls the `OutboxMessages` table, publishes the JSON to RabbitMQ, and marks the row as processed.
 **Result:** <span style="color: #00C851; font-weight: bold;">100% guaranteed delivery</span>. The database transaction is isolated from network failures.
 
+> See `rabbitmq-outbox-case-study.md` for a hands-on walkthrough grounded in this codebase.
+
 #### Logical Replication via Events (Read Models)
 When using RabbitMQ to synchronize data, you move from physical replication (PostgreSQL copying disks) to <span style="color: #33b5e5; font-weight: bold;">Logical Replication</span>. 
 1. The Primary PostgreSQL handles the Write.
@@ -95,6 +97,8 @@ RabbitMQ is a traditional message broker implementing AMQP. It excels at **work 
 - **Mental Model:** A post office. It routes messages to queues via **Exchanges** (fanout, topic, direct).
 - **Message Lifecycle:** Once a consumer acknowledges (`ACK`) a message, RabbitMQ **deletes it**.
 - **Why it wins for EDA:** It natively supports <span style="color: #00C851; font-weight: bold;">Dead-Letter Queues (DLQ)</span>. If an email fails to send 5 times, RabbitMQ moves the message to a DLQ for manual inspection while the rest of the system continues smoothly. It is the perfect choice for executing transient commands and side-effects.
+
+> See `rabbitmq-outbox-case-study.md` for a hands-on walkthrough grounded in this codebase.
 
 #### Apache Kafka (The Event Streaming Platform)
 Kafka is an append-only distributed log, not a traditional queue.
