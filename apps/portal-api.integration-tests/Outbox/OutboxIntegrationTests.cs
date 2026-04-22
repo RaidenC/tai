@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -59,6 +60,102 @@ public class OutboxIntegrationTests {
       var row = await ctx.OutboxMessages.SingleAsync();
       row.ProcessedAt.Should().NotBeNull();
       row.RetryCount.Should().Be(0);
+    }
+  }
+
+  [Fact]
+  public async Task SkipLocked_TwoConcurrentReaders_PartitionRowsExclusively() {
+    // Seed 100 rows directly via DbContext.
+    using (var scope = _fx.Factory.Services.CreateScope()) {
+      var ctx = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
+      // Wipe any earlier test rows from prior tests in this collection.
+      ctx.OutboxMessages.RemoveRange(ctx.OutboxMessages);
+      await ctx.SaveChangesAsync();
+
+      for (int i = 0; i < 100; i++) {
+        ctx.OutboxMessages.Add(new OutboxMessage {
+          Id = Guid.NewGuid(),
+          EventType = "test.SkipLockedEvent",
+          Payload = $"{{\"i\":{i}}}",
+          OccurredAt = DateTimeOffset.UtcNow,
+        });
+      }
+      await ctx.SaveChangesAsync();
+    }
+
+    // Two parallel readers each take SKIP LOCKED batches and accumulate IDs.
+    async Task<List<Guid>> DrainAsync() {
+      var taken = new List<Guid>();
+      using var scope = _fx.Factory.Services.CreateScope();
+      var ctx = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
+      while (true) {
+        await using var tx = await ctx.Database.BeginTransactionAsync();
+        var batch = await ctx.OutboxMessages
+          .FromSqlRaw(@"SELECT * FROM ""OutboxMessages""
+                        WHERE ""ProcessedAt"" IS NULL
+                        ORDER BY ""OccurredAt""
+                        LIMIT 10
+                        FOR UPDATE SKIP LOCKED")
+          .ToListAsync();
+        if (batch.Count == 0) { await tx.CommitAsync(); break; }
+        foreach (var m in batch) {
+          taken.Add(m.Id);
+          m.ProcessedAt = DateTimeOffset.UtcNow;
+        }
+        await ctx.SaveChangesAsync();
+        await tx.CommitAsync();
+      }
+      return taken;
+    }
+
+    var readerA = DrainAsync();
+    var readerB = DrainAsync();
+    var idsA = await readerA;
+    var idsB = await readerB;
+
+    var union = idsA.Concat(idsB).ToList();
+    union.Should().HaveCount(100, "every row must be claimed exactly once");
+    union.Distinct().Should().HaveCount(100, "no duplicate claims across readers");
+    idsA.Intersect(idsB).Should().BeEmpty("disjoint partitioning");
+  }
+
+  [Fact]
+  public async Task UoWRollback_DiscardsOutbox_AndDoesNotFirePostCommit() {
+    // Snapshot baseline counts.
+    int baselineOutbox;
+    using (var scope = _fx.Factory.Services.CreateScope()) {
+      var ctx = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
+      baselineOutbox = await ctx.OutboxMessages.CountAsync();
+    }
+
+    // Run a UoW that registers a post-commit action and then forces a failure
+    // BEFORE tx.CommitAsync — the post-commit action MUST NOT fire and rows
+    // MUST NOT persist.
+    var postCommitFired = false;
+    Func<Task> act = async () => {
+      using var scope = _fx.Factory.Services.CreateScope();
+      var bus = scope.ServiceProvider.GetRequiredService<IMessageBus>();
+      var ctx = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
+      ctx.RegisterPostCommitAction(_ => { postCommitFired = true; return Task.CompletedTask; });
+      await bus.PublishAsync(new { EventName = "RollbackTest" });
+      // Force a unique-constraint failure mid-save by adding duplicate Ids:
+      ctx.OutboxMessages.Add(new OutboxMessage {
+        Id = Guid.Empty, // Use same Id twice in this UoW:
+        EventType = "x", Payload = "{}", OccurredAt = DateTimeOffset.UtcNow,
+      });
+      ctx.OutboxMessages.Add(new OutboxMessage {
+        Id = Guid.Empty,
+        EventType = "x", Payload = "{}", OccurredAt = DateTimeOffset.UtcNow,
+      });
+      await ctx.SaveChangesAsync();
+    };
+    await act.Should().ThrowAsync<DbUpdateException>();
+
+    postCommitFired.Should().BeFalse("post-commit action must not fire on rollback");
+    using (var scope = _fx.Factory.Services.CreateScope()) {
+      var ctx = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
+      (await ctx.OutboxMessages.CountAsync()).Should().Be(baselineOutbox,
+        "rollback must discard the outbox row");
     }
   }
 }
