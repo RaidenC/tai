@@ -50,7 +50,9 @@ public class OutboxIntegrationTests {
 
     // Assert — message landed.
     got.Should().NotBeNull("publisher worker should have delivered within 10s");
-    Encoding.UTF8.GetString(got!.Body.ToArray()).Should().Contain("\"userId\":\"u-1\"");
+    var payload = Encoding.UTF8.GetString(got!.Body.ToArray());
+    using var doc = JsonDocument.Parse(payload);
+    doc.RootElement.GetProperty("userId").GetString().Should().Be("u-1");
     got.BasicProperties.ContentType.Should().Be("application/json");
     got.BasicProperties.DeliveryMode.Should().Be(2);
 
