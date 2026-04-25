@@ -16,6 +16,7 @@ using Tai.Portal.Api.Services;
 using Tai.Portal.Core.Application.UseCases.Onboarding;
 using Tai.Portal.Core.Infrastructure.Identity;
 using Tai.Portal.Core.Infrastructure.Middleware;
+using Tai.Portal.Core.Infrastructure.Messaging;
 using Tai.Portal.Core.Infrastructure.Services;
 using Tai.Portal.Core.Infrastructure.Persistence.Services;
 using Tai.Portal.Api.Hubs;
@@ -48,7 +49,18 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IIdentityService, IdentityService>();
 builder.Services.AddScoped<IPrivilegeService, PrivilegeService>();
 builder.Services.AddScoped<IOtpService, OtpService>();
-builder.Services.AddScoped<IMessageBus, LoggingMessageBus>();
+builder.Services.AddScoped<IMessageBus, OutboxMessageBus>();
+
+// Outbox + RabbitMQ wiring (Stage 1B).
+builder.Services.Configure<Tai.Portal.Core.Infrastructure.Messaging.RabbitMqOptions>(
+  builder.Configuration.GetSection(Tai.Portal.Core.Infrastructure.Messaging.RabbitMqOptions.SectionName));
+builder.Services.Configure<Tai.Portal.Core.Infrastructure.Messaging.OutboxOptions>(
+  builder.Configuration.GetSection(Tai.Portal.Core.Infrastructure.Messaging.OutboxOptions.SectionName));
+builder.Services.AddSingleton<Tai.Portal.Core.Infrastructure.Messaging.IRabbitMqConnectionProvider,
+                              Tai.Portal.Core.Infrastructure.Messaging.RabbitMqConnectionProvider>();
+builder.Services.AddSingleton<Tai.Portal.Core.Application.Interfaces.IIntegrationEventPublisher,
+                              Tai.Portal.Core.Infrastructure.Messaging.RabbitMqPublisher>();
+builder.Services.AddHostedService<Tai.Portal.Core.Infrastructure.Messaging.OutboxPublisherBackgroundService>();
 
 builder.Services.AddValidatorsFromAssembly(typeof(IApplicationAssemblyMarker).Assembly);
 

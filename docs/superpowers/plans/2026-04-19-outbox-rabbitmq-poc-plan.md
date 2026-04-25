@@ -2383,3 +2383,46 @@ In another shell, hit any endpoint that triggers a `PrivilegeChangeEvent` (e.g.,
 - [ ] **Step 3: Self-review against spec success criteria**
 
 Open `docs/superpowers/specs/2026-04-19-outbox-rabbitmq-poc-design.md` Success Criteria section and tick off each of the eight items against the implementation. Any miss → file a follow-up task before declaring done.
+
+---
+
+## Session Retrospective: What Went Wrong
+
+**Issue:** Subagent commits ended up on wrong branch (`main` instead of `feat/outbox-rabbitmq-poc`), causing confusion and lost work.
+
+**Root Cause:** Subagents created commits while in detached HEAD state or on wrong branch.
+
+**Process Improvements for Future Sprints:**
+
+### 1. Add explicit branch check to subagent prompts
+
+Add this to every implementer prompt:
+
+```
+VERIFY before committing:
+- Run: git branch --show-current
+- Expected: feat/outbox-rabbitmq-poc
+- If different, run: git checkout feat/outbox-rabbitmq-poc
+```
+
+### 2. Add verification step after implementer reports DONE
+
+After implementer reports DONE, manually verify:
+```bash
+git log -1 --oneline HEAD | grep "feat/outbox-rabbitmq-poc"
+```
+
+Or check: `git branch --show-current` should match expected branch.
+
+### 3. Prefer direct Edit tool for simple refactors
+
+For straightforward refactors (like removing `SaveChangesAsync` from handlers), use the Edit tool directly instead of dispatching subagents. This avoids the branch/target confusion.
+
+### 4. Verify before pushing to origin
+
+Before pushing, verify commit chain:
+```bash
+git log --oneline origin/main..HEAD
+```
+
+Should show all commits that should be in the PR.

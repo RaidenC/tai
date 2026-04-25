@@ -35,7 +35,7 @@ public class SecuritySettingChangeEventHandler : INotificationHandler<DomainEven
   public async Task Handle(DomainEventNotification<SecuritySettingChangeEvent> notification, CancellationToken cancellationToken) {
     var domainEvent = notification.DomainEvent;
 
-    // 1. Record immutable audit entry
+    // 1. Stage immutable audit entry — UoW commits.
     var auditEntry = new AuditEntry(
         domainEvent.TenantId,
         domainEvent.UserId,
@@ -45,24 +45,9 @@ public class SecuritySettingChangeEventHandler : INotificationHandler<DomainEven
         domainEvent.IpAddress,
         $"Security setting changed: {domainEvent.SettingName}. {domainEvent.Details}"
     );
-
     _dbContext.AuditLogs.Add(auditEntry);
-    await _dbContext.SaveChangesAsync(cancellationToken);
 
-    // 2. Push privacy-first payload to SignalR (Claim Check pattern)
-    // Only send eventId and timestamp - full details fetched via REST
-    await _realTimeNotifier.SendSecurityEventAsync(
-        domainEvent.TenantId.Value.ToString(),
-        "SecuritySettingChange",
-        new {
-          EventId = auditEntry.Id,
-          Timestamp = auditEntry.Timestamp,
-          SettingName = domainEvent.SettingName,
-          ResourceId = domainEvent.ResourceId
-        },
-        cancellationToken);
-
-    // 3. Publish to IMessageBus for other apps (DocViewer, HR System)
+    // 2. Stage outbox row for cross-app delivery.
     await _messageBus.PublishAsync(new {
       EventName = "SecuritySettingChange",
       EventId = auditEntry.Id,
@@ -74,5 +59,18 @@ public class SecuritySettingChangeEventHandler : INotificationHandler<DomainEven
       Timestamp = auditEntry.Timestamp,
       CorrelationId = domainEvent.CorrelationId
     }, cancellationToken);
+
+    // 3. Defer SignalR push to AFTER commit.
+    _dbContext.RegisterPostCommitAction(ct =>
+      _realTimeNotifier.SendSecurityEventAsync(
+        domainEvent.TenantId.Value.ToString(),
+        "SecuritySettingChange",
+        new {
+          EventId = auditEntry.Id,
+          Timestamp = auditEntry.Timestamp,
+          SettingName = domainEvent.SettingName,
+          ResourceId = domainEvent.ResourceId
+        },
+        ct));
   }
 }

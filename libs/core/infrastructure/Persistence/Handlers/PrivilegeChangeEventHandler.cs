@@ -35,7 +35,8 @@ public class PrivilegeChangeEventHandler : INotificationHandler<DomainEventNotif
   public async Task Handle(DomainEventNotification<PrivilegeChangeEvent> notification, CancellationToken cancellationToken) {
     var domainEvent = notification.DomainEvent;
 
-    // 1. Record immutable audit entry
+    // 1. Stage immutable audit entry. NOTE: no SaveChangesAsync — the
+    //    PortalDbContext UoW orchestrator commits everything together.
     var auditEntry = new AuditEntry(
         domainEvent.TenantId,
         domainEvent.UserId,
@@ -45,24 +46,10 @@ public class PrivilegeChangeEventHandler : INotificationHandler<DomainEventNotif
         domainEvent.IpAddress,
         $"Privilege change: {domainEvent.Action}. {domainEvent.Details}"
     );
-
     _dbContext.AuditLogs.Add(auditEntry);
-    await _dbContext.SaveChangesAsync(cancellationToken);
 
-    // 2. Push privacy-first payload to SignalR (Claim Check pattern)
-    // Only send eventId and timestamp - full details fetched via REST
-    await _realTimeNotifier.SendSecurityEventAsync(
-        domainEvent.TenantId.Value.ToString(),
-        "PrivilegeChange",
-        new {
-          EventId = auditEntry.Id,
-          Timestamp = auditEntry.Timestamp,
-          Action = domainEvent.Action,
-          ResourceId = domainEvent.ResourceId
-        },
-        cancellationToken);
-
-    // 3. Publish to IMessageBus for other apps (DocViewer, HR System)
+    // 2. Stage outbox row for cross-app delivery (DocViewer, HR System).
+    //    OutboxMessageBus.PublishAsync only Add()s — caller commits.
     await _messageBus.PublishAsync(new {
       EventName = "PrivilegeChange",
       EventId = auditEntry.Id,
@@ -74,5 +61,20 @@ public class PrivilegeChangeEventHandler : INotificationHandler<DomainEventNotif
       Timestamp = auditEntry.Timestamp,
       CorrelationId = domainEvent.CorrelationId
     }, cancellationToken);
+
+    // 3. Defer SignalR push to AFTER the transaction commits.
+    //    Pre-refactor, this fired before commit and could ghost-notify
+    //    users about state changes that ultimately rolled back.
+    _dbContext.RegisterPostCommitAction(ct =>
+      _realTimeNotifier.SendSecurityEventAsync(
+        domainEvent.TenantId.Value.ToString(),
+        "PrivilegeChange",
+        new {
+          EventId = auditEntry.Id,
+          Timestamp = auditEntry.Timestamp,
+          Action = domainEvent.Action,
+          ResourceId = domainEvent.ResourceId
+        },
+        ct));
   }
 }

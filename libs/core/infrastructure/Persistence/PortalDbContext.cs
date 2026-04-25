@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -7,16 +8,20 @@ using System.Threading.Tasks;
 using MediatR;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Application.Models;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Domain.Interfaces;
 using Tai.Portal.Core.Domain.ValueObjects;
 using Tai.Portal.Core.Infrastructure.Persistence.Interceptors;
+using Tai.Portal.Core.Infrastructure.Persistence.Entities;
 
 namespace Tai.Portal.Core.Infrastructure.Persistence;
 
 public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
+  private readonly ILogger<PortalDbContext>? _logger;
+  private readonly List<Func<CancellationToken, Task>> _postCommitActions = new();
   private readonly ITenantService _tenantService;
   private readonly IServiceProvider _serviceProvider;
 
@@ -27,24 +32,113 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
   public DbSet<AuditEntry> AuditLogs { get; set; }
   public DbSet<Privilege> Privileges { get; set; }
   public DbSet<UserPrivilege> UserPrivileges { get; set; }
+  public DbSet<OutboxMessage> OutboxMessages { get; set; }
 
   public PortalDbContext(
       DbContextOptions<PortalDbContext> options,
       ITenantService tenantService,
-      IServiceProvider serviceProvider)
+      IServiceProvider serviceProvider,
+      ILogger<PortalDbContext>? logger = null)
       : base(options) {
     _tenantService = tenantService;
     _serviceProvider = serviceProvider;
+    _logger = logger;
   }
 
+  /// <summary>
+  /// Registers a callback to execute AFTER the current Unit of Work commits successfully.
+  /// Cleared automatically on rollback so nothing fires for a failed transaction.
+  /// </summary>
+  /// <remarks>
+  /// JUNIOR RATIONALE (Post-commit side effects):
+  /// Any side effect that should happen "only if the DB write succeeded"
+  /// (SignalR push, email send, external API call) MUST be registered here,
+  /// NOT called inline in a handler. Inline calls happen BEFORE commit, so
+  /// they fire even when the transaction later fails — same dual-write
+  /// hazard the outbox pattern exists to fix.
+  /// </remarks>
+  public void RegisterPostCommitAction(Func<CancellationToken, Task> action) {
+    _postCommitActions.Add(action);
+  }
+
+  /// <summary>
+  /// Unit-of-Work orchestrator: wraps the entire save-dispatch-commit cycle in a transaction,
+  /// dispatches domain events AFTER the first base.SaveChangesAsync, and runs post-commit
+  /// actions only on successful commit.
+  /// </summary>
   public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) {
-    // 1. Automatically populate audit fields for auditable entities
-    PopulateAuditFields();
+    // Pre-flight: reject post-commit actions inside caller-managed transactions.
+    if (Database.CurrentTransaction != null) {
+      if (_postCommitActions.Count > 0) {
+        throw new InvalidOperationException(
+          "Post-commit actions cannot be used inside a caller-managed transaction. " +
+          "Use the DbContext-owned transaction pattern instead.");
+      }
+      // Fall through to base behavior for caller-managed transactions.
+      PopulateAuditFields();
+      await DispatchDomainEventsAsync(cancellationToken);
+      return await base.SaveChangesAsync(cancellationToken);
+    }
 
-    // 2. Dispatch events BEFORE saving to allow handlers to join the transaction.
-    await DispatchDomainEventsAsync(cancellationToken);
+    // UoW orchestration: wrap in transaction, save first, dispatch, save again if needed, commit, then post-commit.
+    var isRelational = Database.IsRelational();
+    if (!isRelational) {
+      // For in-memory databases, skip transaction wrapping but still run full orchestration.
+      PopulateAuditFields();
+      var result = await base.SaveChangesAsync(cancellationToken);
+      await DispatchDomainEventsAsync(cancellationToken);
+      if (ChangeTracker.HasChanges()) {
+        await base.SaveChangesAsync(cancellationToken);
+      }
+      await ExecutePostCommitActionsAsync(cancellationToken);
+      return result;
+    }
 
-    return await base.SaveChangesAsync(cancellationToken);
+    await using var dbTransaction = await Database.BeginTransactionAsync(cancellationToken);
+    try {
+      // 1. Populate audit fields
+      PopulateAuditFields();
+
+      // 2. First save: persist aggregate root changes
+      var result = await base.SaveChangesAsync(cancellationToken);
+
+      // 3. Dispatch events AFTER first save
+      await DispatchDomainEventsAsync(cancellationToken);
+
+      // 4. Second save: persist any new entities created by handlers
+      if (ChangeTracker.HasChanges()) {
+        await base.SaveChangesAsync(cancellationToken);
+      }
+
+      // 5. Commit transaction
+      await dbTransaction.CommitAsync(cancellationToken);
+
+      // 6. Execute post-commit actions (outside the transaction)
+      await ExecutePostCommitActionsAsync(cancellationToken);
+
+      return result;
+    } catch {
+      // Rollback is implicit on exception — DbContext disposes the transaction.
+      // Post-commit actions must NOT run on failure.
+      _postCommitActions.Clear();
+      throw;
+    }
+  }
+
+  private async Task ExecutePostCommitActionsAsync(CancellationToken cancellationToken) {
+    if (_postCommitActions.Count == 0) return;
+
+    var actions = _postCommitActions.ToList();
+    _postCommitActions.Clear();
+
+    foreach (var action in actions) {
+      try {
+        await action(cancellationToken);
+      } catch (Exception ex) {
+        // Log but do not re-throw — the DB work already committed.
+        _logger?.LogError(ex, "Post-commit action failed");
+      }
+    }
   }
 
   private void PopulateAuditFields() {
@@ -118,8 +212,8 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
       b.HasIndex(t => t.TenantHostname).IsUnique();
 
       // JUNIOR RATIONALE (Global Query Filter):
-      // This is our "Safety Net." It automatically adds "WHERE TenantId = ..." 
-      // to every query you write. You don't have to remember to filter data; 
+      // This is our "Safety Net." It automatically adds "WHERE TenantId = ..."
+      // to every query you write. You don't have to remember to filter data;
       // the database engine does it for you.
       b.HasQueryFilter(t => _tenantService.IsGlobalAccess || t.Id == _tenantService.TenantId);
     });
@@ -225,6 +319,29 @@ public partial class PortalDbContext : IdentityDbContext<ApplicationUser> {
         .HasForeignKey(up => up.PrivilegeId)
         .IsRequired()
         .OnDelete(DeleteBehavior.Cascade);
+    });
+
+    // Configure OutboxMessage — Transactional Outbox pattern (Stage 1B).
+    builder.Entity<OutboxMessage>(b => {
+      b.HasKey(m => m.Id);
+      b.Property(m => m.EventType).IsRequired().HasMaxLength(512);
+      b.Property(m => m.Payload).HasColumnType("jsonb").IsRequired();
+      b.Property(m => m.OccurredAt).IsRequired();
+      b.Property(m => m.Error).HasMaxLength(2000);
+
+      // JUNIOR RATIONALE (Partial Index):
+      // The publisher worker ONLY queries unprocessed rows
+      // (ProcessedAt IS NULL). A partial index is ~99% smaller than a
+      // full index on a table that's mostly processed history. Fast
+      // lookup on hot rows, tiny write overhead since the index entry
+      // only exists while the row is unprocessed and is removed when
+      // ProcessedAt transitions null -> timestamp.
+      b.HasIndex(m => m.OccurredAt)
+       .HasFilter("\"ProcessedAt\" IS NULL")
+       .HasDatabaseName("IX_OutboxMessages_Unprocessed");
+
+      // No multi-tenant query filter — outbox is an infrastructure-level
+      // table; the worker reads it as System.
     });
   }
 }
