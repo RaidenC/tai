@@ -474,15 +474,21 @@ Response example:
 #### 11. Idempotency Keys
 
 ##### What
-An <span style="color: #33b5e5; font-weight: bold;">idempotency key</span> is a client-generated unique identifier (`Idempotency-Key` header) that ensures a POST request produces the same result whether sent once or multiple times.
+An <span style="color: #33b5e5; font-weight: bold;">idempotency key</span> is a client-generated unique identifier (`Idempotency-Key` header) that ensures a POST request produces the same result whether sent once or multiple times. The header follows **RFC 9110** — no `X-` prefix needed.
 
 ##### Why
 Without idempotency keys, network retries can create duplicate resources. If the client sends `POST /api/onboarding/register`, the server creates the user and responds — but the response is lost in transit. The client retries, creating a second user. An idempotency key lets the server recognize the retry and return the original response.
 
 ##### How
 
+**Standard header:**
+```http
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
+```
+
+**Production-ready middleware:**
+
 ```csharp
-// Middleware checks for existing result before processing
 public class IdempotencyMiddleware {
     public async Task InvokeAsync(HttpContext context, IIdempotencyStore store) {
         if (context.Request.Method != "POST") { await _next(context); return; }
@@ -490,19 +496,75 @@ public class IdempotencyMiddleware {
         var key = context.Request.Headers["Idempotency-Key"].FirstOrDefault();
         if (key is null) { await _next(context); return; }
 
-        var cached = await store.GetAsync(key);
+        // Scope key to user + path (prevents cross-user collisions)
+        var userId = context.User?.FindFirst("sub")?.Value ?? "anonymous";
+        var path = context.Request.Path.ToString();
+        var scopedKey = $"{userId}:{path}:{key}";
+
+        // Check for cached response
+        var cached = await store.GetAsync(scopedKey);
         if (cached is not null) {
-            // Return cached response — same status code, headers, body
             context.Response.StatusCode = cached.StatusCode;
+            context.Response.ContentType = cached.ContentType;
             await context.Response.WriteAsync(cached.Body);
             return;
         }
 
-        // Process normally, cache the response
-        var response = await CaptureResponse(context);
-        await store.SetAsync(key, response, TimeSpan.FromHours(24));
+        // Acquire lock to prevent race condition (two simultaneous requests)
+        var lockAcquired = await store.TryAcquireLockAsync(scopedKey, TimeSpan.FromSeconds(10));
+        if (!lockAcquired) {
+            // Another request is processing - wait briefly and check cache
+            await Task.Delay(100);
+            cached = await store.GetAsync(scopedKey);
+            if (cached is not null) {
+                context.Response.StatusCode = cached.StatusCode;
+                context.Response.ContentType = cached.ContentType;
+                await context.Response.WriteAsync(cached.Body);
+                return;
+            }
+        }
+
+        // Enable buffering to read response body after pipeline executes
+        context.Response.EnableBuffering();
+
+        // Execute the request
+        await _next(context);
+
+        // Only cache successful responses (200, 201)
+        if (context.Response.StatusCode is 200 or 201) {
+            context.Response.Body.Seek(0, SeekOrigin.Begin);
+            using var reader = new StreamReader(context.Response.Body, leaveOpen: true);
+            var body = await reader.ReadToEndAsync();
+
+            await store.SetAsync(scopedKey, new IdempotencyResult {
+                StatusCode = context.Response.StatusCode,
+                ContentType = context.Response.ContentType ?? "application/json",
+                Body = body
+            }, TimeSpan.FromHours(24));
+        }
+
+        // Reset body position for actual response
+        context.Response.Body.Seek(0, SeekOrigin.Begin);
     }
 }
+```
+
+**Key implementation details:**
+| Concern | Solution |
+|---------|----------|
+| **Race condition** | Distributed lock (Redis SETNX) before processing |
+| **Cross-user collision** | Scope key to `userId:path:key` |
+| **Response capture** | `EnableBuffering()` to read response body |
+| **What to cache** | Only 200/201 — not 400/500 errors |
+| **Cache TTL** | 24 hours (enough for retries) |
+| **Storage** | Redis with key expiration |
+
+**Redis schema:**
+```
+Key: idempotency:{userId}:{path}:{key}
+Value: JSON { statusCode, contentType, body }
+TTL: 24 hours
+Lock: idempotency:lock:{userId}:{path}:{key} (expires after 10s)
 ```
 
 Angular client:
@@ -519,7 +581,7 @@ register(cmd: RegisterCommand): Observable<RegisterResponse> {
 Use idempotency keys for all non-idempotent operations (POST that creates resources, POST that triggers side effects). Don't use them for naturally idempotent operations (PUT, DELETE — these are idempotent by definition).
 
 ##### Trade-offs
-<span style="color: #ffbb33; font-weight: bold;">Idempotency keys require server-side storage</span> (Redis or database table) with a TTL. Set the TTL long enough for retries (24 hours) but not forever. <span style="color: #ff4444; font-weight: bold;">Race condition</span>: two simultaneous requests with the same key — use a distributed lock or database constraint to ensure only one is processed.
+<span style="color: #ffbb33; font-weight: bold;">Idempotency keys require server-side storage</span> (Redis or database table) with a TTL. Set the TTL long enough for retries (24 hours) but not forever. <span style="color: #ff4444; font-weight: bold;">Race condition</span>: two simultaneous requests with the same key — the lock pattern handles this. <span style="color: #ffbb33; font-weight: bold;">Response buffering</span> adds slight latency and memory overhead for POST requests.
 
 ---
 
