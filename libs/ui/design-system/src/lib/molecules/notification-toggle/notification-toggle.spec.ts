@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { NotificationToggleComponent } from './notification-toggle.component';
-import { NotificationPanelService } from './notification-panel.service';
+import { NotificationPanelService } from '../../organisms/notification-panel/notification-panel.service';
 
 describe('NotificationToggleComponent', () => {
   let component: NotificationToggleComponent;
