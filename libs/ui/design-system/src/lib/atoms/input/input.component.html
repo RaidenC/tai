@@ -1,0 +1,13 @@
+<input
+  [id]="id() || null"
+  [type]="type()"
+  [placeholder]="placeholder()"
+  [value]="displayValue()"
+  [disabled]="disabled()"
+  [attr.autocomplete]="autocomplete()"
+  [attr.aria-invalid]="invalid()"
+  [attr.aria-describedby]="describedBy() || null"
+  [class]="inputClasses()"
+  (input)="onInput($event)"
+  (blur)="onBlur()"
+/>

@@ -1,3 +1,4 @@
+export * from './lib/atoms/input/input.component';
 export * from './lib/atoms/label/label.component';
 export * from './lib/design-system/hello-world';
 export * from './lib/design-system/secure-input/secure-input';
