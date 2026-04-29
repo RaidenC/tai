@@ -3,6 +3,7 @@ export * from './lib/atoms/checkbox/checkbox.component';
 export * from './lib/atoms/icon/icon.component';
 export * from './lib/atoms/input/input.component';
 export * from './lib/atoms/label/label.component';
+export * from './lib/molecules/form-field/form-field.component';
 export * from './lib/design-system/hello-world';
 export * from './lib/atoms/secure-input/secure-input';
 export * from './lib/atoms/secure-input/trusted-types.service';
