@@ -31,7 +31,9 @@ describe('CheckboxComponent', () => {
       fixture.componentInstance.registerOnChange((value: boolean) => {
         currentValue = value;
       });
-      fixture.componentInstance.registerOnTouched(() => {});
+      fixture.componentInstance.registerOnTouched(() => {
+        // noop for test - callback required by ControlValueAccessor interface
+      });
 
       checkbox.click();
       fixture.detectChanges();

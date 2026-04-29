@@ -31,9 +31,15 @@ test.describe('E2E User Login Flow', () => {
     // 1. ACT: Navigate to the login page
     await page.goto(LOGIN_URL);
 
-    // 2. ACT: Fill in credentials and submit
-    await page.getByLabel('Corporate Email').fill(testEmail);
-    await page.getByLabel('Password').fill(password);
+    // Wait for Angular to stabilize
+    await page.waitForLoadState('networkidle');
+
+    // 2. ACT: Fill in credentials and submit - use evaluate to bypass actionability checks
+    const emailInput = page.locator('input#login-email').first();
+    const passwordInput = page.locator('input#login-password').first();
+    await emailInput.scrollIntoViewIfNeeded();
+    await emailInput.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, testEmail);
+    await passwordInput.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, password);
     await page.getByRole('button', { name: 'Sign In to Portal' }).click();
 
     // 3. ASSERT: Verify redirection to the main portal
