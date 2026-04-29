@@ -225,7 +225,7 @@ describe('DropdownMenuComponent', () => {
 Run:
 
 ```bash
-npx nx test design-system --testFile=dropdown-menu.component.spec.ts
+CI=true npx nx test design-system --skip-nx-cache --testFile=dropdown-menu.component.spec.ts
 ```
 
 Expected: FAIL because `DropdownMenuComponent` does not exist.
@@ -642,7 +642,7 @@ export * from './lib/molecules/dropdown-menu/dropdown-menu.component';
 Run:
 
 ```bash
-npx nx test design-system --testFile=dropdown-menu.component.spec.ts
+CI=true npx nx test design-system --skip-nx-cache --testFile=dropdown-menu.component.spec.ts
 ```
 
 Expected: PASS.
@@ -705,7 +705,7 @@ it('emits actionTriggered when dropdown item is selected', () => {
 Run:
 
 ```bash
-npx nx test design-system --testFile=data-table.spec.ts
+CI=true npx nx test design-system --skip-nx-cache --testFile=data-table.spec.ts
 ```
 
 Expected: FAIL because the component still imports and renders CDK menu usage.
@@ -785,7 +785,7 @@ This preserves the action selection behavior while removing CDK menu and caller-
 Run:
 
 ```bash
-npx nx test design-system --testFile=data-table.spec.ts
+CI=true npx nx test design-system --skip-nx-cache --testFile=data-table.spec.ts
 ```
 
 Expected: PASS.
@@ -845,7 +845,7 @@ it('does not render CDK menu directives', () => {
 Run:
 
 ```bash
-npx nx test design-system --testFile=user-profile.component.spec.ts
+CI=true npx nx test design-system --skip-nx-cache --testFile=user-profile.component.spec.ts
 ```
 
 Expected: FAIL because `UserProfileComponent` still imports `CdkMenuModule` and renders CDK menu directives.
@@ -931,7 +931,7 @@ Replace `user-profile.component.html` with:
 Run:
 
 ```bash
-npx nx test design-system --testFile=user-profile.component.spec.ts
+CI=true npx nx test design-system --skip-nx-cache --testFile=user-profile.component.spec.ts
 ```
 
 Expected: PASS.
@@ -974,7 +974,7 @@ it('does not render CDK menu directives', () => {
 Run:
 
 ```bash
-npx nx test design-system --testFile=sidebar.component.spec.ts
+CI=true npx nx test design-system --skip-nx-cache --testFile=sidebar.component.spec.ts
 ```
 
 Expected: FAIL because the template still contains `cdkMenu` and `cdkMenuItem`.
@@ -1071,7 +1071,7 @@ const buttons = compiled.querySelectorAll('a.sidebar-menu-item');
 Run:
 
 ```bash
-npx nx test design-system --testFile=sidebar.component.spec.ts
+CI=true npx nx test design-system --skip-nx-cache --testFile=sidebar.component.spec.ts
 ```
 
 Expected: PASS.
@@ -1305,7 +1305,7 @@ export const ComponentSurface: Story = {
 Run:
 
 ```bash
-npx nx build-storybook design-system
+CI=true npx nx build-storybook design-system --skip-nx-cache
 ```
 
 Expected: PASS.
@@ -1350,10 +1350,10 @@ Expected: no matches.
 Run:
 
 ```bash
-npx nx lint design-system
-npx nx test design-system
-npx nx build design-system
-npx nx build-storybook design-system
+CI=true npx nx lint design-system --skip-nx-cache
+CI=true npx nx test design-system --skip-nx-cache
+CI=true npx nx build design-system --skip-nx-cache
+CI=true npx nx build-storybook design-system --skip-nx-cache
 ```
 
 Expected: PASS.
@@ -1363,21 +1363,21 @@ Expected: PASS.
 Run:
 
 ```bash
-npx nx lint portal-web
-npx nx test portal-web
-npx nx build portal-web
-npx nx e2e portal-web-e2e
-npx nx lint identity-ui
-npx nx test identity-ui
-npx nx build identity-ui
-npx nx e2e identity-ui-e2e
-npx nx lint borrower-portal
-npx nx test borrower-portal
-npx nx build borrower-portal
-npx nx e2e borrower-portal-e2e
+CI=true npx nx lint portal-web --skip-nx-cache
+CI=true npx nx test portal-web --skip-nx-cache
+CI=true npx nx build portal-web --skip-nx-cache
+CI=true npx nx e2e portal-web-e2e --skip-nx-cache
+CI=true npx nx lint identity-ui --skip-nx-cache
+CI=true npx nx test identity-ui --skip-nx-cache
+CI=true npx nx build identity-ui --skip-nx-cache
+CI=true npx nx e2e identity-ui-e2e --skip-nx-cache
+CI=true npx nx lint borrower-portal --skip-nx-cache
+CI=true npx nx test borrower-portal --skip-nx-cache
+CI=true npx nx build borrower-portal --skip-nx-cache
+CI=true npx nx e2e borrower-portal-e2e --skip-nx-cache
 ```
 
-Expected: PASS.
+Expected: PASS. All e2e commands are required to pass before Phase 2 is considered complete.
 
 - [ ] **Step 5: Commit verification fixes**
 

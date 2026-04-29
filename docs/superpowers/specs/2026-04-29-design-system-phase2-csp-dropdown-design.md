@@ -266,23 +266,25 @@ Expected result:
 Cross-project verification:
 
 ```bash
-npx nx lint design-system
-npx nx test design-system
-npx nx build design-system
-npx nx build-storybook design-system
-npx nx lint portal-web
-npx nx test portal-web
-npx nx build portal-web
-npx nx e2e portal-web-e2e
-npx nx lint identity-ui
-npx nx test identity-ui
-npx nx build identity-ui
-npx nx e2e identity-ui-e2e
-npx nx lint borrower-portal
-npx nx test borrower-portal
-npx nx build borrower-portal
-npx nx e2e borrower-portal-e2e
+CI=true npx nx lint design-system --skip-nx-cache
+CI=true npx nx test design-system --skip-nx-cache
+CI=true npx nx build design-system --skip-nx-cache
+CI=true npx nx build-storybook design-system --skip-nx-cache
+CI=true npx nx lint portal-web --skip-nx-cache
+CI=true npx nx test portal-web --skip-nx-cache
+CI=true npx nx build portal-web --skip-nx-cache
+CI=true npx nx e2e portal-web-e2e --skip-nx-cache
+CI=true npx nx lint identity-ui --skip-nx-cache
+CI=true npx nx test identity-ui --skip-nx-cache
+CI=true npx nx build identity-ui --skip-nx-cache
+CI=true npx nx e2e identity-ui-e2e --skip-nx-cache
+CI=true npx nx lint borrower-portal --skip-nx-cache
+CI=true npx nx test borrower-portal --skip-nx-cache
+CI=true npx nx build borrower-portal --skip-nx-cache
+CI=true npx nx e2e borrower-portal-e2e --skip-nx-cache
 ```
+
+All e2e commands are required to pass before Phase 2 is considered complete.
 
 ## Risks and Constraints
 
