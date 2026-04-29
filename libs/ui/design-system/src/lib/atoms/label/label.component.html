@@ -1,0 +1,13 @@
+<label
+  [attr.for]="forId() || null"
+  class="tai-label text-sm font-semibold text-gray-700"
+>
+  <span [textContent]="text()"></span>
+  @if (required()) {
+    <span
+      class="ml-1 text-red-600"
+      aria-hidden="true"
+      data-testid="required-marker"
+    >*</span>
+  }
+</label>
