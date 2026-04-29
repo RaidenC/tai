@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { LoginFormComponent } from './login-form';
-import { SecureInputComponent } from '../secure-input/secure-input';
+import { SecureInputComponent } from '../../atoms/secure-input/secure-input';
 import { By } from '@angular/platform-browser';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 

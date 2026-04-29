@@ -1,0 +1,27 @@
+<div class="secure-input-container flex flex-col mb-6 w-full">
+  <tai-label
+    [forId]="id()"
+    [text]="label()"
+  />
+
+  <tai-input
+    [id]="id()"
+    [type]="type()"
+    [placeholder]="placeholder()"
+    [autocomplete]="autocompleteValue"
+    [invalid]="!!(errorMessage() && isTouched())"
+    [value]="value()"
+    [disabled]="isDisabled()"
+    (valueChanged)="onInputValueChanged($event)"
+    (blurred)="onBlur()"
+  />
+
+  @if (errorMessage() && isTouched()) {
+    <div
+      class="error-message mt-2 text-xs text-red-600 font-medium"
+      [textContent]="errorMessage()"
+      aria-live="polite"
+      role="alert"
+    ></div>
+  }
+</div>

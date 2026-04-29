@@ -53,8 +53,8 @@ describe('SecureInputComponent', () => {
     fixture.detectChanges();
     const input = fixture.debugElement.query(By.css('input'))
       .nativeElement as HTMLInputElement;
-    // Check for the class name instead of computed style for stability.
-    expect(input.classList.contains('secure-password-input')).toBe(true);
+    // Verify password type is applied
+    expect(input.type).toBe('password');
   });
 
   it('should render error message after touch', () => {
@@ -105,5 +105,17 @@ describe('SecureInputComponent', () => {
     const input = fixture.debugElement.query(By.css('input'))
       .nativeElement as HTMLInputElement;
     expect(input.getAttribute('placeholder')).toBe('Enter text');
+  });
+
+  it('renders error messages with textContent instead of innerHTML', () => {
+    fixture.componentRef.setInput('errorMessage', '<img src=x onerror=alert(1)>Invalid');
+    component.writeValue('bad');
+    const input = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    input.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+
+    const error = fixture.nativeElement.querySelector('[role="alert"]') as HTMLElement;
+    expect(error.textContent).toContain('<img src=x onerror=alert(1)>Invalid');
+    expect(error.querySelector('img')).toBeNull();
   });
 });

@@ -6,7 +6,7 @@ import {
   FormControl,
   Validators,
 } from '@angular/forms';
-import { SecureInputComponent } from '../secure-input/secure-input';
+import { SecureInputComponent } from '../../atoms/secure-input/secure-input';
 
 @Component({
   selector: 'tai-otp-verification-form',
