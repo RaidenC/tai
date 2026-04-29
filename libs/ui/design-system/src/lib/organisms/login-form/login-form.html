@@ -1,47 +1,46 @@
 <form
   [formGroup]="loginForm"
   (ngSubmit)="onSubmit()"
-  class="login-form-container flex flex-col p-4 w-full"
+  class="login-form-container flex w-full flex-col gap-6 p-4"
   role="form"
 >
-  <!-- 
-    Email Identity Input:
-    Uses the SecureInputComponent to ensure strict CSP and 
-    Stealer Log defense for the corporate email field.
-  -->
-  <tai-secure-input
+  <tai-form-field
+    controlId="login-email"
     label="Corporate Email"
-    type="email"
-    placeholder="e.g. jdoe@tai.com"
-    formControlName="email"
-    [errorMessage]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched ? 'A valid corporate email is required.' : ''"
+    hint="Use your company email address."
+    [error]="getEmailError()"
+    [required]="true"
   >
-  </tai-secure-input>
+    <tai-secure-input
+      id="login-email"
+      type="email"
+      placeholder="e.g. jdoe@tai.com"
+      formControlName="email"
+      [errorMessage]="getEmailError()"
+    />
+  </tai-form-field>
 
-  <!-- 
-    Password Input:
-    Strictly isolated DOM with CSS masking and new-password 
-    autocomplete to mitigate credential harvesting malware.
-  -->
-  <tai-secure-input
+  <tai-form-field
+    controlId="login-password"
     label="Password"
-    type="password"
-    placeholder="Enter your secure password"
-    formControlName="password"
-    [errorMessage]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched ? 'Password must be at least 8 characters.' : ''"
+    [error]="getPasswordError()"
+    [required]="true"
   >
-  </tai-secure-input>
+    <tai-secure-input
+      id="login-password"
+      type="password"
+      placeholder="Enter your secure password"
+      formControlName="password"
+      [errorMessage]="getPasswordError()"
+    />
+  </tai-form-field>
 
-  <!-- 
-    Submit Action:
-    The ngSubmit directive provides a robust, semantic way to handle
-    form submissions that is fully compatible with modern testing libraries.
-  -->
-  <button
+  <tai-button
     type="submit"
-    class="submit-button mt-4 px-6 py-3 bg-blue-600 text-white border-none rounded-md font-semibold cursor-pointer transition-all duration-200 ease-in-out shadow-sm hover:not-disabled:bg-blue-700 hover:not-disabled:-translate-y-px hover:not-disabled:shadow-md active:not-disabled:translate-y-0 disabled:bg-gray-400 disabled:cursor-not-allowed disabled:opacity-70"
+    variant="primary"
+    testId="login-submit"
     [disabled]="loginForm.invalid"
   >
     Sign In to Portal
-  </button>
+  </tai-button>
 </form>

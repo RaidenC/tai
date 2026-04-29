@@ -7,6 +7,8 @@ import {
   Validators,
 } from '@angular/forms';
 import { SecureInputComponent } from '../../atoms/secure-input/secure-input';
+import { ButtonComponent } from '../../atoms/button/button.component';
+import { FormFieldComponent } from '../../molecules/form-field/form-field.component';
 
 /**
  * LoginFormComponent
@@ -22,7 +24,13 @@ import { SecureInputComponent } from '../../atoms/secure-input/secure-input';
 @Component({
   selector: 'tai-login-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, SecureInputComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    ButtonComponent,
+    SecureInputComponent,
+    FormFieldComponent,
+  ],
   templateUrl: './login-form.html',
   styleUrl: './login-form.scss',
 })
@@ -57,5 +65,21 @@ export class LoginFormComponent {
         this.loginForm.getRawValue() as Required<typeof this.loginForm.value>,
       );
     }
+  }
+
+  public getEmailError(): string {
+    const control = this.loginForm.controls.email;
+    if (!control.touched || control.valid) {
+      return '';
+    }
+    return 'A valid corporate email is required.';
+  }
+
+  public getPasswordError(): string {
+    const control = this.loginForm.controls.password;
+    if (!control.touched || control.valid) {
+      return '';
+    }
+    return 'Password must be at least 8 characters.';
   }
 }
