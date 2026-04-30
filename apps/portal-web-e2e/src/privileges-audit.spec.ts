@@ -28,7 +28,7 @@ test.describe('Privileges Audit Trail E2E', () => {
     const row = page.locator('tr').filter({ hasText: privilegeName });
     await expect(row).toBeVisible();
 
-    const actionsTrigger = row.getByRole('button', { name: /actions/i });
+    const actionsTrigger = row.getByRole('button', { name: /actions/i }).first();
     
     // Capture ID from the catalog row BEFORE navigating away
     const privilegeId = await actionsTrigger.getAttribute('data-testid').then(id => id?.replace('action-menu-trigger-', ''));
