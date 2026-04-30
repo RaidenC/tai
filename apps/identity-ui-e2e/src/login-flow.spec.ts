@@ -31,9 +31,6 @@ test.describe('E2E User Login Flow', () => {
     // 1. ACT: Navigate to the login page
     await page.goto(LOGIN_URL);
 
-    // Wait for Angular to stabilize
-    await page.waitForLoadState('networkidle');
-
     // 2. ACT: Fill in credentials and submit - use evaluate to bypass actionability checks
     const emailInput = page.locator('input#login-email').first();
     const passwordInput = page.locator('input#login-password').first();
