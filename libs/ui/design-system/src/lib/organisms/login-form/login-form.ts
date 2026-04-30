@@ -6,7 +6,7 @@ import {
   FormControl,
   Validators,
 } from '@angular/forms';
-import { SecureInputComponent } from '../../atoms/secure-input/secure-input';
+import { InputComponent } from '../../atoms/input/input.component';
 import { ButtonComponent } from '../../atoms/button/button.component';
 import { FormFieldComponent } from '../../molecules/form-field/form-field.component';
 
@@ -18,7 +18,7 @@ import { FormFieldComponent } from '../../molecules/form-field/form-field.compon
  *
  * Features:
  * 1. Strongly typed FormGroup model.
- * 2. Composition of SecureInputComponent for identity isolation.
+ * 2. Composition of InputComponent for identity isolation.
  * 3. Reactive validation state binding for the submission layer.
  */
 @Component({
@@ -28,7 +28,7 @@ import { FormFieldComponent } from '../../molecules/form-field/form-field.compon
     CommonModule,
     ReactiveFormsModule,
     ButtonComponent,
-    SecureInputComponent,
+    InputComponent,
     FormFieldComponent,
   ],
   templateUrl: './login-form.html',

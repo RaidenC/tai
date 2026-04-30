@@ -19,7 +19,11 @@ test.describe('User Privileges Negative E2E (409 Conflict)', () => {
     await page.getByPlaceholder(/search users/i).fill(userEmail);
     await page.waitForResponse(res => res.url().includes('/api/users') && res.status() === 200);
 
-    const row = page.locator('tr').filter({ hasText: userEmail });
+    // Wait for table to stabilize after search results load
+    await page.waitForTimeout(500);
+
+    const row = page.locator('tr[cdk-row]').filter({ hasText: userEmail });
+    await expect(row).toBeVisible();
     await row.getByRole('button', { name: /actions/i }).first().click();
     await page.getByRole('menuitem', { name: /view details/i }).click();
     

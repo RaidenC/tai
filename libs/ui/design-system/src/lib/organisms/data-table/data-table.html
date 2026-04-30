@@ -102,7 +102,7 @@
               type="button"
               variant="ghost"
               [testId]="'action-' + action.id"
-              (pressed)="onAction(action.id, row)"
+              (click)="onAction(action.id, row)"
               cdkMenuItem
             >
               <span [textContent]="action.label"></span>

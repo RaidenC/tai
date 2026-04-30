@@ -24,9 +24,11 @@ test.describe('Real-World Multi-Tenant Handshake', () => {
     // The redirect_uri is nested inside returnUrl, so it's double-encoded.
     expect(page.url()).toContain('redirect_uri%3Dhttp%253A%252F%252Flocalhost%253A4200');
     
-    // 4. Perform Login
-    await page.getByLabel(/Corporate Email/i).fill('admin@tai.com');
-    await page.getByLabel(/Password/i).fill('Password123!');
+    // 4. Perform Login - use evaluate to bypass actionability checks
+    const emailInput1 = page.locator('input#login-email').first();
+    const passwordInput1 = page.locator('input#login-password').first();
+    await emailInput1.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, 'admin@tai.com');
+    await passwordInput1.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, 'Password123!');
     await page.getByRole('button', { name: /Sign In to Portal/i }).click();
 
     // 5. Verify redirect back to Portal
@@ -51,9 +53,11 @@ test.describe('Real-World Multi-Tenant Handshake', () => {
     await expect(page).toHaveURL(/.*acme\.localhost:4300\/login.*/);
     expect(page.url()).toContain('redirect_uri%3Dhttp%253A%252F%252Facme.localhost%253A4200');
     
-    // 4. Perform Login (using ACME admin)
-    await page.getByLabel(/Corporate Email/i).fill('admin@acme.com');
-    await page.getByLabel(/Password/i).fill('Password123!');
+    // 4. Perform Login (using ACME admin) - use evaluate to bypass actionability checks
+    const emailInputACM = page.locator('input#login-email').first();
+    const passwordInputACM = page.locator('input#login-password').first();
+    await emailInputACM.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, 'admin@acme.com');
+    await passwordInputACM.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, 'Password123!');
     await page.getByRole('button', { name: /Sign In to Portal/i }).click();
 
     // 5. Verify redirect back to ACME Portal

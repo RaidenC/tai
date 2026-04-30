@@ -11,12 +11,12 @@
     [error]="getEmailError()"
     [required]="true"
   >
-    <tai-secure-input
+    <tai-input
       id="login-email"
       type="email"
       placeholder="e.g. jdoe@tai.com"
       formControlName="email"
-      [errorMessage]="getEmailError()"
+      autocomplete="email"
     />
   </tai-form-field>
 
@@ -26,12 +26,12 @@
     [error]="getPasswordError()"
     [required]="true"
   >
-    <tai-secure-input
+    <tai-input
       id="login-password"
       type="password"
       placeholder="Enter your secure password"
       formControlName="password"
-      [errorMessage]="getPasswordError()"
+      autocomplete="current-password"
     />
   </tai-form-field>
 
