@@ -1,0 +1,25 @@
+:host {
+  display: inline-flex;
+}
+
+.tai-dropdown-panel {
+  transform-origin: top right;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tai-dropdown-panel {
+    animation: tai-dropdown-enter 120ms ease-out;
+  }
+}
+
+@keyframes tai-dropdown-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

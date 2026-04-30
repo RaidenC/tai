@@ -1,0 +1,56 @@
+<div class="tai-dropdown-menu relative inline-flex">
+  <button
+    #triggerButton
+    type="button"
+    class="tai-dropdown-trigger inline-flex min-h-11 items-center justify-center gap-2 rounded-md border-0 bg-transparent px-3 py-2 text-sm font-semibold text-gray-700 outline-none transition-colors duration-200 hover:bg-gray-100 focus:ring-3 focus:ring-blue-600/20"
+    [attr.aria-label]="ariaLabel()"
+    aria-haspopup="menu"
+    [attr.aria-expanded]="isOpen()"
+    [attr.data-testid]="testId() + '-trigger'"
+    (click)="toggle()"
+    (keydown)="onTriggerKeydown($event)"
+  >
+    @if (triggerIcon()) {
+      <tai-icon [name]="triggerIcon()!" size="sm" />
+    }
+    @if (triggerLabel()) {
+      <span [textContent]="triggerLabel()"></span>
+    }
+    <ng-content select="[taiDropdownTrigger]"></ng-content>
+  </button>
+
+  @if (isOpen()) {
+    <div
+      role="menu"
+      tabindex="-1"
+      [class]="panelClasses()"
+      [attr.aria-label]="ariaLabel()"
+      [attr.data-density]="density()"
+      [attr.data-testid]="testId() + '-panel'"
+      (keydown)="onPanelKeydown($event)"
+    >
+      @for (item of items(); track item.id) {
+        <button
+          #menuItemButton
+          type="button"
+          role="menuitem"
+          [disabled]="item.disabled"
+          [attr.aria-disabled]="item.disabled ? 'true' : null"
+          [attr.aria-current]="item.active ? 'page' : null"
+          [attr.data-testid]="testId() + '-item-' + item.id"
+          [class]="itemClasses()"
+          [class.text-red-600]="item.destructive"
+          [class.text-gray-900]="!item.destructive"
+          [class.bg-blue-50]="item.active"
+          [class.hover:bg-gray-50]="!item.disabled"
+          (click)="selectItem(item)"
+        >
+          @if (item.icon) {
+            <tai-icon [name]="item.icon" size="sm" />
+          }
+          <span class="truncate" [textContent]="item.label"></span>
+        </button>
+      }
+    </div>
+  }
+</div>
