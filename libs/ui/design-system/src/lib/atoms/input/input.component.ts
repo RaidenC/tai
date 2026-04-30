@@ -35,11 +35,13 @@ export class InputComponent implements ControlValueAccessor {
   readonly invalid = input<boolean>(false);
   readonly describedBy = input<string>('');
   readonly value = input<string | null>(null);
+  readonly disabled = input<boolean>(false);
   readonly valueChanged = output<string>();
   readonly blurred = output<void>();
 
   protected readonly controlValue = signal<string>('');
-  protected readonly disabled = signal<boolean>(false);
+  protected readonly disabledSignal = signal<boolean>(false);
+  protected readonly effectiveDisabled = computed(() => this.disabledSignal() || this.disabled());
   protected readonly displayValue = computed(() => this.value() ?? this.controlValue());
 
   protected readonly inputClasses = computed(() => {
@@ -67,7 +69,7 @@ export class InputComponent implements ControlValueAccessor {
   }
 
   setDisabledState(isDisabled: boolean): void {
-    this.disabled.set(isDisabled);
+    this.disabledSignal.set(isDisabled);
   }
 
   protected onInput(event: Event): void {

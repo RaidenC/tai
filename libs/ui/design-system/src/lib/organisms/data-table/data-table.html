@@ -34,19 +34,23 @@
         [attr.data-testid]="'header-' + column.id"
       >
         @if (column.sortable) {
-        <button
+        <tai-button
           type="button"
-          (click)="toggleSort(column.id)"
-          class="flex items-center gap-2 w-full h-full text-left outline-none focus:text-blue-600 transition-colors duration-200"
-          [attr.data-testid]="'sort-button-' + column.id"
-          [attr.aria-label]="'Sort by ' + column.header"
+          variant="ghost"
+          [testId]="'sort-button-' + column.id"
+          [ariaLabel]="'Sort by ' + column.header"
+          (pressed)="toggleSort(column.id)"
         >
-          {{ column.header }}
-          <span class="text-xs text-gray-400">
-            @if (sortState()?.columnId === column.id) { {{
-            sortState()?.direction === 'asc' ? '↑' : '↓' }} } @else { ↕ }
-          </span>
-        </button>
+          <span [textContent]="column.header"></span>
+          @if (sortState()?.columnId === column.id) {
+            <tai-icon
+              [name]="sortState()?.direction === 'asc' ? 'chevron-up' : 'chevron-down'"
+              size="sm"
+            />
+          } @else {
+            <tai-icon name="chevron-up-down" size="sm" />
+          }
+        </tai-button>
         } @else {
         <div class="flex items-center gap-2">{{ column.header }}</div>
         }
@@ -77,28 +81,15 @@
         *cdkCellDef="let row"
         class="px-6 py-4 border-b border-gray-100 text-right"
       >
-        <button
+        <tai-button
           type="button"
+          variant="ghost"
+          ariaLabel="Actions"
+          [testId]="'action-menu-trigger-' + (row.id || row.Id)"
           [cdkMenuTriggerFor]="menu"
-          class="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors duration-200"
-          aria-label="Actions"
-          [attr.data-testid]="'action-menu-trigger-' + (row.id || row.Id)"
         >
-          <svg
-            class="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden="true"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-            />
-          </svg>
-        </button>
+          <tai-icon name="more-vertical" />
+        </tai-button>
 
         <ng-template #menu>
           <div
@@ -107,16 +98,15 @@
           >
             @for (action of actions(); track action.id) { @if
             (isActionVisible(action, row)) {
-            <button
+            <tai-button
               type="button"
-              class="px-4 py-2 text-sm text-left hover:bg-gray-50 transition-colors duration-150 disabled:opacity-50"
-              [class]="action.class"
+              variant="ghost"
+              [testId]="'action-' + action.id"
               (click)="onAction(action.id, row)"
-              [attr.data-testid]="'action-' + action.id"
               cdkMenuItem
             >
-              {{ action.label }}
-            </button>
+              <span [textContent]="action.label"></span>
+            </tai-button>
             } }
           </div>
         </ng-template>
@@ -142,21 +132,8 @@
     class="flex flex-col items-center justify-center p-12 bg-white"
     data-testid="table-empty"
   >
-    <div class="text-gray-400 mb-4">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        class="w-16 h-16"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="1.5"
-          d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-        />
-      </svg>
+    <div class="mb-4 text-gray-400">
+      <tai-icon name="empty-state" size="lg" />
     </div>
     <h4 class="text-lg font-bold text-gray-900">No records found</h4>
     <p class="text-gray-500 mt-1">
@@ -176,24 +153,24 @@
       <span class="font-bold">{{ paginationSummary().total }}</span> records
     </div>
     <div class="flex gap-2">
-      <button
+      <tai-button
         type="button"
-        class="px-4 py-2 border border-gray-300 rounded-md text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        variant="secondary"
+        testId="pagination-prev"
         [disabled]="pageIndex() === 1"
-        (click)="onPageChange(pageIndex() - 1)"
-        data-testid="pagination-prev"
+        (pressed)="onPageChange(pageIndex() - 1)"
       >
         Previous
-      </button>
-      <button
+      </tai-button>
+      <tai-button
         type="button"
-        class="px-4 py-2 border border-gray-300 rounded-md text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+        variant="secondary"
+        testId="pagination-next"
         [disabled]="pageIndex() === totalPages()"
-        (click)="onPageChange(pageIndex() + 1)"
-        data-testid="pagination-next"
+        (pressed)="onPageChange(pageIndex() + 1)"
       >
         Next
-      </button>
+      </tai-button>
     </div>
   </div>
   }

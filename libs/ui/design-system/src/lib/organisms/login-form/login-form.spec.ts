@@ -1,7 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { LoginFormComponent } from './login-form';
-import { SecureInputComponent } from '../secure-input/secure-input';
+import { SecureInputComponent } from '../../atoms/secure-input/secure-input';
+import { ButtonComponent } from '../../atoms/button/button.component';
+import { FormFieldComponent } from '../../molecules/form-field/form-field.component';
 import { By } from '@angular/platform-browser';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
@@ -11,7 +13,13 @@ describe('LoginFormComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [LoginFormComponent, SecureInputComponent, ReactiveFormsModule],
+      imports: [
+        LoginFormComponent,
+        SecureInputComponent,
+        ButtonComponent,
+        FormFieldComponent,
+        ReactiveFormsModule,
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(LoginFormComponent);
@@ -28,8 +36,9 @@ describe('LoginFormComponent', () => {
   });
 
   it('should enable the submit button only when the form is valid', async () => {
-    const submitBtn = fixture.debugElement.query(By.css('.submit-button'))
-      .nativeElement as HTMLButtonElement;
+    const submitBtn = fixture.nativeElement.querySelector(
+      '[data-testid="login-submit"]',
+    ) as HTMLButtonElement;
     expect(submitBtn.disabled).toBe(true);
 
     component.loginForm.controls.email.setValue('admin@tai.com');
@@ -59,5 +68,15 @@ describe('LoginFormComponent', () => {
     component.onSubmit();
 
     expect(submitSpy).not.toHaveBeenCalled();
+  });
+
+  it('visibly composes molecule and atom selectors', () => {
+    const formFields = fixture.nativeElement.querySelectorAll('tai-form-field');
+    const inputs = fixture.nativeElement.querySelectorAll('tai-input');
+    const buttons = fixture.nativeElement.querySelectorAll('tai-button');
+
+    expect(formFields.length).toBe(2);
+    expect(inputs.length).toBe(2);
+    expect(buttons.length).toBe(1);
   });
 });

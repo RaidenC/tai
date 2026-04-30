@@ -13,6 +13,8 @@ import {
   ReactiveFormsModule,
 } from '@angular/forms';
 import { TrustedTypesService } from './trusted-types.service';
+import { InputComponent } from '../input/input.component';
+import { LabelComponent } from '../label/label.component';
 
 /**
  * SecureInputComponent
@@ -26,7 +28,7 @@ import { TrustedTypesService } from './trusted-types.service';
 @Component({
   selector: 'tai-secure-input',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, InputComponent, LabelComponent],
   templateUrl: './secure-input.html',
   styleUrl: './secure-input.scss',
   providers: [
@@ -115,6 +117,11 @@ export class SecureInputComponent implements ControlValueAccessor {
     const inputElement = event.target as HTMLInputElement;
     this.value.set(inputElement.value);
     this.onChange(inputElement.value);
+  }
+
+  protected onInputValueChanged(nextValue: string): void {
+    this.value.set(nextValue);
+    this.onChange(nextValue);
   }
 
   protected onBlur(): void {

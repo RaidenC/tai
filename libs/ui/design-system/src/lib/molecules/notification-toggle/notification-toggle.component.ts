@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NotificationPanelService } from './notification-panel.service';
+import { NotificationPanelService } from '../../organisms/notification-panel/notification-panel.service';
 
 /**
  * NotificationToggleComponent

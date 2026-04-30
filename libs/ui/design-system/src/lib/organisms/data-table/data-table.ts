@@ -10,6 +10,8 @@ import {
 import { CommonModule } from '@angular/common';
 import { CdkTableModule } from '@angular/cdk/table';
 import { CdkMenuModule } from '@angular/cdk/menu';
+import { ButtonComponent } from '../../atoms/button/button.component';
+import { IconComponent } from '../../atoms/icon/icon.component';
 
 /**
  * Action definition for the DataTable.
@@ -56,7 +58,13 @@ export interface TableColumnDef<T> {
 @Component({
   selector: 'tai-data-table',
   standalone: true,
-  imports: [CommonModule, CdkTableModule, CdkMenuModule],
+  imports: [
+    CommonModule,
+    CdkTableModule,
+    CdkMenuModule,
+    ButtonComponent,
+    IconComponent,
+  ],
   templateUrl: './data-table.html',
   styleUrl: './data-table.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

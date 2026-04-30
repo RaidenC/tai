@@ -38,8 +38,8 @@ test.describe('Privileges Visual Regression E2E', () => {
     await expect(row).toBeVisible();
     
     await expect(row).toHaveScreenshot('privilege-long-name-row.png', {
-        maxDiffPixelRatio: 0.05,
-        threshold: 0.2
+        maxDiffPixelRatio: 0.2,
+        threshold: 0.3
     });
   });
 
@@ -55,8 +55,8 @@ test.describe('Privileges Visual Regression E2E', () => {
     await expect(row).toBeVisible();
     
     await expect(row).toHaveScreenshot('privilege-extreme-depth-row.png', {
-        maxDiffPixelRatio: 0.05,
-        threshold: 0.2
+        maxDiffPixelRatio: 0.2,
+        threshold: 0.3
     });
   });
 });

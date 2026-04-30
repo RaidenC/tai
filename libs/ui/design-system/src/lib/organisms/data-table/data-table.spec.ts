@@ -6,6 +6,8 @@ import {
 } from './data-table';
 import { CdkTableModule } from '@angular/cdk/table';
 import { CdkMenuModule } from '@angular/cdk/menu';
+import { ButtonComponent } from '../../atoms/button/button.component';
+import { IconComponent } from '../../atoms/icon/icon.component';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 interface TestData {
@@ -185,5 +187,13 @@ describe('DataTableComponent', () => {
     nextBtn.click();
 
     expect(spy).toHaveBeenCalledWith(2);
+  });
+
+  it('visibly composes button and icon atoms', () => {
+    const buttons = fixture.nativeElement.querySelectorAll('tai-button');
+    const icons = fixture.nativeElement.querySelectorAll('tai-icon');
+
+    expect(buttons.length).toBeGreaterThanOrEqual(3);
+    expect(icons.length).toBeGreaterThanOrEqual(1);
   });
 });

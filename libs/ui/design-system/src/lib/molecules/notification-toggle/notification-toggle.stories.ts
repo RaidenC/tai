@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/angular';
 import { NotificationToggleComponent } from './notification-toggle.component';
-import { NotificationPanelService } from './notification-panel.service';
+import { NotificationPanelService } from '../../organisms/notification-panel/notification-panel.service';
 
 const meta: Meta<NotificationToggleComponent> = {
   component: NotificationToggleComponent,
