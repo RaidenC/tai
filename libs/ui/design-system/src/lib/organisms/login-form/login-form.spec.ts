@@ -72,11 +72,11 @@ describe('LoginFormComponent', () => {
 
   it('visibly composes molecule and atom selectors', () => {
     const formFields = fixture.nativeElement.querySelectorAll('tai-form-field');
-    const secureInputs = fixture.nativeElement.querySelectorAll('tai-secure-input');
+    const inputs = fixture.nativeElement.querySelectorAll('tai-input');
     const buttons = fixture.nativeElement.querySelectorAll('tai-button');
 
     expect(formFields.length).toBe(2);
-    expect(secureInputs.length).toBe(2);
+    expect(inputs.length).toBe(2);
     expect(buttons.length).toBe(1);
   });
 });
