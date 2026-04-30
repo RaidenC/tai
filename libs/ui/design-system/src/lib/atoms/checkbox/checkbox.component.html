@@ -1,0 +1,11 @@
+<input
+  [id]="id() || null"
+  type="checkbox"
+  [checked]="checked()"
+  [disabled]="disabled()"
+  [attr.aria-label]="ariaLabel() || null"
+  [attr.aria-invalid]="invalid()"
+  [class]="checkboxClasses()"
+  (change)="onInput($event)"
+  (blur)="onBlur()"
+/>

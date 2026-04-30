@@ -1,0 +1,28 @@
+<div class="tai-form-field flex w-full flex-col gap-2">
+  <tai-label
+    [forId]="controlId()"
+    [text]="label()"
+    [required]="required()"
+  />
+
+  <ng-content></ng-content>
+
+  @if (hint()) {
+    <p
+      [id]="hintId()"
+      class="text-xs text-gray-500"
+      data-testid="form-field-hint"
+      [textContent]="hint()"
+    ></p>
+  }
+
+  @if (error()) {
+    <p
+      [id]="errorId()"
+      class="text-xs font-medium text-red-600"
+      aria-live="polite"
+      role="alert"
+      [textContent]="error()"
+    ></p>
+  }
+</div>

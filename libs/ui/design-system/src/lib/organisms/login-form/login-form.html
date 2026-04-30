@@ -1,0 +1,46 @@
+<form
+  [formGroup]="loginForm"
+  (ngSubmit)="onSubmit()"
+  class="login-form-container flex w-full flex-col gap-6 p-4"
+  role="form"
+>
+  <tai-form-field
+    controlId="login-email"
+    label="Corporate Email"
+    hint="Use your company email address."
+    [error]="getEmailError()"
+    [required]="true"
+  >
+    <tai-input
+      id="login-email"
+      type="email"
+      placeholder="e.g. jdoe@tai.com"
+      formControlName="email"
+      autocomplete="email"
+    />
+  </tai-form-field>
+
+  <tai-form-field
+    controlId="login-password"
+    label="Password"
+    [error]="getPasswordError()"
+    [required]="true"
+  >
+    <tai-input
+      id="login-password"
+      type="password"
+      placeholder="Enter your secure password"
+      formControlName="password"
+      autocomplete="current-password"
+    />
+  </tai-form-field>
+
+  <tai-button
+    type="submit"
+    variant="primary"
+    testId="login-submit"
+    [disabled]="loginForm.invalid"
+  >
+    Sign In to Portal
+  </tai-button>
+</form>

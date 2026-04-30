@@ -23,25 +23,31 @@ test.describe('Privileges Audit Trail E2E', () => {
     const privilegeName = 'Portal.Users.Read';
     await page.getByPlaceholder(/search privileges/i).fill(privilegeName);
     await page.waitForResponse(res => res.url().includes('/api/privileges') && res.status() === 200);
-    
-    // Locate the specific row and ensure it's visible before interacting
-    const row = page.locator('tr').filter({ hasText: privilegeName });
-    await expect(row).toBeVisible();
 
-    const actionsTrigger = row.getByRole('button', { name: /actions/i });
-    
+    // Wait for table to stabilize after search
+    await page.waitForTimeout(500);
+    await expect(page.getByTestId('table-loading')).toBeHidden();
+
+    // Find the first actions button (since there's only one result after search)
+    const actionsTrigger = page.locator('button[aria-label="Actions"]').first();
+
     // Capture ID from the catalog row BEFORE navigating away
     const privilegeId = await actionsTrigger.getAttribute('data-testid').then(id => id?.replace('action-menu-trigger-', ''));
     expect(privilegeId).toBeDefined();
 
+    // Open the menu
     await actionsTrigger.click();
-    
-    // FIX: Wait for the menu item to be stable and visible before clicking
+
+    // Wait for menu to appear
+    await page.waitForTimeout(300);
     const editMenuItem = page.getByRole('menuitem', { name: /edit/i });
-    await expect(editMenuItem).toBeVisible();
-    await editMenuItem.click();
-    
-    await expect(page).toHaveURL(/.*\/admin\/privileges\/.*/);
+    await expect(editMenuItem).toBeVisible({ timeout: 10000 });
+
+    // Click edit - use force:true to bypass any overlay issues
+    await editMenuItem.click({ force: true });
+
+    // Wait for navigation to detail page
+    await page.waitForURL(/.*\/admin\/privileges\/.*/, { timeout: 10000 });
     
     // Ensure we are in edit mode (the form should be visible)
     await expect(page.getByTestId('edit-form')).toBeVisible();

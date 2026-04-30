@@ -20,7 +20,7 @@ test.describe('Transfer List Visual Regression E2E', () => {
     await page.waitForResponse(res => res.url().includes('/api/users') && res.status() === 200);
 
     const row = page.locator('tr').filter({ hasText: userEmail });
-    await row.getByRole('button', { name: /actions/i }).click();
+    await row.getByRole('button', { name: /actions/i }).first().click();
     await page.getByRole('menuitem', { name: /view details/i }).click();
     
     // 4. Enter Edit Mode
