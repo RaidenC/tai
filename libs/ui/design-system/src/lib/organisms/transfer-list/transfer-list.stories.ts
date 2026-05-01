@@ -38,7 +38,7 @@ export const Default: Story = {
   args: {
     items: MOCK_ITEMS,
     manualIds: [1, 2],
-    displayKey: 'name',
+    displayKey: 'id',
     trackKey: 'id',
     density: 'comfortable',
   },
