@@ -5,7 +5,6 @@ import {
   TableActionDef,
 } from './data-table';
 import { CdkTableModule } from '@angular/cdk/table';
-import { CdkMenuModule } from '@angular/cdk/menu';
 import { ButtonComponent } from '../../atoms/button/button.component';
 import { IconComponent } from '../../atoms/icon/icon.component';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -41,7 +40,7 @@ describe('DataTableComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [DataTableComponent, CdkTableModule, CdkMenuModule],
+      imports: [DataTableComponent, CdkTableModule],
     }).compileComponents();
 
     fixture = TestBed.createComponent(DataTableComponent<TestData>);
@@ -70,7 +69,7 @@ describe('DataTableComponent', () => {
 
   it('should render the action menu triggers for each row', () => {
     const triggers = fixture.nativeElement.querySelectorAll(
-      '[data-testid^="action-menu-trigger-"]',
+      '[data-testid^="action-menu-"]',
     );
     expect(triggers.length).toBe(2);
   });
@@ -195,5 +194,24 @@ describe('DataTableComponent', () => {
 
     expect(buttons.length).toBeGreaterThanOrEqual(3);
     expect(icons.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('uses tai-dropdown-menu for row actions', () => {
+    const dropdowns = fixture.nativeElement.querySelectorAll('tai-dropdown-menu');
+    expect(dropdowns.length).toBe(2);
+  });
+
+  it('does not render CDK menu directives for row actions', () => {
+    expect(fixture.nativeElement.querySelector('[cdkMenu]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[cdkMenuItem]')).toBeNull();
+  });
+
+  it('emits actionTriggered when dropdown item is selected', () => {
+    const spy = vi.fn();
+    component.actionTriggered.subscribe(spy);
+
+    component.onDropdownAction(actions[0], data[0]);
+
+    expect(spy).toHaveBeenCalledWith({ actionId: 'edit', row: data[0] });
   });
 });
