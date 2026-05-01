@@ -31,6 +31,17 @@ describe('SidebarComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  it('does not render CDK menu directives', () => {
+    fixture.componentRef.setInput('menuItems', [
+      { label: 'Dashboard', link: '/dashboard' },
+      { label: 'Settings', link: '/settings' },
+    ]);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('[cdkMenu]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[cdkMenuItem]')).toBeNull();
+  });
+
   it('should render menu items', () => {
     fixture.componentRef.setInput('menuItems', [
       { label: 'Dashboard', link: '/dashboard' },
@@ -39,7 +50,7 @@ describe('SidebarComponent', () => {
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
     // We check for buttons inside the list items
-    const buttons = compiled.querySelectorAll('button.sidebar-menu-item');
+    const buttons = compiled.querySelectorAll('a.sidebar-menu-item');
     expect(buttons.length).toBe(2);
     expect(buttons[0].getAttribute('title')).toBe('Dashboard');
     expect(buttons[1].getAttribute('title')).toBe('Settings');
