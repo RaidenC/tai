@@ -83,13 +83,15 @@ describe('DropdownMenuComponent', () => {
     expect(logout.querySelector('img')).toBeNull();
   });
 
-  it('closes on Escape and returns focus to trigger', () => {
+  it('closes on Escape and returns focus to trigger', async () => {
     component.open();
     fixture.detectChanges();
     const trigger = fixture.nativeElement.querySelector('[data-testid="actions-trigger"]') as HTMLButtonElement;
     const menu = fixture.nativeElement.querySelector('[role="menu"]') as HTMLElement;
 
     menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    fixture.detectChanges();
+    await new Promise(resolve => setTimeout(resolve, 0));
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('[role="menu"]')).toBeNull();
@@ -105,7 +107,8 @@ describe('DropdownMenuComponent', () => {
 
     menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
     fixture.detectChanges();
-    expect(document.activeElement).toBe(enabledItems().at(-1));
+    const items = enabledItems();
+    expect(document.activeElement).toBe(items[items.length - 1]);
 
     menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
     fixture.detectChanges();

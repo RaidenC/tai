@@ -12,7 +12,6 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ButtonComponent } from '../../atoms/button/button.component';
 import { IconComponent, TaiIconName } from '../../atoms/icon/icon.component';
 
 export type DropdownPlacement =
@@ -37,7 +36,7 @@ export interface DropdownMenuItem {
 @Component({
   selector: 'tai-dropdown-menu',
   standalone: true,
-  imports: [CommonModule, ButtonComponent, IconComponent],
+  imports: [CommonModule, IconComponent],
   templateUrl: './dropdown-menu.component.html',
   styleUrl: './dropdown-menu.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -103,7 +102,7 @@ export class DropdownMenuComponent {
     this.isOpen.set(false);
     this.closed.emit();
     if (options.restoreFocus) {
-      queueMicrotask(() => this.triggerButton?.nativeElement.focus());
+      setTimeout(() => this.triggerButton?.nativeElement.focus(), 0);
     }
   }
 
@@ -218,7 +217,10 @@ export class DropdownMenuComponent {
   }
 
   private focusLastEnabledItem(): void {
-    this.enabledButtons().at(-1)?.focus();
+    const buttons = this.enabledButtons();
+    if (buttons.length > 0) {
+      buttons[buttons.length - 1]?.focus();
+    }
   }
 
   private focusNextItem(): void {
