@@ -46,9 +46,9 @@ Use Approach A: a reusable confirmation content component plus a compatibility w
 
 The design system should expose a presentational confirmation component with explicit inputs for title, message, labels, tone, and loading/disabled state. It should render normal local DOM and use static class mapping only. It should not inject `DialogRef`, `DIALOG_DATA`, `Overlay`, or any CDK overlay primitive.
 
-`ConfirmationDialogComponent` should remain as a deprecated wrapper for transition purposes. Its role is compatibility, not the long-term API. The wrapper can delegate to the new reusable content component, but modal opening and closing behavior should be owned outside the design system by the feature that uses it.
+`ConfirmationDialogComponent` should remain as a deprecated wrapper for transition purposes. Its role is compatibility, not the long-term API. The wrapper delegates to the new reusable content component and preserves the old selector and test ids while in-repo consumers migrate.
 
-Feature code, such as the users approval flow, should instantiate the new confirmation UI through its own modal host or wrapper and keep the approval workflow local to the feature layer. This spec assumes the feature layer already has, or will add, a local modal host wrapper outside the design system; it does not define a new modal system.
+Feature code, such as the users approval flow, should instantiate the new confirmation UI through a feature-owned local modal host and keep the approval workflow local to the feature layer. For `apps/portal-web`, the migration target is a new `UsersConfirmationHostComponent` owned by the users feature. It renders local DOM, composes `tai-confirmation-panel`, and exposes a `confirmed: boolean` result to preserve the current `if (confirmed)` approval flow.
 
 ## Alternatives Considered
 
@@ -74,12 +74,14 @@ That still leaves the design system depending on overlay-backed dialog infrastru
 
 ## Component API
 
-Create a reusable confirmation content component with a selector in the design system, likely `tai-confirmation-panel` or `tai-confirmation-card`.
+Create a reusable confirmation content component with selector `tai-confirmation-panel`.
 
 Proposed API:
 
 ```typescript
 export type ConfirmationTone = 'default' | 'danger';
+export type ConfirmationActionId = 'confirm' | 'cancel';
+export type ConfirmationInitialFocus = 'confirm' | 'cancel';
 
 export interface ConfirmationContentAction {
   label: string;
@@ -94,6 +96,7 @@ export interface ConfirmationContentData {
   confirm: ConfirmationContentAction;
   cancel: Omit<ConfirmationContentAction, 'tone' | 'loading'>;
   ariaLabel?: string;
+  initialFocus?: ConfirmationInitialFocus;
 }
 ```
 
@@ -103,10 +106,12 @@ The reusable component should:
 - Use explicit tone classes for `default` and `danger` actions.
 - Avoid accepting arbitrary class strings.
 - Avoid CDK dialog injection.
-- Emit a single `actionSelected` output with a typed payload: `confirm` or `cancel`.
-- Treat `confirm.disabled`, `confirm.loading`, and component-level loading as confirm-blocking.
+- Emit a single `actionSelected` output with a typed payload: `{ action: ConfirmationActionId }`.
+- Treat `confirm.loading` as higher priority than `confirm.disabled`; either state disables the confirm action and suppresses duplicate confirm emissions.
 - Fail closed for invalid or missing inputs by falling back to safe defaults rather than rendering broken controls.
 - Normalize empty or whitespace-only title/message values to safe fallback text in the component.
+- Clamp title and message display strings to a documented maximum length before rendering.
+- Keep the existing test ids during migration: `modal-title`, `modal-message`, `modal-cancel-button`, and `modal-confirm-button`.
 
 The wrapper component should:
 
@@ -115,6 +120,7 @@ The wrapper component should:
 - Delegate to the reusable confirmation component.
 - Preserve existing public export surface during transition.
 - Continue to support the legacy `ConfirmationDialogData` shape during transition by mapping it to the new content model.
+- Ignore `confirmButtonClass` and map destructive or custom legacy styling needs to explicit tones only.
 
 ## Visual States
 
@@ -134,7 +140,7 @@ The component should support:
 - Long titles and messages without layout overlap.
 - Clear cancel and confirm action hierarchy.
 - Visible, non-color confirmation tone cues for destructive actions.
-- `Escape` key cancellation when the host forwards the event or when the component is used inline.
+- Native button keyboard behavior for `Enter` and `Space`.
 
 ## Accessibility Requirements
 
@@ -143,13 +149,13 @@ The confirmation component should follow the practical semantics of a confirmati
 - Title and message must be exposed as readable text.
 - Primary and secondary actions must be real buttons.
 - The confirm action must have an accessible name that reflects the current tone or action if needed.
-- The root content should expose `role="dialog"` and link title and message through `aria-labelledby` and `aria-describedby` when used as a dialog body.
+- The root content should always expose `role="dialog"` and link title and message through `aria-labelledby` and `aria-describedby`.
 - Disabled or loading confirm actions must not be activatable.
 - Focus states must be visible and sufficient under WCAG 2.2 expectations.
 - The design should not depend on overlay-specific semantics inside the design system component.
-- Initial focus should land on the cancel action by default unless the feature host explicitly overrides focus.
+- Initial focus should default to `confirm` for `default` tone and `cancel` for `danger` tone. The host can override with `initialFocus`.
 
-The feature-owned modal host remains responsible for modal-level focus trapping and escape handling if it uses a dialog system outside the design system.
+The feature-owned modal host remains responsible for modal-level focus trapping, Escape-to-close behavior, backdrop click behavior, and focus restoration. The reusable design-system panel does not listen for global Escape events.
 
 ## CSP and Security Requirements
 
@@ -166,18 +172,35 @@ The component must follow `libs/ui/design-system/SECURITY.md`:
 State-to-class mapping must be explicit and internal to the component. Feature callers provide typed tone and state values, not CSS classes.
 Invalid tone values must collapse to the default style rather than generating caller-controlled class names or throwing from template rendering.
 
+Input validation rules:
+
+- Empty or whitespace-only title falls back to `Confirm action`.
+- Empty or whitespace-only message falls back to `Please review this action before continuing.`
+- Empty or whitespace-only confirm label falls back to `Confirm`.
+- Empty or whitespace-only cancel label falls back to `Cancel`.
+- Title is clamped to 120 display characters.
+- Message is clamped to 500 display characters.
+
 ## Feature Migration Boundary
 
 `apps/portal-web/src/app/features/users/users.page.ts` should own the approval workflow and whatever open/close mechanism is used around the confirmation UI.
 
 Responsibilities:
 
-- Instantiate the confirmation UI through a feature-owned modal host or wrapper.
+- Instantiate the confirmation UI through `UsersConfirmationHostComponent`, a feature-owned local DOM modal host.
 - Pass typed content data to the reusable design-system component.
-- Choose `danger` tone for destructive or high-risk actions.
+- Choose `default` tone for user approval and `danger` tone for destructive actions.
 - Remove any dependency on `confirmButtonClass`.
 - Keep the concurrency-safe approval logic in the feature layer.
 - Define how async confirmation failures are handled in the feature layer, including resetting loading state and surfacing a retry or error affordance.
+
+`UsersConfirmationHostComponent` should:
+
+- Render a local fixed-position backdrop and panel inside the users feature tree.
+- Compose `tai-confirmation-panel`.
+- Own Escape-to-close, backdrop click, initial focus, and focus restoration.
+- Return a `confirmed: boolean` result to the page layer so the current `if (confirmed)` workflow can remain intact.
+- Set loading while approval is in progress, ignore duplicate confirm clicks while loading, and clear loading if approval fails.
 
 The design-system component should remain reusable for other high-stakes confirmation flows, but it should not decide how dialogs are opened.
 
@@ -193,8 +216,12 @@ The wrapper should:
 - Avoid reintroducing CDK dialog/overlay dependencies into the reusable layer.
 - Be removed in a later major change once in-repo consumers migrate.
 - Be mechanically removable once the in-repo users approval flow and any remaining consumers use the new component directly.
+- Map legacy `confirmText` to `confirm.label`, `cancelText` to `cancel.label`, `title` and `message` directly, and ignore `confirmButtonClass`.
+- Preserve the old `DialogRef.close(true | false)` behavior only inside the deprecated wrapper while CDK-based consumers still exist.
 
 The preferred implementation path is a compatibility wrapper because `apps/portal-web` is the active consumer and the current API is already public.
+
+Removal trigger: once `rg -n "Dialog\\.open<boolean>\\(ConfirmationDialogComponent|tai-confirmation-dialog|ConfirmationDialogData|confirmButtonClass" apps libs` returns no active app consumers outside the deprecated wrapper and tests, remove the wrapper in a follow-up breaking-change PR.
 
 ## Storybook Requirements
 
@@ -212,7 +239,8 @@ Stories should include interaction checks for:
 - Cancel action is selectable.
 - Danger tone uses explicit design-system styling, not caller CSS classes.
 - User-provided text renders as text, not HTML.
-- Escape key or host-close behavior is covered if the story runs inside a local wrapper.
+- Loading state suppresses duplicate confirm actions.
+- Focus defaults are demonstrated for default and danger tones.
 
 ## Unit Test Requirements
 
@@ -229,6 +257,9 @@ Add unit tests for:
 - No CDK dialog or overlay imports in the reusable component.
 - Compatibility wrapper still exists for transition consumers.
 - Invalid or empty inputs fall back to safe defaults.
+- Title and message length clamping.
+- Initial focus behavior for default and danger tones.
+- Rapid confirm clicks during loading emit at most one confirm action.
 
 ## Verification Requirements
 
@@ -236,8 +267,16 @@ Use both tests and static checks to prove the boundary:
 
 - Unit tests cover rendering, variants, and action outputs.
 - Storybook cover default, danger, and loading behavior.
-- A static scan or lint rule must fail if the reusable confirmation component imports `@angular/cdk/dialog`, `OverlayModule`, `MatDialog`, or other overlay-backed primitives.
+- A static scan command must fail if the reusable confirmation component imports `@angular/cdk/dialog`, `OverlayModule`, `MatDialog`, `DialogRef`, `DIALOG_DATA`, or other overlay-backed primitives.
 - The existing `tai-confirmation-dialog` selector must remain available during migration so current E2E coverage does not break.
+
+Required static scan:
+
+```bash
+rg -n "@angular/cdk/dialog|OverlayModule|MatDialog|DialogRef|DIALOG_DATA|overlay-backed" libs/ui/design-system/src/lib/molecules/confirmation-panel libs/ui/design-system/src/lib/molecules/confirmation-dialog
+```
+
+Expected: no matches in `confirmation-panel`. Matches in `confirmation-dialog` are allowed only while the deprecated wrapper still supports legacy CDK consumers.
 
 ## Migration Plan
 
@@ -245,11 +284,12 @@ Implementation should happen in this order:
 
 1. Add the reusable confirmation component and tests.
 2. Export the new component and types from `libs/ui/design-system/src/index.ts`.
-3. Update feature code to use the new boundary and stop passing `confirmButtonClass`.
-4. Refactor `ConfirmationDialogComponent` into a deprecated compatibility wrapper.
-5. Update Storybook and any E2E selectors to match the new API.
-6. Add or update static checks that block CDK dialog/overlay imports in the reusable component.
-7. Run design-system tests, build checks, Storybook checks, and the users approval flow tests.
+3. Add `UsersConfirmationHostComponent` in `apps/portal-web/src/app/features/users/`.
+4. Update `users.page.ts` to use the users confirmation host and stop passing `confirmButtonClass`.
+5. Refactor `ConfirmationDialogComponent` into a deprecated compatibility wrapper.
+6. Keep existing data-testid values during migration and update E2E only if selectors move to the feature host.
+7. Add or update static checks that block CDK dialog/overlay imports in the reusable component.
+8. Run design-system tests, build checks, Storybook checks, and the users approval flow tests.
 
 ## Acceptance Criteria
 
@@ -258,6 +298,8 @@ Implementation should happen in this order:
 - The reusable confirmation component does not accept arbitrary confirm button classes.
 - `ConfirmationDialogComponent` remains available as a deprecated compatibility wrapper during migration.
 - The users approval flow uses the new confirmation boundary without relying on caller-provided CSS classes.
+- The users approval flow no longer calls `Dialog.open<boolean>(ConfirmationDialogComponent, ...)`.
+- `UsersConfirmationHostComponent` preserves the current boolean confirmation workflow while owning modal behavior.
 - Storybook demonstrates default and destructive confirmation states.
 - Unit tests cover accessibility and variant behavior.
 - Static checks prevent the reusable confirmation component from reintroducing CDK dialog/overlay dependencies.
@@ -266,7 +308,10 @@ Implementation should happen in this order:
 ## Open Decisions Resolved
 
 - The design-system component should be reusable confirmation content, not a modal controller.
+- The reusable selector is `tai-confirmation-panel`.
 - `ConfirmationDialogComponent` remains temporarily for compatibility.
 - `confirmButtonClass` is removed in favor of explicit tone-based variants.
-- Feature code owns open/close behavior and workflow decisions.
+- Feature code owns open/close behavior and workflow decisions through `UsersConfirmationHostComponent`.
+- The reusable component emits `actionSelected` with `{ action: 'confirm' | 'cancel' }`.
+- Escape handling belongs to the feature host, not the reusable design-system panel.
 - CDK dialog/overlay is out of scope for the reusable design-system component.
