@@ -1,5 +1,3 @@
-export * from './lib/design-system/hello-world';
-
 export * from './lib/atoms/button/button.component';
 export * from './lib/atoms/checkbox/checkbox.component';
 export * from './lib/atoms/icon/icon.component';

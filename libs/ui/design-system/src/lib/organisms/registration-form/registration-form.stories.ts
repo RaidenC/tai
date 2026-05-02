@@ -1,6 +1,6 @@
 import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
 import { ReactiveFormsModule } from '@angular/forms';
-import { userEvent, within, expect, waitFor } from 'storybook/test';
+import { userEvent, within, expect, waitFor } from '@storybook/test';
 import { RegistrationFormComponent } from './registration-form';
 import { SecureInputComponent } from '../../atoms/secure-input/secure-input';
 import { CommonModule } from '@angular/common';
@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
  * before allowing any self-service registration submission.
  */
 const meta: Meta<RegistrationFormComponent> = {
-  title: 'Identity/RegistrationForm',
+  title: 'Organisms/RegistrationForm',
   component: RegistrationFormComponent,
   decorators: [
     moduleMetadata({

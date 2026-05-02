@@ -6,7 +6,10 @@ import {
   computed,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CdkMenuModule } from '@angular/cdk/menu';
+import {
+  DropdownMenuComponent,
+  DropdownMenuItem,
+} from '../../molecules/dropdown-menu/dropdown-menu.component';
 
 export interface UserProfile {
   name: string;
@@ -29,7 +32,7 @@ export interface UserProfile {
 @Component({
   selector: 'tai-user-profile',
   standalone: true,
-  imports: [CommonModule, CdkMenuModule],
+  imports: [CommonModule, DropdownMenuComponent],
   templateUrl: './user-profile.component.html',
   styleUrls: ['./user-profile.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -37,6 +40,12 @@ export interface UserProfile {
 export class UserProfileComponent {
   user = input<UserProfile | null>(null);
   logout = output<void>();
+
+  readonly profileActions: DropdownMenuItem[] = [
+    { id: 'profile', label: 'My Profile' },
+    { id: 'settings', label: 'Account Settings' },
+    { id: 'logout', label: 'Logout', destructive: true },
+  ];
 
   initials = computed(() => {
     const user = this.user();
@@ -51,5 +60,11 @@ export class UserProfileComponent {
 
   onLogout(): void {
     this.logout.emit();
+  }
+
+  onProfileAction(item: DropdownMenuItem): void {
+    if (item.id === 'logout') {
+      this.onLogout();
+    }
   }
 }

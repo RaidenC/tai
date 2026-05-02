@@ -5,7 +5,6 @@ import {
   booleanAttribute,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CdkMenuModule } from '@angular/cdk/menu';
 import { RouterModule } from '@angular/router';
 
 export interface MenuItem {
@@ -17,21 +16,13 @@ export interface MenuItem {
 /**
  * SidebarComponent: The primary navigation backbone of the Portal.
  *
- * Goal Adherence:
- * 1. Performance: Uses ChangeDetectionStrategy.OnPush to minimize re-renders in a zoneless
- *    environment, critical for high-frequency dashboard updates.
- * 2. Zero-Violation CSP: By using headless Angular CDK primitives and custom SCSS instead
- *    of full Angular Material components, we avoid uncontrolled inline style injections
- *    and ensure 100% compliance with strict 'style-src' policies (No 'unsafe-inline').
- * 3. Zero-Trust Architecture: The UI remains purely presentational, relying on the BFF
- *    pattern to manage sensitive session state, never touching JWTs directly.
- * 4. Tiles Architecture: Designed to render dynamic menu items based on the context-switched
- *    permissions of the active Tenant/User.
+ * Uses local DOM navigation controls and static Tailwind/CSS classes to stay
+ * compatible with strict CSP while preserving accessible router navigation.
  */
 @Component({
   selector: 'tai-sidebar',
   standalone: true,
-  imports: [CommonModule, CdkMenuModule, RouterModule],
+  imports: [CommonModule, RouterModule],
   templateUrl: './sidebar.component.html',
   styleUrls: ['./sidebar.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

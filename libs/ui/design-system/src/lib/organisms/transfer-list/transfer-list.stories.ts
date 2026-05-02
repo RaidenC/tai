@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { TransferListComponent, TransferItem } from './transfer-list';
 
 const meta: Meta<TransferListComponent<TransferItem>> = {
-  title: 'Design System/TransferList',
+  title: 'Organisms/TransferList',
   component: TransferListComponent,
   tags: ['autodocs'],
   argTypes: {
@@ -38,7 +38,7 @@ export const Default: Story = {
   args: {
     items: MOCK_ITEMS,
     manualIds: [1, 2],
-    displayKey: 'name',
+    displayKey: 'id',
     trackKey: 'id',
     density: 'comfortable',
   },

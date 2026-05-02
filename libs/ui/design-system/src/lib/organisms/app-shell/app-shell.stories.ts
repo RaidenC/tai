@@ -1,13 +1,33 @@
-import type { Meta, StoryObj } from '@storybook/angular';
+import { type Meta, type StoryObj, applicationConfig, moduleMetadata } from '@storybook/angular';
+import { CommonModule } from '@angular/common';
+import { RouterModule, provideRouter } from '@angular/router';
 import { AppShellComponent } from './app-shell.component';
 import { within, expect, fn } from '@storybook/test';
 
 const meta: Meta<AppShellComponent> = {
   component: AppShellComponent,
-  title: 'AppShellComponent',
+  title: 'Organisms/AppShell',
+  tags: ['autodocs'],
+  decorators: [
+    applicationConfig({
+      providers: [provideRouter([])],
+    }),
+    moduleMetadata({
+      imports: [CommonModule, RouterModule, AppShellComponent],
+    }),
+  ],
   args: {
     logout: fn(),
   },
+  render: (args) => ({
+    props: args,
+    template: `
+      <tai-app-shell [user]="user" [menuItems]="menuItems" (logout)="logout()">
+        <h1>Welcome to Portal</h1>
+        <p>This is the main content area.</p>
+      </tai-app-shell>
+    `,
+  }),
 };
 export default meta;
 type Story = StoryObj<AppShellComponent>;
@@ -20,15 +40,6 @@ export const Primary: Story = {
       { label: 'Payments', link: '/payments' },
     ],
   },
-  render: (args) => ({
-    props: args,
-    template: `
-      <tai-app-shell [user]="user" [menuItems]="menuItems" (logout)="logout()">
-        <h1>Welcome to Portal</h1>
-        <p>This is the main content area.</p>
-      </tai-app-shell>
-    `,
-  }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
@@ -39,13 +50,11 @@ export const Primary: Story = {
     const header = canvas.getByRole('banner');
     await expect(header).toBeInTheDocument();
 
-    const mainContent = canvas.getByText(/Welcome to Portal/i);
+    const mainContent = canvas.getByRole('heading', { name: /Welcome to Portal/i });
     await expect(mainContent).toBeInTheDocument();
 
     // Verify interaction on nested components (User Profile initials)
-    const userProfileTrigger = canvas.getByRole('button', {
-      name: /User Profile/i,
-    });
+    const userProfileTrigger = canvas.getByRole('button');
     await expect(userProfileTrigger).toHaveTextContent('JD');
 
     // Verify sidebar items

@@ -3,7 +3,7 @@ import { FormFieldComponent } from './form-field.component';
 import { InputComponent } from '../../atoms/input/input.component';
 
 const meta: Meta<FormFieldComponent> = {
-  title: 'Molecules/Form Field',
+  title: 'Molecules/FormField',
   component: FormFieldComponent,
   args: {
     controlId: 'email',
