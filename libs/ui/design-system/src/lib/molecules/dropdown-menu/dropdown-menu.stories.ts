@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/angular';
+import { type Meta, type StoryObj } from '@storybook/angular';
 import { fn, userEvent, within, expect } from '@storybook/test';
 import { DropdownMenuComponent, DropdownMenuItem } from './dropdown-menu.component';
 
@@ -11,6 +11,7 @@ const items: DropdownMenuItem[] = [
 const meta: Meta<DropdownMenuComponent> = {
   title: 'Molecules/Dropdown Menu',
   component: DropdownMenuComponent,
+  tags: ['autodocs'],
   args: {
     items,
     triggerLabel: 'Actions',
@@ -21,6 +22,22 @@ const meta: Meta<DropdownMenuComponent> = {
     testId: 'story-dropdown',
     itemSelected: fn(),
   },
+  render: (args) => ({
+    props: args,
+    template: `
+      <tai-dropdown-menu
+        [items]="items"
+        [triggerLabel]="triggerLabel"
+        [triggerIcon]="triggerIcon"
+        [ariaLabel]="ariaLabel"
+        [placement]="placement"
+        [mobileMode]="mobileMode"
+        [density]="density"
+        [testId]="testId"
+        (itemSelected)="itemSelected($event)">
+      </tai-dropdown-menu>
+    `,
+  }),
 };
 
 export default meta;

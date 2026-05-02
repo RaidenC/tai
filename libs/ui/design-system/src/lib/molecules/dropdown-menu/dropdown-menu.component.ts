@@ -7,6 +7,7 @@ import {
   ViewChild,
   ViewChildren,
   computed,
+  inject,
   input,
   output,
   signal,
@@ -38,7 +39,6 @@ export interface DropdownMenuItem {
   standalone: true,
   imports: [CommonModule, IconComponent],
   templateUrl: './dropdown-menu.component.html',
-  styleUrl: './dropdown-menu.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DropdownMenuComponent {
@@ -61,11 +61,13 @@ export class DropdownMenuComponent {
   @ViewChildren('menuItemButton', { read: ElementRef })
   private readonly menuItemButtons?: QueryList<ElementRef<HTMLButtonElement>>;
 
+  private readonly host = inject(ElementRef<HTMLElement>);
+
   protected readonly isOpen = signal(false);
 
   protected readonly panelClasses = computed(() => {
     const base =
-      'tai-dropdown-panel z-50 min-w-40 max-w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-xl outline-none max-h-[min(24rem,calc(100dvh-2rem))] overflow-y-auto';
+      'tai-dropdown-panel origin-top-right z-50 min-w-40 max-w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-md border border-gray-200 bg-white py-1 shadow-xl outline-none max-h-[min(24rem,calc(100dvh-2rem))] overflow-y-auto';
     const densityClass = ` data-[density=${this.density()}]`;
     const placementClass = this.placementClasses();
     const mobileClass =
@@ -189,8 +191,6 @@ export class DropdownMenuComponent {
       this.close();
     }
   }
-
-  constructor(private readonly host: ElementRef<HTMLElement>) {}
 
   private placementClasses(): string {
     const classes: Record<DropdownPlacement, string> = {

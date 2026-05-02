@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@theme {
+  --animate-dropdown-enter: tai-dropdown-enter 120ms ease-out;
+}
+
+@keyframes tai-dropdown-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
