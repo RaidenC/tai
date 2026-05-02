@@ -4,6 +4,12 @@ import { NotificationToggleComponent } from './notification-toggle.component';
 import { NotificationPanelService } from '../../organisms/notification-panel/notification-panel.service';
 import { of } from 'rxjs';
 
+const mockService = {
+  unreadCount: of(0),
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  setUnreadCount: () => {},
+};
+
 const meta: Meta<NotificationToggleComponent> = {
   component: NotificationToggleComponent,
   title: 'Molecules/NotificationToggle',
@@ -16,10 +22,7 @@ const meta: Meta<NotificationToggleComponent> = {
       providers: [
         {
           provide: NotificationPanelService,
-          useValue: {
-            unreadCount: of(0),
-            setUnreadCount: () => {},
-          },
+          useValue: mockService,
         },
       ],
     }),
@@ -36,10 +39,7 @@ export const WithUnread: Story = {
       providers: [
         {
           provide: NotificationPanelService,
-          useValue: {
-            unreadCount: of(5),
-            setUnreadCount: () => {},
-          },
+          useValue: { ...mockService, unreadCount: of(5) },
         },
       ],
     }),
@@ -52,10 +52,7 @@ export const WithManyUnread: Story = {
       providers: [
         {
           provide: NotificationPanelService,
-          useValue: {
-            unreadCount: of(15),
-            setUnreadCount: () => {},
-          },
+          useValue: { ...mockService, unreadCount: of(15) },
         },
       ],
     }),
