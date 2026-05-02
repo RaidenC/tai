@@ -33,7 +33,7 @@ test.describe('Privilege Detail & Edit Page E2E', () => {
     // This is more resilient than using .first() because it ensures 
     // Playwright waits for the table to actually filter before clicking.
     const row = page.locator('tr', { hasText: 'Portal.Users.Read' });
-    const actionTrigger = row.locator('[data-testid^="action-menu-trigger-"]');
+    const actionTrigger = row.locator('[data-testid$="-trigger"]');
     
     // Ensure the trigger is visible and stable before clicking
     await actionTrigger.waitFor({ state: 'visible' });

@@ -32,7 +32,7 @@ test.describe('Privileges Audit Trail E2E', () => {
     const actionsTrigger = page.locator('button[aria-label="Actions"]').first();
 
     // Capture ID from the catalog row BEFORE navigating away
-    const privilegeId = await actionsTrigger.getAttribute('data-testid').then(id => id?.replace('action-menu-trigger-', ''));
+    const privilegeId = await actionsTrigger.getAttribute('data-testid').then(id => id?.replace('-trigger', '').replace('action-menu-', ''));
     expect(privilegeId).toBeDefined();
 
     // Open the menu
