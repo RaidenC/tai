@@ -27,5 +27,6 @@ export * from './lib/organisms/sidebar/sidebar.component';
 export * from './lib/organisms/transfer-list/transfer-list';
 export * from './lib/organisms/user-profile/user-profile.component';
 export * from './lib/organisms/wizard/wizard.component';
+export * from './lib/organisms/stepper/stepper.component';
 
 export * from './lib/directives/has-privilege.directive';
