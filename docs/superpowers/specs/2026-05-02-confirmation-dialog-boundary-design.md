@@ -199,8 +199,10 @@ Responsibilities:
 - Render a local fixed-position backdrop and panel inside the users feature tree.
 - Compose `tai-confirmation-panel`.
 - Own Escape-to-close, backdrop click, initial focus, and focus restoration.
+- Map panel actions explicitly: `{ action: 'confirm' }` becomes `confirmed: true`; `{ action: 'cancel' }`, Escape, and backdrop click become `confirmed: false`.
 - Return a `confirmed: boolean` result to the page layer so the current `if (confirmed)` workflow can remain intact.
 - Set loading while approval is in progress, ignore duplicate confirm clicks while loading, and clear loading if approval fails.
+- Restore focus to the element that opened the confirmation host after close.
 
 The design-system component should remain reusable for other high-stakes confirmation flows, but it should not decide how dialogs are opened.
 
@@ -244,22 +246,45 @@ Stories should include interaction checks for:
 
 ## Unit Test Requirements
 
-Add unit tests for:
+Add design-system unit tests for:
 
 - Component creation.
 - Title and message rendering.
 - Confirm and cancel button labels.
 - Confirm and cancel action outputs.
-- Disabled or loading confirm behavior.
+- Disabled and loading confirm behavior, including the case where both are true.
 - Danger tone styling from explicit variant mapping.
 - No `[innerHTML]`.
 - No `[style]`.
 - No CDK dialog or overlay imports in the reusable component.
 - Compatibility wrapper still exists for transition consumers.
+- Compatibility wrapper ignores `confirmButtonClass`.
 - Invalid or empty inputs fall back to safe defaults.
 - Title and message length clamping.
+- Boundary clamping at exactly 120 title characters and 500 message characters.
 - Initial focus behavior for default and danger tones.
+- Invalid `initialFocus` values fall back to the tone-based default.
 - Rapid confirm clicks during loading emit at most one confirm action.
+- Rapid cancel clicks during loading emit at most one cancel action.
+
+Add users feature-host tests for `UsersConfirmationHostComponent`:
+
+- Opens with the expected title, message, and actions.
+- Maps panel confirm action to `confirmed: true`.
+- Maps panel cancel action to `confirmed: false`.
+- Maps Escape key to `confirmed: false`.
+- Maps backdrop click to `confirmed: false`.
+- Traps focus inside the host while open.
+- Restores focus to the opener after close.
+- Applies initial focus to confirm for default tone and cancel for danger tone unless overridden.
+- Suppresses duplicate confirms while loading.
+- Clears loading and allows retry after an approval failure.
+
+Add users integration tests for `users.page.ts`:
+
+- Approval flow no longer calls `Dialog.open<boolean>(ConfirmationDialogComponent, ...)`.
+- Approval invokes the store only when the host resolves `confirmed: true`.
+- Approval does not invoke the store when the host resolves `confirmed: false`.
 
 ## Verification Requirements
 
@@ -268,6 +293,7 @@ Use both tests and static checks to prove the boundary:
 - Unit tests cover rendering, variants, and action outputs.
 - Storybook cover default, danger, and loading behavior.
 - A static scan command must fail if the reusable confirmation component imports `@angular/cdk/dialog`, `OverlayModule`, `MatDialog`, `DialogRef`, `DIALOG_DATA`, or other overlay-backed primitives.
+- The static scan must run in CI before merge, either as an Nx target or as part of the repository lint/check workflow.
 - The existing `tai-confirmation-dialog` selector must remain available during migration so current E2E coverage does not break.
 
 Required static scan:
@@ -277,6 +303,8 @@ rg -n "@angular/cdk/dialog|OverlayModule|MatDialog|DialogRef|DIALOG_DATA|overlay
 ```
 
 Expected: no matches in `confirmation-panel`. Matches in `confirmation-dialog` are allowed only while the deprecated wrapper still supports legacy CDK consumers.
+
+To avoid false positives from prose comments, the implementation plan should scan TypeScript and Angular template files only, or use a focused import scan such as `rg -n "from '@angular/cdk/dialog'|import .*OverlayModule|import .*MatDialog|DialogRef|DIALOG_DATA" ...`.
 
 ## Migration Plan
 
@@ -289,7 +317,8 @@ Implementation should happen in this order:
 5. Refactor `ConfirmationDialogComponent` into a deprecated compatibility wrapper.
 6. Keep existing data-testid values during migration and update E2E only if selectors move to the feature host.
 7. Add or update static checks that block CDK dialog/overlay imports in the reusable component.
-8. Run design-system tests, build checks, Storybook checks, and the users approval flow tests.
+8. Wire the static check into CI through an Nx target or the repository lint/check workflow.
+9. Run design-system tests, build checks, Storybook checks, and the users approval flow tests.
 
 ## Acceptance Criteria
 
@@ -302,7 +331,9 @@ Implementation should happen in this order:
 - `UsersConfirmationHostComponent` preserves the current boolean confirmation workflow while owning modal behavior.
 - Storybook demonstrates default and destructive confirmation states.
 - Unit tests cover accessibility and variant behavior.
+- Users feature-host tests cover Escape-to-close, backdrop click, focus trapping, focus restoration, initial focus, loading retry, and `confirmed: boolean` mapping.
 - Static checks prevent the reusable confirmation component from reintroducing CDK dialog/overlay dependencies.
+- The static CDK dialog/overlay check runs in CI before merge.
 - The `tai-confirmation-dialog` selector continues to work until the migration is complete.
 
 ## Open Decisions Resolved
