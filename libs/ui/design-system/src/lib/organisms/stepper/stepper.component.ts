@@ -91,12 +91,12 @@ export class StepperComponent {
 
   protected indicatorClasses(step: StepperStep): string {
     const base =
-      'tai-stepper__indicator inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold';
+      'tai-stepper__indicator inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-sm font-bold';
     const stateClasses: Record<StepperStepStatus, string> = {
-      'not-started': ' border-gray-300 bg-white text-gray-600',
-      completed: ' border-green-600 bg-green-600 text-white',
-      blocked: ' border-gray-300 bg-gray-100 text-gray-500',
-      error: ' border-red-600 bg-red-600 text-white',
+      'not-started': ' border-gray-300 bg-white text-gray-500',
+      completed: ' border-emerald-500 bg-emerald-500 text-white shadow-sm shadow-emerald-500/25',
+      blocked: ' border-gray-200 bg-gray-100 text-gray-400',
+      error: ' border-red-500 bg-red-500 text-white shadow-sm shadow-red-500/25',
     };
 
     const currentClass = this.isCurrent(step) ? ' ring-2 ring-blue-600 ring-offset-2' : '';
