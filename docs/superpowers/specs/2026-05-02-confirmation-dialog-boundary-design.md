@@ -83,18 +83,18 @@ export type ConfirmationTone = 'default' | 'danger';
 export type ConfirmationActionId = 'confirm' | 'cancel';
 export type ConfirmationInitialFocus = 'confirm' | 'cancel';
 
-export interface ConfirmationContentAction {
+export interface ConfirmationPanelAction {
   label: string;
   tone?: ConfirmationTone;
   disabled?: boolean;
   loading?: boolean;
 }
 
-export interface ConfirmationContentData {
+export interface ConfirmationPanelData {
   title: string;
   message: string;
-  confirm: ConfirmationContentAction;
-  cancel: Omit<ConfirmationContentAction, 'tone' | 'loading'>;
+  confirm: ConfirmationPanelAction;
+  cancel: Omit<ConfirmationPanelAction, 'tone' | 'loading'>;
   ariaLabel?: string;
   initialFocus?: ConfirmationInitialFocus;
 }

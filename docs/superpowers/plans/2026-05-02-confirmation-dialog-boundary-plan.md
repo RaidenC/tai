@@ -113,6 +113,8 @@ describe('ConfirmationPanelComponent', () => {
 
     expect(cancel.textContent?.trim()).toBe('Cancel');
     expect(confirm.textContent?.trim()).toBe('Approve User');
+    expect(cancel.getAttribute('data-confirmation-focus')).toBe('cancel');
+    expect(confirm.getAttribute('data-confirmation-focus')).toBe('confirm');
   });
 
   it('emits a typed confirm action once when enabled', () => {
@@ -158,6 +160,21 @@ describe('ConfirmationPanelComponent', () => {
     expect(confirm.disabled).toBe(true);
     expect(confirm.textContent).toContain('Working');
     expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('disables cancel when cancel action is disabled', () => {
+    fixture.componentRef.setInput('data', {
+      ...baseData,
+      cancel: {
+        label: 'Cancel',
+        disabled: true,
+      },
+    } satisfies ConfirmationPanelData);
+    fixture.detectChanges();
+
+    const cancel = fixture.nativeElement.querySelector('[data-testid="modal-cancel-button"]') as HTMLButtonElement;
+
+    expect(cancel.disabled).toBe(true);
   });
 
   it('suppresses rapid duplicate confirm actions after the first click', () => {
@@ -233,7 +250,6 @@ describe('ConfirmationPanelComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="modal-message"]').textContent).toContain('<script>alert(1)</script>');
     expect(fixture.nativeElement.querySelector('img')).toBeNull();
     expect(fixture.nativeElement.querySelector('script')).toBeNull();
-    expect(fixture.nativeElement.querySelector('[innerHTML]')).toBeNull();
   });
 
   it('falls back invalid tone and initialFocus values to safe defaults', () => {
@@ -249,7 +265,7 @@ describe('ConfirmationPanelComponent', () => {
 
     const confirm = fixture.nativeElement.querySelector('[data-testid="modal-confirm-button"]') as HTMLButtonElement;
 
-    expect(confirm.className).toContain('bg-blue-600');
+    expect(confirm.classList.contains('bg-blue-600')).toBe(true);
     expect(component.initialFocusTarget()).toBe('confirm');
   });
 
@@ -264,6 +280,8 @@ describe('ConfirmationPanelComponent', () => {
     fixture.detectChanges();
 
     expect(component.initialFocusTarget()).toBe('cancel');
+    expect(fixture.nativeElement.textContent).toContain('This action requires careful review.');
+    expect(fixture.nativeElement.querySelector('[data-confirmation-focus="cancel"]')).toBeTruthy();
   });
 
   it('does not render inline style attributes', () => {
@@ -671,6 +689,21 @@ export const SecurityText: Story = {
   },
 };
 
+export const Accessibility: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dialog = canvas.getByRole('dialog', { name: /Approve User Registration/i });
+    const confirm = canvas.getByTestId('modal-confirm-button');
+    const cancel = canvas.getByTestId('modal-cancel-button');
+
+    await expect(dialog).toHaveAttribute('aria-modal', 'true');
+    await expect(dialog).toHaveAttribute('aria-labelledby');
+    await expect(dialog).toHaveAttribute('aria-describedby');
+    await expect(confirm).toHaveAttribute('data-confirmation-focus', 'confirm');
+    await expect(cancel).toHaveAttribute('data-confirmation-focus', 'cancel');
+  },
+};
+
 export const InteractionAudit: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
@@ -775,9 +808,9 @@ describe('ConfirmationDialogComponent compatibility wrapper', () => {
   it('ignores legacy confirmButtonClass instead of applying caller classes', () => {
     const confirm = fixture.nativeElement.querySelector('[data-testid="modal-confirm-button"]') as HTMLButtonElement;
 
-    expect(confirm.className).not.toContain('bg-indigo-600');
-    expect(confirm.className).not.toContain('hover:bg-indigo-700');
-    expect(confirm.className).toContain('bg-blue-600');
+    expect(confirm.classList.contains('bg-indigo-600')).toBe(false);
+    expect(confirm.classList.contains('hover:bg-indigo-700')).toBe(false);
+    expect(confirm.classList.contains('bg-blue-600')).toBe(true);
   });
 
   it('closes the legacy DialogRef with true on confirm', () => {
@@ -954,6 +987,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { UsersConfirmationHostComponent } from './users-confirmation-host.component';
 import { User } from './users.service';
+import { ConfirmationPanelData } from '@tai/ui-design-system';
 
 const pendingUser: User = {
   id: 'user-1',
@@ -988,6 +1022,30 @@ describe('UsersConfirmationHostComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="modal-message"]').textContent).toContain('jane@example.com');
     expect(component.isOpen()).toBe(true);
     expect(document.activeElement).toBe(fixture.nativeElement.querySelector('[data-testid="modal-confirm-button"]'));
+
+    component.handlePanelAction({ action: 'cancel' });
+    await expect(promise).resolves.toBe(false);
+  });
+
+  it('opens generic danger confirmation with default focus on cancel', async () => {
+    const dangerData: ConfirmationPanelData = {
+      title: 'Delete User Account',
+      message: 'This action cannot be undone.',
+      confirm: {
+        label: 'Delete Account',
+        tone: 'danger',
+      },
+      cancel: {
+        label: 'Keep Account',
+      },
+    };
+
+    const promise = component.openConfirmation(dangerData);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="modal-title"]').textContent).toContain('Delete User Account');
+    expect(document.activeElement).toBe(fixture.nativeElement.querySelector('[data-testid="modal-cancel-button"]'));
 
     component.handlePanelAction({ action: 'cancel' });
     await expect(promise).resolves.toBe(false);
@@ -1162,13 +1220,7 @@ export class UsersConfirmationHostComponent implements AfterViewChecked {
   private loading = false;
 
   confirmApproval(user: User): Promise<boolean> {
-    if (this.resolver) {
-      this.close(false);
-    }
-
-    this.opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    this.loading = false;
-    this.panelData.set({
+    return this.openConfirmation({
       title: 'Approve User Registration',
       message: `Are you sure you want to approve the registration for ${user.firstName} ${user.lastName} (${user.email})? This will grant them access to the platform immediately.`,
       confirm: {
@@ -1180,6 +1232,16 @@ export class UsersConfirmationHostComponent implements AfterViewChecked {
       },
       initialFocus: 'confirm',
     });
+  }
+
+  openConfirmation(data: ConfirmationPanelData): Promise<boolean> {
+    if (this.resolver) {
+      this.close(false);
+    }
+
+    this.opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    this.loading = false;
+    this.panelData.set(data);
     this.isOpen.set(true);
     this.needsInitialFocus = true;
 
@@ -1254,7 +1316,9 @@ export class UsersConfirmationHostComponent implements AfterViewChecked {
       return;
     }
 
-    const target = host.querySelector<HTMLElement>('[data-confirmation-focus="confirm"]')
+    const initialFocus = this.panelData().initialFocus
+      ?? (this.panelData().confirm.tone === 'danger' ? 'cancel' : 'confirm');
+    const target = host.querySelector<HTMLElement>(`[data-confirmation-focus="${initialFocus}"]`)
       ?? this.focusableElements(host)[0];
     target?.focus();
   }
