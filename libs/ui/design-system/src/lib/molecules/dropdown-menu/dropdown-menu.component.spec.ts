@@ -54,7 +54,7 @@ describe('DropdownMenuComponent', () => {
 
     component.open();
     fixture.detectChanges();
-    const profile = fixture.nativeElement.querySelector('[data-testid="actions-item-profile"]') as HTMLButtonElement;
+    const profile = fixture.nativeElement.querySelector('[data-testid="action-profile"]') as HTMLButtonElement;
     profile.click();
     fixture.detectChanges();
 
@@ -68,7 +68,7 @@ describe('DropdownMenuComponent', () => {
 
     component.open();
     fixture.detectChanges();
-    const disabled = fixture.nativeElement.querySelector('[data-testid="actions-item-disabled"]') as HTMLButtonElement;
+    const disabled = fixture.nativeElement.querySelector('[data-testid="action-disabled"]') as HTMLButtonElement;
     disabled.click();
 
     expect(spy).not.toHaveBeenCalled();
@@ -78,7 +78,7 @@ describe('DropdownMenuComponent', () => {
     component.open();
     fixture.detectChanges();
 
-    const logout = fixture.nativeElement.querySelector('[data-testid="actions-item-logout"]') as HTMLElement;
+    const logout = fixture.nativeElement.querySelector('[data-testid="action-logout"]') as HTMLElement;
     expect(logout.textContent).toContain('<img src=x onerror=alert(1)>Logout');
     expect(logout.querySelector('img')).toBeNull();
   });
