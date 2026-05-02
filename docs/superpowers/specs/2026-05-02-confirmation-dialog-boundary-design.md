@@ -198,11 +198,13 @@ Responsibilities:
 
 - Render a local fixed-position backdrop and panel inside the users feature tree.
 - Compose `tai-confirmation-panel`.
-- Own Escape-to-close, backdrop click, initial focus, and focus restoration.
+- Own Escape-to-close, backdrop click, manual focus looping, initial focus, and focus restoration.
+- Implement focus management manually with local DOM queries and keyboard handling; do not use CDK `FocusTrap`, `A11yModule`, `Overlay`, `Dialog`, or Angular Material.
+- Capture `document.activeElement` before opening and restore focus to that element after close when it is still connected to the document.
 - Map panel actions explicitly: `{ action: 'confirm' }` becomes `confirmed: true`; `{ action: 'cancel' }`, Escape, and backdrop click become `confirmed: false`.
 - Return a `confirmed: boolean` result to the page layer so the current `if (confirmed)` workflow can remain intact.
 - Set loading while approval is in progress, ignore duplicate confirm clicks while loading, and clear loading if approval fails.
-- Restore focus to the element that opened the confirmation host after close.
+- Expose the confirmation result through a host-owned `confirmApproval(...): Promise<boolean>` API or equivalent feature service API, not through CDK `DialogRef.closed`.
 
 The design-system component should remain reusable for other high-stakes confirmation flows, but it should not decide how dialogs are opened.
 
@@ -224,6 +226,8 @@ The wrapper should:
 The preferred implementation path is a compatibility wrapper because `apps/portal-web` is the active consumer and the current API is already public.
 
 Removal trigger: once `rg -n "Dialog\\.open<boolean>\\(ConfirmationDialogComponent|tai-confirmation-dialog|ConfirmationDialogData|confirmButtonClass" apps libs` returns no active app consumers outside the deprecated wrapper and tests, remove the wrapper in a follow-up breaking-change PR.
+
+The migrated users approval flow should not render `tai-confirmation-dialog`. That selector remains only for deprecated wrapper consumers. Users E2E coverage should move from `page.locator('tai-confirmation-dialog')` to `getByRole('dialog')` plus the preserved test ids: `modal-title`, `modal-message`, `modal-cancel-button`, and `modal-confirm-button`.
 
 ## Storybook Requirements
 
@@ -270,11 +274,12 @@ Add design-system unit tests for:
 Add users feature-host tests for `UsersConfirmationHostComponent`:
 
 - Opens with the expected title, message, and actions.
+- Uses manual focus management and does not import CDK `FocusTrap`, `A11yModule`, `DialogModule`, or `OverlayModule`.
 - Maps panel confirm action to `confirmed: true`.
 - Maps panel cancel action to `confirmed: false`.
 - Maps Escape key to `confirmed: false`.
 - Maps backdrop click to `confirmed: false`.
-- Traps focus inside the host while open.
+- Loops `Tab` and `Shift+Tab` focus inside the host while open.
 - Restores focus to the opener after close.
 - Applies initial focus to confirm for default tone and cancel for danger tone unless overridden.
 - Suppresses duplicate confirms while loading.
@@ -283,8 +288,10 @@ Add users feature-host tests for `UsersConfirmationHostComponent`:
 Add users integration tests for `users.page.ts`:
 
 - Approval flow no longer calls `Dialog.open<boolean>(ConfirmationDialogComponent, ...)`.
+- `users.page.ts` no longer imports `Dialog`, `DialogModule`, `DialogRef`, `DIALOG_DATA`, or `ConfirmationDialogComponent`.
 - Approval invokes the store only when the host resolves `confirmed: true`.
 - Approval does not invoke the store when the host resolves `confirmed: false`.
+- Users E2E queries the migrated confirmation by `role="dialog"` and preserved test ids, not by `tai-confirmation-dialog`.
 
 ## Verification Requirements
 
@@ -294,7 +301,7 @@ Use both tests and static checks to prove the boundary:
 - Storybook cover default, danger, and loading behavior.
 - A static scan command must fail if the reusable confirmation component imports `@angular/cdk/dialog`, `OverlayModule`, `MatDialog`, `DialogRef`, `DIALOG_DATA`, or other overlay-backed primitives.
 - The static scan must run in CI before merge, either as an Nx target or as part of the repository lint/check workflow.
-- The existing `tai-confirmation-dialog` selector must remain available during migration so current E2E coverage does not break.
+- The existing `tai-confirmation-dialog` selector must remain available only through the deprecated compatibility wrapper. Migrated users E2E coverage must use `role="dialog"` and stable test ids.
 
 Required static scan:
 
@@ -315,7 +322,7 @@ Implementation should happen in this order:
 3. Add `UsersConfirmationHostComponent` in `apps/portal-web/src/app/features/users/`.
 4. Update `users.page.ts` to use the users confirmation host and stop passing `confirmButtonClass`.
 5. Refactor `ConfirmationDialogComponent` into a deprecated compatibility wrapper.
-6. Keep existing data-testid values during migration and update E2E only if selectors move to the feature host.
+6. Keep existing data-testid values during migration and update users E2E from `tai-confirmation-dialog` to `role="dialog"` and test-id queries.
 7. Add or update static checks that block CDK dialog/overlay imports in the reusable component.
 8. Wire the static check into CI through an Nx target or the repository lint/check workflow.
 9. Run design-system tests, build checks, Storybook checks, and the users approval flow tests.
@@ -332,9 +339,11 @@ Implementation should happen in this order:
 - Storybook demonstrates default and destructive confirmation states.
 - Unit tests cover accessibility and variant behavior.
 - Users feature-host tests cover Escape-to-close, backdrop click, focus trapping, focus restoration, initial focus, loading retry, and `confirmed: boolean` mapping.
+- Users feature-host implementation does not import CDK focus, dialog, overlay, or Angular Material modules.
 - Static checks prevent the reusable confirmation component from reintroducing CDK dialog/overlay dependencies.
 - The static CDK dialog/overlay check runs in CI before merge.
-- The `tai-confirmation-dialog` selector continues to work until the migration is complete.
+- The `tai-confirmation-dialog` selector continues to work only for deprecated compatibility wrapper consumers until the wrapper is removed.
+- Migrated users approval E2E no longer queries `tai-confirmation-dialog`.
 
 ## Open Decisions Resolved
 
@@ -345,4 +354,6 @@ Implementation should happen in this order:
 - Feature code owns open/close behavior and workflow decisions through `UsersConfirmationHostComponent`.
 - The reusable component emits `actionSelected` with `{ action: 'confirm' | 'cancel' }`.
 - Escape handling belongs to the feature host, not the reusable design-system panel.
+- `UsersConfirmationHostComponent` uses manual focus management instead of CDK focus utilities.
+- Migrated users E2E uses `role="dialog"` and stable test ids instead of `tai-confirmation-dialog`.
 - CDK dialog/overlay is out of scope for the reusable design-system component.
