@@ -57,8 +57,6 @@ test.describe('Privilege Detail & Edit Page E2E', () => {
     await checkA11y(page, undefined, {
       detailedReport: true,
       detailedReportOptions: { html: true },
-      // Skip rules that are commonly false positives in this context
-      skipFailures: true,
     });
   });
 
