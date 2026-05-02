@@ -48,7 +48,7 @@ The design system should expose a presentational confirmation component with exp
 
 `ConfirmationDialogComponent` should remain as a deprecated wrapper for transition purposes. Its role is compatibility, not the long-term API. The wrapper can delegate to the new reusable content component, but modal opening and closing behavior should be owned outside the design system by the feature that uses it.
 
-Feature code, such as the users approval flow, should instantiate the new confirmation UI through its own modal host or wrapper and keep the approval workflow local to the feature layer.
+Feature code, such as the users approval flow, should instantiate the new confirmation UI through its own modal host or wrapper and keep the approval workflow local to the feature layer. This spec assumes the feature layer already has, or will add, a local modal host wrapper outside the design system; it does not define a new modal system.
 
 ## Alternatives Considered
 
@@ -92,7 +92,7 @@ export interface ConfirmationContentData {
   title: string;
   message: string;
   confirm: ConfirmationContentAction;
-  cancel: Omit<ConfirmationContentAction, 'tone'>;
+  cancel: Omit<ConfirmationContentAction, 'tone' | 'loading'>;
   ariaLabel?: string;
 }
 ```
@@ -103,7 +103,10 @@ The reusable component should:
 - Use explicit tone classes for `default` and `danger` actions.
 - Avoid accepting arbitrary class strings.
 - Avoid CDK dialog injection.
-- Emit intent through outputs such as `confirmed` and `cancelled`, or through a single `actionSelected` output with typed payloads.
+- Emit a single `actionSelected` output with a typed payload: `confirm` or `cancel`.
+- Treat `confirm.disabled`, `confirm.loading`, and component-level loading as confirm-blocking.
+- Fail closed for invalid or missing inputs by falling back to safe defaults rather than rendering broken controls.
+- Normalize empty or whitespace-only title/message values to safe fallback text in the component.
 
 The wrapper component should:
 
@@ -111,6 +114,7 @@ The wrapper component should:
 - Be marked deprecated in code comments.
 - Delegate to the reusable confirmation component.
 - Preserve existing public export surface during transition.
+- Continue to support the legacy `ConfirmationDialogData` shape during transition by mapping it to the new content model.
 
 ## Visual States
 
@@ -130,6 +134,7 @@ The component should support:
 - Long titles and messages without layout overlap.
 - Clear cancel and confirm action hierarchy.
 - Visible, non-color confirmation tone cues for destructive actions.
+- `Escape` key cancellation when the host forwards the event or when the component is used inline.
 
 ## Accessibility Requirements
 
@@ -138,9 +143,11 @@ The confirmation component should follow the practical semantics of a confirmati
 - Title and message must be exposed as readable text.
 - Primary and secondary actions must be real buttons.
 - The confirm action must have an accessible name that reflects the current tone or action if needed.
+- The root content should expose `role="dialog"` and link title and message through `aria-labelledby` and `aria-describedby` when used as a dialog body.
 - Disabled or loading confirm actions must not be activatable.
 - Focus states must be visible and sufficient under WCAG 2.2 expectations.
 - The design should not depend on overlay-specific semantics inside the design system component.
+- Initial focus should land on the cancel action by default unless the feature host explicitly overrides focus.
 
 The feature-owned modal host remains responsible for modal-level focus trapping and escape handling if it uses a dialog system outside the design system.
 
@@ -157,6 +164,7 @@ The component must follow `libs/ui/design-system/SECURITY.md`:
 - No CDK overlay-backed dialog behavior in the design-system component.
 
 State-to-class mapping must be explicit and internal to the component. Feature callers provide typed tone and state values, not CSS classes.
+Invalid tone values must collapse to the default style rather than generating caller-controlled class names or throwing from template rendering.
 
 ## Feature Migration Boundary
 
@@ -169,6 +177,7 @@ Responsibilities:
 - Choose `danger` tone for destructive or high-risk actions.
 - Remove any dependency on `confirmButtonClass`.
 - Keep the concurrency-safe approval logic in the feature layer.
+- Define how async confirmation failures are handled in the feature layer, including resetting loading state and surfacing a retry or error affordance.
 
 The design-system component should remain reusable for other high-stakes confirmation flows, but it should not decide how dialogs are opened.
 
@@ -183,6 +192,7 @@ The wrapper should:
 - Delegate rendering to the new reusable confirmation component.
 - Avoid reintroducing CDK dialog/overlay dependencies into the reusable layer.
 - Be removed in a later major change once in-repo consumers migrate.
+- Be mechanically removable once the in-repo users approval flow and any remaining consumers use the new component directly.
 
 The preferred implementation path is a compatibility wrapper because `apps/portal-web` is the active consumer and the current API is already public.
 
@@ -202,6 +212,7 @@ Stories should include interaction checks for:
 - Cancel action is selectable.
 - Danger tone uses explicit design-system styling, not caller CSS classes.
 - User-provided text renders as text, not HTML.
+- Escape key or host-close behavior is covered if the story runs inside a local wrapper.
 
 ## Unit Test Requirements
 
@@ -217,6 +228,16 @@ Add unit tests for:
 - No `[style]`.
 - No CDK dialog or overlay imports in the reusable component.
 - Compatibility wrapper still exists for transition consumers.
+- Invalid or empty inputs fall back to safe defaults.
+
+## Verification Requirements
+
+Use both tests and static checks to prove the boundary:
+
+- Unit tests cover rendering, variants, and action outputs.
+- Storybook cover default, danger, and loading behavior.
+- A static scan or lint rule must fail if the reusable confirmation component imports `@angular/cdk/dialog`, `OverlayModule`, `MatDialog`, or other overlay-backed primitives.
+- The existing `tai-confirmation-dialog` selector must remain available during migration so current E2E coverage does not break.
 
 ## Migration Plan
 
@@ -227,7 +248,8 @@ Implementation should happen in this order:
 3. Update feature code to use the new boundary and stop passing `confirmButtonClass`.
 4. Refactor `ConfirmationDialogComponent` into a deprecated compatibility wrapper.
 5. Update Storybook and any E2E selectors to match the new API.
-6. Run design-system tests, build checks, Storybook checks, and the users approval flow tests.
+6. Add or update static checks that block CDK dialog/overlay imports in the reusable component.
+7. Run design-system tests, build checks, Storybook checks, and the users approval flow tests.
 
 ## Acceptance Criteria
 
@@ -238,6 +260,8 @@ Implementation should happen in this order:
 - The users approval flow uses the new confirmation boundary without relying on caller-provided CSS classes.
 - Storybook demonstrates default and destructive confirmation states.
 - Unit tests cover accessibility and variant behavior.
+- Static checks prevent the reusable confirmation component from reintroducing CDK dialog/overlay dependencies.
+- The `tai-confirmation-dialog` selector continues to work until the migration is complete.
 
 ## Open Decisions Resolved
 
