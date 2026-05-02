@@ -69,6 +69,27 @@ markmap:
    - state changed where?
    - Angular was notified how?
 
+### **1.5 Zoneless-Ready Component Checklist**
+1. Template-read state
+   - use signals
+   - avoid plain mutable fields
+2. Derived state
+   - use computed
+   - no duplicated writable derivations
+3. Component boundary
+   - input for incoming state
+   - output/commands for user intent
+4. Async work
+   - RxJS for HTTP/events
+   - toSignal at template boundary
+5. External callbacks
+   - write a signal
+   - or call markForCheck
+6. State discipline
+   - immutable updates
+   - OnPush by default
+   - production-like tests
+
 ## **2. Signal Reactivity**
 
 ### **2.1 Writable Signals**
@@ -118,16 +139,23 @@ markmap:
    - analytics
    - local storage
    - focus
+   - document title/meta
+   - scroll positioning
    - charts/canvas
    - third-party APIs
+   - media playback
+   - observers/listeners
 2. Prefer alternatives first
    - computed for derived state
    - linkedSignal for writable dependent state
+   - RxJS for HTTP orchestration
    - command methods for business actions
 3. Risks
    - circular updates
    - hidden dependencies
    - ExpressionChanged errors
+   - duplicate subscriptions
+   - missed cancellation
 
 ### **2.5 Signal Inputs and Outputs**
 1. Modern component boundary
@@ -218,6 +246,23 @@ markmap:
    - hybrid architecture
    - clear ownership
    - bridge at boundaries
+
+### **4.4 AbortController**
+1. JavaScript cancellation primitive
+   - like .NET CancellationTokenSource
+   - `signal` is like CancellationToken
+   - `abort()` is like Cancel
+2. Use cases
+   - search/typeahead
+   - route or tenant switch
+   - modal closed
+   - component destroyed
+   - upload/download cancel
+   - timeout
+3. Angular distinction
+   - fetch/resource/custom Promise APIs use AbortSignal
+   - HttpClient usually uses RxJS cancellation
+   - switchMap cancels stale requests
 
 ## **5. Testing and Migration**
 

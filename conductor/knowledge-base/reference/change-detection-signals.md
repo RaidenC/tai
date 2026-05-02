@@ -22,6 +22,7 @@ stack:
       2.1.2 [Zone.js and Zoneless Angular](#zonejs-and-zoneless-angular)
       2.1.3 [OnPush Strategy](#onpush-strategy)
       2.1.4 [Notification Sources](#notification-sources)
+      2.1.5 [Zoneless-Ready Component Checklist](#zoneless-ready-component-checklist)
    2.2 [Signal Reactivity](#signal-reactivity)
       2.2.1 [Writable Signals](#writable-signals)
       2.2.2 [Computed Signals](#computed-signals)
@@ -36,6 +37,7 @@ stack:
       2.4.1 [toSignal and toObservable](#tosignal-and-toobservable)
       2.4.2 [RxJS vs Signals Boundaries](#rxjs-vs-signals-boundaries)
       2.4.3 [Testing Change Detection](#testing-change-detection)
+      2.4.4 [AbortController and Async Cancellation](#abortcontroller-and-async-cancellation)
 3. [Architecture & Data Flow](#architecture--data-flow)
 4. [Real-World Examples](#real-world-examples)
    4.1 [Current tai-portal Zone Configuration](#current-tai-portal-zone-configuration)
@@ -243,6 +245,140 @@ Use this model before reaching for `detectChanges()`. Ask: "What changed, and wh
 
 ---
 
+#### Zoneless-Ready Component Checklist
+
+##### What
+A <span style="color: #00C851; font-weight: bold;">zoneless-ready component</span> is a component whose UI updates through Angular-visible notifications instead of relying on Zone.js to notice arbitrary async work.
+
+##### Why
+Making all template-read local state a signal is a strong start, but it is not enough by itself. A production component also needs signal inputs, computed derivations, immutable updates, explicit async boundaries, and safe handling for external callbacks.
+
+##### How
+Use this hierarchy when designing component state:
+
+1. **Template-read local state: use signals**
+
+```typescript
+readonly isOpen = signal(false);
+readonly selectedUserId = signal<string | null>(null);
+readonly selectedRows = signal<ReadonlySet<string>>(new Set());
+```
+
+Avoid plain mutable fields for state read by the template:
+
+```typescript
+// Avoid for template state: easy to mutate without notification.
+isOpen = false;
+```
+
+2. **Derived state: use `computed()`**
+
+```typescript
+readonly selectedUser = computed(() =>
+  this.users().find((user) => user.id === this.selectedUserId()) ?? null,
+);
+```
+
+3. **Input state: use `input()` for new components**
+
+```typescript
+readonly user = input<User | null>(null);
+readonly disabled = input(false);
+```
+
+4. **User intent: use `output()` or explicit command methods**
+
+```typescript
+readonly saved = output<User>();
+
+save(): void {
+  this.saved.emit(this.formValue());
+}
+```
+
+5. **Async HTTP/event streams: use RxJS, then bridge**
+
+```typescript
+readonly users = toSignal(
+  toObservable(this.searchTerm).pipe(
+    debounceTime(300),
+    distinctUntilChanged(),
+    switchMap((term) =>
+      this.http.get<User[]>('/api/users', {
+        params: { q: term },
+      }),
+    ),
+  ),
+  { initialValue: [] },
+);
+```
+
+6. **External callbacks: write a signal or call `markForCheck()`**
+
+```typescript
+thirdPartyWidget.onStatusChanged((status) => {
+  this.widgetStatus.set(status);
+});
+```
+
+If state cannot reasonably be signal-based, notify explicitly:
+
+```typescript
+thirdPartyWidget.onLayoutChanged(() => {
+  this.cdr.markForCheck();
+});
+```
+
+7. **Immutable updates**
+
+```typescript
+// Avoid: same array reference, consumers may not be notified correctly.
+this.users().push(newUser);
+
+// Prefer: new array reference.
+this.users.update((users) => [...users, newUser]);
+```
+
+```typescript
+// Avoid: deep mutation of object inside signal.
+this.user()!.name = 'Jane';
+
+// Prefer: replace the object.
+this.user.update((user) =>
+  user ? { ...user, name: 'Jane' } : user,
+);
+```
+
+8. **OnPush by default**
+
+```typescript
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class UserCardComponent {}
+```
+
+9. **Avoid effects for normal state propagation**
+
+Use `computed()` for derived state, RxJS for async orchestration, and `effect()` only for imperative edges such as storage, analytics, focus, charts, and third-party widgets.
+
+10. **Tests use production notification paths**
+
+```typescript
+fixture.componentRef.setInput('user', user);
+await fixture.whenStable();
+```
+
+Avoid relying on repeated `fixture.detectChanges()` as the only proof that production rendering works.
+
+##### When
+Apply this checklist to every new design-system component and every feature component that should survive a future zoneless migration. It is especially important for components with tables, filters, dialogs, async data, role-aware controls, and third-party integrations.
+
+##### Trade-offs
+<span style="color: #ffbb33; font-weight: bold;">The practical rule is: any state read by the template should be an input, a signal/computed signal, an AsyncPipe value, or explicitly marked with `markForCheck()` after external mutation.</span> This is more disciplined than old Default change detection, but it makes rendering behavior predictable and testable.
+
+---
+
 ### Signal Reactivity
 
 #### Writable Signals
@@ -337,6 +473,19 @@ This is the missing detail behind many signal bugs. If a signal read is not trac
 ##### How
 Angular enters a reactive context while rendering templates, evaluating `computed()`, running `effect()` / `afterRenderEffect()`, evaluating `linkedSignal()`, and evaluating resource params/loaders. The context is synchronous only:
 
+The easiest mental model is a temporary "currently collecting dependencies" frame on the JavaScript call stack:
+
+```text
+effect starts
+  Angular sets active consumer = this effect
+  read tenantId()      -> Angular records tenantId -> effect
+  read permissions()   -> Angular records permissions -> effect
+  effect returns
+  Angular clears active consumer
+```
+
+After Angular clears that active consumer, later signal reads are just normal function calls. They return values, but they are not registered as dependencies of the original effect/computed/resource. `await` matters because it splits the function into two executions: the code before `await` runs now, then the code after `await` resumes later in a microtask after the original reactive context has ended.
+
 ```typescript
 // Avoid: theme() is read after await, so it is not tracked by this effect.
 effect(async () => {
@@ -351,6 +500,85 @@ effect(async () => {
   this.themeLogger.log(user.id, theme);
 });
 ```
+
+In the avoided version, changing `theme` later will not rerun the effect because `theme()` was read after the `await`. In the preferred version, `theme()` is read before the async boundary, while Angular is still collecting dependencies, so `theme` changes will rerun the effect and start a new async operation.
+
+This distinction is most important when an async operation depends on signal state:
+
+```typescript
+// Broken: selectedTenantId is not tracked because it is read after await.
+effect(async () => {
+  await this.authReady();
+
+  const tenantId = this.selectedTenantId();
+  const rows = await this.auditApi.loadRows(tenantId);
+  this.auditRows.set(rows);
+});
+
+// Correct: selectedTenantId is tracked before await.
+effect(async (onCleanup) => {
+  const tenantId = this.selectedTenantId();
+  const abortController = new AbortController();
+
+  onCleanup(() => abortController.abort());
+
+  await this.authReady();
+
+  const rows = await this.auditApi.loadRows(tenantId, {
+    signal: abortController.signal,
+  });
+  this.auditRows.set(rows);
+});
+```
+
+In the correct version, selecting a new tenant reruns the effect, cancels the old request, and starts a request for the new tenant. In the broken version, selecting a new tenant does nothing because Angular never learned that the effect depended on `selectedTenantId`.
+
+The cancellation object in that example is <span style="color: #33b5e5; font-weight: bold;">AbortController</span>. It is the browser/JavaScript equivalent of a .NET `CancellationTokenSource`:
+
+| JavaScript | .NET |
+|------------|------|
+| `AbortController` | `CancellationTokenSource` |
+| `abortController.signal` | `CancellationToken` |
+| `abortController.abort()` | `cts.Cancel()` |
+| `fetch(url, { signal })` | `await client.GetAsync(url, cancellationToken)` |
+
+The important distinction is that dependency tracking and cancellation solve different problems. Reading `selectedTenantId()` before `await` tells Angular when to rerun the effect. Registering `onCleanup(() => abortController.abort())` tells Angular how to cancel stale async work before the next run starts or before the component/store is destroyed.
+
+In Angular `HttpClient` code, the same idea is usually expressed with RxJS cancellation instead of `AbortController`:
+
+```typescript
+readonly readyTenantId$ = combineLatest([
+  toObservable(this.selectedTenantId),
+  this.authReady$,
+]).pipe(
+  filter(([tenantId, authReady]) => tenantId !== null && authReady),
+  map(([tenantId]) => tenantId as string),
+  distinctUntilChanged(),
+);
+
+readonly auditRows$ = this.readyTenantId$.pipe(
+  switchMap((tenantId) =>
+    this.http.get<AuditRow[]>(`/api/tenants/${tenantId}/audit-logs`).pipe(
+      catchError(() => of([])),
+    ),
+  ),
+);
+```
+
+Here `readyTenantId$` names the prerequisite state: a selected tenant exists and auth is ready. The HTTP pipeline then has one clear `switchMap`, which cancels the previous Angular `HttpClient` request when a newer tenant ID arrives. Angular `HttpClient` treats that unsubscribe as request cancellation.
+
+Nested `switchMap` is acceptable when each level represents a real dependent async step, but it is often harder to read and test. A senior-friendly pattern is to compose prerequisites into a named stream first, then use one `switchMap` for the cancellable request. Keep `catchError` inside the inner HTTP Observable so one failed request returns a fallback value without completing the outer tenant stream.
+
+If the component/store wants signal-style consumption, bridge the Observable back once:
+
+```typescript
+readonly auditRows = toSignal(
+  this.auditRows$.pipe(catchError(() => of([]))),
+  { initialValue: [] },
+);
+```
+
+The rule of thumb is: `effect + AbortController` fits `fetch`, resource loaders, and custom Promise APIs; `toObservable + switchMap` fits Angular `HttpClient` and Observable workflows.
 
 Use `untracked()` for incidental reads that should not become dependencies:
 
@@ -381,19 +609,183 @@ Care about reactive contexts when writing effects, computed derivations, custom 
 Signals need a bridge to non-reactive APIs: analytics, local storage, charts, canvas, browser APIs, focus management, and third-party widgets.
 
 ##### How
-Use effects at the boundary:
+Use effects at imperative boundaries where there is no better reactive abstraction. Production examples should include the same operational safeguards as regular Angular code: platform guards for browser APIs, framework services instead of raw globals where available, cleanup for external resources, and explicit loading/error state for async UI.
 
 ```typescript
-constructor() {
-  effect((onCleanup) => {
-    const userId = this.selectedUserId();
-    if (!userId) return;
+private readonly platformId = inject(PLATFORM_ID);
+private readonly isBrowser = isPlatformBrowser(this.platformId);
 
-    const subscription = this.auditService.watchUser(userId).subscribe();
-    onCleanup(() => subscription.unsubscribe());
+constructor(private readonly logger: Logger) {
+  effect(() => {
+    if (!this.isBrowser) return;
+
+    const theme = this.theme();
+
+    try {
+      localStorage.setItem('tai.theme', theme);
+    } catch (error) {
+      this.logger.warn('Unable to persist theme preference.', error);
+    }
   });
 }
 ```
+
+Common real-world effect use cases:
+
+| Use case | Why `effect()` fits |
+|----------|---------------------|
+| **localStorage/sessionStorage sync** | Browser storage is imperative, not reactive |
+| **Analytics/telemetry events** | Tracking APIs are imperative sinks |
+| **Document title/meta updates** | `document.title` and metadata APIs are browser side effects |
+| **Focus management** | Moving focus uses DOM APIs |
+| **Scroll positioning** | Scrolling selected rows or panels is imperative |
+| **Canvas/chart/map rendering** | Third-party renderers need update/destroy calls |
+| **Third-party widgets** | Non-Angular widgets need explicit synchronization |
+| **Media playback** | `play`, `pause`, and `seek` are imperative APIs |
+| **Observers/listeners outside RxJS** | Cleanup must be attached to the effect lifecycle |
+| **Development logging** | Logging state transitions is an imperative diagnostic side effect |
+
+Examples:
+
+```typescript
+// Analytics: fire only for real tenant changes, not duplicate emissions.
+private lastTrackedTenantId: string | null = null;
+
+constructor() {
+  effect(() => {
+    const tenantId = this.selectedTenantId();
+
+    if (!tenantId || tenantId === this.lastTrackedTenantId) {
+      return;
+    }
+
+    this.analytics.track('tenant_selected', { tenantId });
+    this.lastTrackedTenantId = tenantId;
+  });
+}
+```
+
+```typescript
+// Document title: use Angular's Title service instead of direct document writes.
+private readonly title = inject(Title);
+
+constructor() {
+  effect(() => {
+    this.title.setTitle(`${this.pageTitle()} | TAI Portal`);
+  });
+}
+```
+
+```typescript
+// Focus: use Angular render scheduling so the input exists before focusing.
+readonly isDialogOpen = signal(false);
+private readonly firstInput =
+  viewChild<ElementRef<HTMLInputElement>>('firstInput');
+
+constructor() {
+  effect(() => {
+    if (!this.isDialogOpen()) {
+      return;
+    }
+
+    afterNextRender(() => {
+      this.firstInput()?.nativeElement.focus();
+    });
+  });
+}
+```
+
+```typescript
+// Chart: create once, update data, destroy on cleanup.
+private chart: Chart | null = null;
+private readonly canvas = viewChild<ElementRef<HTMLCanvasElement>>('chartCanvas');
+
+constructor() {
+  effect((onCleanup) => {
+    const canvas = this.canvas()?.nativeElement;
+
+    if (!canvas || this.chart) return;
+
+    const chart = new Chart(canvas, {
+      type: 'line',
+      data: untracked(() => this.chartData()),
+    });
+
+    this.chart = chart;
+
+    onCleanup(() => {
+      chart.destroy();
+      if (this.chart === chart) {
+        this.chart = null;
+      }
+    });
+  });
+
+  effect(() => {
+    const data = this.chartData();
+    const chart = this.chart;
+
+    if (!chart) return;
+
+    chart.data = data;
+    chart.update('none');
+  });
+}
+```
+
+For HTTP and most service calls in Angular, do not make `effect()` the orchestration layer. `HttpClient` returns Observables, so compose the changing inputs and HTTP result with RxJS, then bridge the final stream back to a signal if the template wants signal-style reads:
+
+```typescript
+type LoadState<T> =
+  | { status: 'idle'; data: T; error: null }
+  | { status: 'loading'; data: T; error: null }
+  | { status: 'loaded'; data: T; error: null }
+  | { status: 'error'; data: T; error: unknown };
+
+readonly searchTerm = signal('');
+
+readonly usersState = toSignal(
+  toObservable(this.searchTerm).pipe(
+    debounceTime(300),
+    distinctUntilChanged(),
+    switchMap((term) =>
+      this.http.get<User[]>('/api/users', {
+        params: { q: term },
+      }).pipe(
+        map((users): LoadState<User[]> => ({
+          status: 'loaded',
+          data: users,
+          error: null,
+        })),
+        startWith({
+          status: 'loading',
+          data: [],
+          error: null,
+        } satisfies LoadState<User[]>),
+        catchError((error) =>
+          of({
+            status: 'error',
+            data: [],
+            error,
+          } satisfies LoadState<User[]>),
+        ),
+      ),
+    ),
+  ),
+  { initialValue: { status: 'idle', data: [], error: null } },
+);
+```
+
+This preserves the older Angular best practice: compose change events and HTTP results as streams. Signals improve the component-facing state, but RxJS remains the right place for debounce, cancellation, retry, error handling, and concurrency semantics.
+
+Use the operator that matches the user intent:
+
+| User intent | Operator | Example |
+|-------------|----------|---------|
+| Latest value wins | `switchMap` | search, route param load, tenant switch |
+| Preserve order | `concatMap` | queued saves |
+| Ignore duplicates while busy | `exhaustMap` | login/submit button |
+| Allow parallel work | `mergeMap` | independent uploads |
 
 Do not use effects as the default state propagation tool:
 
@@ -408,10 +800,17 @@ readonly fullName = computed(() => `${this.firstName()} ${this.lastName()}`);
 ```
 
 ##### When
-Use effects for side effects that cannot be modeled as template binding, computed state, or explicit command methods.
+Use effects for side effects that cannot be modeled as template binding, computed state, RxJS stream composition, or explicit command methods. Before writing an effect, ask:
+
+1. Can this be template binding?
+2. Can this be `computed()`?
+3. Can this be an explicit event handler or command method?
+4. Is this truly synchronizing with an imperative external API?
+
+If the answer to the fourth question is yes, `effect()` is probably appropriate. Avoid `HttpClient.subscribe()` inside effects as the default pattern; it is usually a smell that async orchestration belongs in RxJS.
 
 ##### Trade-offs
-<span style="color: #ff4444; font-weight: bold;">Effects can create hidden dependency graphs.</span> Effects that write signals can cause loops, stale assumptions, and `ExpressionChangedAfterItHasBeenChecked` errors. Treat signal-writing effects as an exception that must be justified.
+<span style="color: #ff4444; font-weight: bold;">Effects can create hidden dependency graphs.</span> Effects that write signals or subscribe to Observables can cause loops, stale assumptions, duplicate requests, missed cancellation, and `ExpressionChangedAfterItHasBeenChecked` errors. Treat signal-writing effects and subscription effects as exceptions that must be justified.
 
 ---
 
@@ -674,6 +1073,88 @@ Use zoneless-style tests for design-system components and critical UI flows. Kee
 
 ##### Trade-offs
 <span style="color: #ffbb33; font-weight: bold;">Zoneless tests are stricter.</span> They expose stale UI earlier, but they may force legacy components to clean up hidden scheduling assumptions.
+
+---
+
+#### AbortController and Async Cancellation
+
+##### What
+<span style="color: #33b5e5; font-weight: bold;">AbortController</span> is the standard browser cancellation primitive. It creates an `AbortSignal` that can be passed to async APIs such as `fetch`, Angular resource loaders, streams, and custom APIs that support cancellation.
+
+##### Why
+Without cancellation, old async work can finish after newer user intent and overwrite the UI with stale data. This is the same class of problem that .NET solves with `CancellationTokenSource` and `CancellationToken`.
+
+```text
+Tenant A selected -> request A starts
+Tenant B selected -> request B starts
+Request B finishes -> UI shows tenant B rows
+Request A finishes later -> UI incorrectly shows tenant A rows
+```
+
+##### How
+Use one controller per async operation or per effect run:
+
+```typescript
+effect(async (onCleanup) => {
+  const tenantId = this.selectedTenantId();
+  const controller = new AbortController();
+
+  onCleanup(() => controller.abort());
+
+  const response = await fetch(`/api/tenants/${tenantId}/audit-logs`, {
+    signal: controller.signal,
+  });
+
+  this.auditRows.set(await response.json());
+});
+```
+
+When `selectedTenantId` changes, Angular reruns the effect. Before the new run starts, `onCleanup` aborts the old request. The new run captures the new tenant ID and starts fresh work.
+
+AbortController is also useful for explicit timeout handling:
+
+```typescript
+const controller = new AbortController();
+const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+try {
+  const response = await fetch('/api/audit-logs', {
+    signal: controller.signal,
+  });
+
+  return await response.json();
+} finally {
+  clearTimeout(timeoutId);
+}
+```
+
+##### When
+Use `AbortController` when a newer user action makes older async work obsolete:
+
+- search/typeahead when the user keeps typing
+- route, tenant, account, or user context switch
+- modal/dialog closed while loading data
+- component/store destroyed before async work finishes
+- user-cancelled file upload or download
+- long polling, streaming `fetch`, or readable streams
+- request timeout handling
+- Angular `resource()` loaders, which receive an abort signal
+- custom APIs that accept `AbortSignal`
+
+For Angular `HttpClient`, prefer RxJS cancellation:
+
+```typescript
+readonly rows$ = toObservable(this.selectedTenantId).pipe(
+  switchMap((tenantId) =>
+    this.http.get<AuditRow[]>(`/api/tenants/${tenantId}/audit-logs`),
+  ),
+);
+```
+
+`switchMap` unsubscribes from the previous HTTP request when the tenant changes. That is the Angular/RxJS equivalent of aborting stale work.
+
+##### Trade-offs
+<span style="color: #ffbb33; font-weight: bold;">AbortController only works when the async API honors the signal.</span> Native `fetch` does; many custom APIs need explicit support. In Angular apps, use `AbortController` for `fetch`, resource loaders, streams, and custom promise APIs; use RxJS operators such as `switchMap`, `takeUntilDestroyed`, and `finalize` for `HttpClient` and Observable-based workflows.
 
 ---
 
