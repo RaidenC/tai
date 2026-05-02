@@ -1,0 +1,43 @@
+<nav
+  [class]="navClasses()"
+  [attr.aria-label]="ariaLabel()"
+  [attr.data-testid]="testId()"
+>
+  <ol [class]="listClasses()">
+    @for (step of steps(); track step.id; let i = $index; let last = $last) {
+      <li class="tai-stepper__item">
+        <button
+          type="button"
+          [class]="stepButtonClasses(step)"
+          [disabled]="isDisabled(step)"
+          [attr.aria-current]="step.id === currentStepId() ? 'step' : null"
+          [attr.aria-disabled]="isDisabled(step) ? 'true' : null"
+          [attr.aria-label]="stepAriaLabel(step, i)"
+          [attr.data-testid]="testId() + '-step-' + step.id"
+          (click)="selectStep(step)"
+        >
+          <span
+            [class]="indicatorClasses(step)"
+            aria-hidden="true"
+            [textContent]="step.status === 'completed' ? 'Done' : i + 1"
+          ></span>
+          <span class="tai-stepper__content min-w-0">
+            <span class="tai-stepper__label block truncate font-semibold" [textContent]="step.label"></span>
+            @if (step.description) {
+              <span class="tai-stepper__description block truncate text-xs text-gray-500" [textContent]="step.description"></span>
+            }
+            <span
+              class="tai-stepper__status mt-1 block text-xs font-medium text-gray-600"
+              [attr.data-testid]="testId() + '-status-' + step.id"
+              [textContent]="statusText(step)"
+            ></span>
+          </span>
+        </button>
+
+        @if (!last) {
+          <span class="tai-stepper__connector" aria-hidden="true"></span>
+        }
+      </li>
+    }
+  </ol>
+</nav>
