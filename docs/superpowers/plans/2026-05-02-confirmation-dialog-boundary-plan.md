@@ -886,6 +886,7 @@ export class ConfirmationDialogComponent {
     message: this.data.message,
     confirm: {
       label: this.data.confirmText ?? 'Confirm',
+      // Legacy ConfirmationDialogData has no trusted tone field; caller classes are ignored.
       tone: 'default',
     },
     cancel: {
@@ -1027,7 +1028,7 @@ describe('UsersConfirmationHostComponent', () => {
     await expect(promise).resolves.toBe(false);
   });
 
-  it('opens generic danger confirmation with default focus on cancel', async () => {
+  it('opens generic danger confirmation without explicit initialFocus on cancel', async () => {
     const dangerData: ConfirmationPanelData = {
       title: 'Delete User Account',
       message: 'This action cannot be undone.',
@@ -1046,6 +1047,30 @@ describe('UsersConfirmationHostComponent', () => {
 
     expect(fixture.nativeElement.querySelector('[data-testid="modal-title"]').textContent).toContain('Delete User Account');
     expect(document.activeElement).toBe(fixture.nativeElement.querySelector('[data-testid="modal-cancel-button"]'));
+
+    component.handlePanelAction({ action: 'cancel' });
+    await expect(promise).resolves.toBe(false);
+  });
+
+  it('honors explicit initialFocus override for generic confirmations', async () => {
+    const dangerData: ConfirmationPanelData = {
+      title: 'Delete User Account',
+      message: 'This action cannot be undone.',
+      confirm: {
+        label: 'Delete Account',
+        tone: 'danger',
+      },
+      cancel: {
+        label: 'Keep Account',
+      },
+      initialFocus: 'confirm',
+    };
+
+    const promise = component.openConfirmation(dangerData);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(document.activeElement).toBe(fixture.nativeElement.querySelector('[data-testid="modal-confirm-button"]'));
 
     component.handlePanelAction({ action: 'cancel' });
     await expect(promise).resolves.toBe(false);
@@ -1652,7 +1677,7 @@ Create `tools/check-confirmation-boundary.sh`:
 #!/usr/bin/env bash
 set -euo pipefail
 
-panel_matches="$(rg -n "from '@angular/cdk/dialog'|from \"@angular/cdk/dialog\"|from '@angular/cdk/overlay'|from \"@angular/cdk/overlay\"|from '@angular/cdk/a11y'|from \"@angular/cdk/a11y\"|from '@angular/material|from \"@angular/material|DialogRef|DIALOG_DATA|FocusTrap|OverlayModule|MatDialog" libs/ui/design-system/src/lib/molecules/confirmation-panel apps/portal-web/src/app/features/users/users-confirmation-host.component.ts || true)"
+panel_matches="$(rg -n "from ['\"]@angular/cdk/(dialog|overlay|a11y)['\"]|from ['\"]@angular/material|DialogRef|DIALOG_DATA|FocusTrap|OverlayModule|MatDialog" libs/ui/design-system/src/lib/molecules/confirmation-panel apps/portal-web/src/app/features/users/users-confirmation-host.component.ts || true)"
 
 if [[ -n "$panel_matches" ]]; then
   echo "Banned CDK/Material confirmation boundary import found:"
