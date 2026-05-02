@@ -48,7 +48,7 @@ test.describe('User Privileges E2E', () => {
     await expect(row).toBeVisible();
     
     // Open Actions menu and click 'View Details'
-    await row.getByRole('button', { name: /actions/i }).click();
+    await row.getByRole('button', { name: /actions/i }).first().click();
     await page.getByRole('menuitem', { name: /view details/i }).click();
     
     await expect(page).toHaveURL(/.*\/users\/.*/);

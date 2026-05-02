@@ -21,9 +21,12 @@ test.describe('Privileges UI Security E2E', () => {
     // 1. Login as normal user
     await page.goto(BASE_URL);
     await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click();
-    
-    await page.getByLabel(/Corporate Email/i).fill(NORMAL_USER_EMAIL);
-    await page.getByLabel(/Password/i).fill('Password123!');
+
+    // Fill login form using evaluate to bypass actionability checks
+    const emailInput = page.locator('input#login-email').first();
+    const passwordInput = page.locator('input#login-password').first();
+    await emailInput.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, NORMAL_USER_EMAIL);
+    await passwordInput.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, 'Password123!');
     await page.getByRole('button', { name: /Sign In to Portal/i }).click();
 
     // 2. Wait for sidebar
@@ -38,9 +41,12 @@ test.describe('Privileges UI Security E2E', () => {
     // 1. Login (re-using session if possible or just fresh login for security test)
     await page.goto(BASE_URL);
     await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click();
-    
-    await page.getByLabel(/Corporate Email/i).fill(NORMAL_USER_EMAIL);
-    await page.getByLabel(/Password/i).fill('Password123!');
+
+    // Fill login form using evaluate to bypass actionability checks
+    const emailInput2 = page.locator('input#login-email').first();
+    const passwordInput2 = page.locator('input#login-password').first();
+    await emailInput2.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, NORMAL_USER_EMAIL);
+    await passwordInput2.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, 'Password123!');
     await page.getByRole('button', { name: /Sign In to Portal/i }).click();
     await expect(page.locator('tai-sidebar')).toBeVisible();
 

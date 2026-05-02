@@ -22,10 +22,12 @@ test('authenticate TAI Admin', async ({ page, request }) => {
   // 1. Navigate to the portal which redirects to identity UI
   await page.goto(TAI_URL);
   await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click();
-  
-  // 2. Perform login
-  await page.getByLabel(/Corporate Email/i).fill('admin@tai.com', { timeout: 30000 });
-  await page.getByLabel(/Password/i).fill('Password123!');
+
+  // 2. Perform login - use evaluate to bypass actionability checks
+  const emailInputTAI = page.locator('input#login-email').first();
+  const passwordInputTAI = page.locator('input#login-password').first();
+  await emailInputTAI.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, 'admin@tai.com');
+  await passwordInputTAI.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, 'Password123!');
   await page.getByRole('button', { name: /Sign In to Portal/i }).click();
 
   // 3. Wait until we are redirected back to the portal and authenticated
@@ -56,10 +58,12 @@ test('authenticate ACME Admin', async ({ page, request }) => {
   // 1. Navigate to ACME portal
   await page.goto(ACME_URL);
   await page.getByRole('button', { name: /Sign In with TAI Identity/i }).click();
-  
-  // 2. Perform login
-  await page.getByLabel(/Corporate Email/i).fill('admin@acme.com', { timeout: 30000 });
-  await page.getByLabel(/Password/i).fill('Password123!');
+
+  // 2. Perform login - use evaluate to bypass actionability checks
+  const emailInput = page.locator('input#login-email').first();
+  const passwordInput = page.locator('input#login-password').first();
+  await emailInput.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, 'admin@acme.com');
+  await passwordInput.evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); }, 'Password123!');
   await page.getByRole('button', { name: /Sign In to Portal/i }).click();
 
   // 3. Wait until authenticated

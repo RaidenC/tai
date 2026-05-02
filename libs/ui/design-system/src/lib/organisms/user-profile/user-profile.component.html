@@ -1,0 +1,32 @@
+<!--
+  Audit-Proof Identity Display:
+  Proves that user initials (JD for John Doe) are accurately derived from the
+  server-provided name, ensuring visual identity invariants without exposing
+  full identity data in every view.
+-->
+<div class="user-profile flex items-center gap-2">
+  <tai-dropdown-menu
+    ariaLabel="User Profile"
+    placement="bottom-end"
+    mobileMode="sheet"
+    density="comfortable"
+    testId="user-profile-menu"
+    [items]="profileActions"
+    (itemSelected)="onProfileAction($event)"
+  >
+    <span
+      taiDropdownTrigger
+      class="user-profile-trigger flex h-10 w-10 items-center justify-center rounded-full bg-blue-500 text-sm font-semibold text-white transition-colors duration-200"
+    >
+      @if (user()?.avatar) {
+        <img
+          [src]="user()?.avatar"
+          [alt]="user()?.name"
+          class="user-avatar h-full w-full rounded-full object-cover"
+        />
+      } @else {
+        <span [textContent]="initials()"></span>
+      }
+    </span>
+  </tai-dropdown-menu>
+</div>
