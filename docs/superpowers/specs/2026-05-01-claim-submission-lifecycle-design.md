@@ -40,7 +40,7 @@ Signing provider completion is not a final borrower/business status. The claim r
 - Define retryable versus terminal failure behavior.
 - Define status transitions that do not depend on DocuSign-specific terms.
 - Give frontend state a precise mapping for borrower-facing UI.
-- Establish where generated PDFs, signed PDFs, certificates, and audit-safe references fit in the lifecycle without choosing final storage mechanics.
+- Establish the lifecycle point where signed artifact storage must be complete without choosing storage mechanics.
 
 ## Non-Goals
 
@@ -51,7 +51,7 @@ Signing provider completion is not a final borrower/business status. The claim r
 - Implementing claim adjudication or downstream carrier submission.
 - Building admin/support tooling.
 
-Generated PDFs, signed PDFs, certificates, hashes, download authorization, and retention rules are covered in detail by the next spec: **Document Storage + Retention**. This lifecycle spec only defines when those artifacts are required for a status transition.
+Document storage mechanics are covered in detail by the next spec: **Document Storage + Retention**. This lifecycle spec only defines when stored artifact references and hashes are required for a status transition.
 
 ## Existing Inputs
 
@@ -210,7 +210,7 @@ Representation:
 - completion/certificate artifact references exist if required by the selected provider
 - audit-safe metadata exists for what was signed and stored
 
-Required artifact classes:
+Required artifact classes are defined by the storage spec. At minimum, the lifecycle expects references for:
 
 ```text
 GeneratedClaimPacket
@@ -218,7 +218,7 @@ SignedClaimPacket
 SigningCompletionCertificate
 ```
 
-The next Document Storage + Retention spec chooses storage provider, encryption, schema, retention, and download behavior. This lifecycle spec requires only that the artifact references and hashes exist before entering `SignedDocumentsStored`.
+The storage spec chooses provider, schema, retention, and download behavior. This lifecycle spec requires only that the artifact references and hashes exist before entering `SignedDocumentsStored`.
 
 Allowed actions:
 
@@ -476,9 +476,9 @@ interface ClaimStatusView {
 }
 ```
 
-## Document Artifact Lifecycle Dependencies
+## Storage Lifecycle Gates
 
-This spec does not choose storage implementation, but it defines artifact gates:
+This spec does not choose storage implementation, but it defines the lifecycle gates that storage must satisfy:
 
 ### Before `SigningInProgress`
 
@@ -508,14 +508,7 @@ Required:
 - signed artifact references pass internal consistency checks
 - submission audit event can reference snapshot hash and signed artifact hashes
 
-The next Document Storage + Retention spec must decide:
-
-- filesystem vs database bytes vs object-storage abstraction
-- encryption expectations
-- document metadata schema
-- hash storage format
-- download authorization
-- retention/delete rules for POC
+The Document Storage + Retention spec owns the concrete storage decisions.
 
 ## Audit Requirements
 
