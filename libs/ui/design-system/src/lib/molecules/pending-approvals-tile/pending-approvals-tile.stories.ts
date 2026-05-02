@@ -11,7 +11,7 @@ import { CommonModule } from '@angular/common';
  * pending users and trigger the secondary approval action.
  */
 const meta: Meta<PendingApprovalsTileComponent> = {
-  title: 'Identity/PendingApprovalsTile',
+  title: 'Molecules/PendingApprovalsTile',
   component: PendingApprovalsTileComponent,
   decorators: [
     moduleMetadata({

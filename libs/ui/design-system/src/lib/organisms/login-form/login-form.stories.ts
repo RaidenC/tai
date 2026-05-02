@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
  * allowing any data transmission.
  */
 const meta: Meta<LoginFormComponent> = {
-  title: 'Identity/LoginForm',
+  title: 'Organisms/LoginForm',
   component: LoginFormComponent,
   decorators: [
     moduleMetadata({

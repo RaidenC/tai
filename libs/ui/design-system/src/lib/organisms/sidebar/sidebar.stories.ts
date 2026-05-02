@@ -12,7 +12,7 @@ const sidebarMenuItems: MenuItem[] = [
 
 const meta: Meta<SidebarComponent> = {
   component: SidebarComponent,
-  title: 'SidebarComponent',
+  title: 'Organisms/Sidebar',
   tags: ['autodocs'],
   decorators: [
     applicationConfig({

@@ -63,7 +63,7 @@ const data: TestData[] = [
  * delegating all business logic to its container via emitted events.
  */
 const meta: Meta<DataTableComponent<TestData>> = {
-  title: 'Design System/DataTable',
+  title: 'Organisms/DataTable',
   component: DataTableComponent,
   decorators: [
     moduleMetadata({

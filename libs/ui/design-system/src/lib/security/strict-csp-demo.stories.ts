@@ -38,7 +38,7 @@ const navItems: MenuItem[] = [
 ];
 
 const meta: Meta = {
-  title: 'Security/Strict CSP Demo',
+  title: 'Security/StrictCspDemo',
   render: () => ({
     imports: [
       DropdownMenuComponent,

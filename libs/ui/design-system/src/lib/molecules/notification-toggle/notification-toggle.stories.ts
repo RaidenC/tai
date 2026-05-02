@@ -4,7 +4,7 @@ import { NotificationPanelService } from '../../organisms/notification-panel/not
 
 const meta: Meta<NotificationToggleComponent> = {
   component: NotificationToggleComponent,
-  title: 'Notification Toggle Component',
+  title: 'Molecules/NotificationToggle',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',

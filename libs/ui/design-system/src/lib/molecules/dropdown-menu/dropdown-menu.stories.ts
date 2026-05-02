@@ -9,7 +9,7 @@ const items: DropdownMenuItem[] = [
 ];
 
 const meta: Meta<DropdownMenuComponent> = {
-  title: 'Molecules/Dropdown Menu',
+  title: 'Molecules/DropdownMenu',
   component: DropdownMenuComponent,
   tags: ['autodocs'],
   args: {

@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
  * before allowing any self-service registration submission.
  */
 const meta: Meta<RegistrationFormComponent> = {
-  title: 'Identity/RegistrationForm',
+  title: 'Organisms/RegistrationForm',
   component: RegistrationFormComponent,
   decorators: [
     moduleMetadata({

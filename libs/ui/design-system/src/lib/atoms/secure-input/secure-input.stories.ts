@@ -14,7 +14,7 @@ import { CommonModule } from '@angular/common';
  * [X] Stealer Log Defense (Autofill Isolation)
  */
 const meta: Meta<SecureInputComponent> = {
-  title: 'Identity/SecureInput',
+  title: 'Atoms/SecureInput',
   component: SecureInputComponent,
   decorators: [
     moduleMetadata({

@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
  * identity activation.
  */
 const meta: Meta<OtpVerificationFormComponent> = {
-  title: 'Identity/OtpVerificationForm',
+  title: 'Organisms/OtpVerificationForm',
   component: OtpVerificationFormComponent,
   decorators: [
     moduleMetadata({

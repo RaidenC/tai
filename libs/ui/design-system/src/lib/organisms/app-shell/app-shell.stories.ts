@@ -6,7 +6,7 @@ import { within, expect, fn } from '@storybook/test';
 
 const meta: Meta<AppShellComponent> = {
   component: AppShellComponent,
-  title: 'AppShellComponent',
+  title: 'Organisms/AppShell',
   tags: ['autodocs'],
   decorators: [
     applicationConfig({

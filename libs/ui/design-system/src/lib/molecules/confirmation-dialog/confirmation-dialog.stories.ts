@@ -16,7 +16,7 @@ import { expect, fn, userEvent, within } from '@storybook/test';
  * a deliberate confirmation step.
  */
 const meta: Meta<ConfirmationDialogComponent> = {
-  title: 'Design System/ConfirmationDialog',
+  title: 'Molecules/ConfirmationDialog',
   component: ConfirmationDialogComponent,
   decorators: [
     moduleMetadata({

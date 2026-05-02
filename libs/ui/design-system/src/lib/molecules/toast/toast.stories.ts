@@ -5,7 +5,7 @@ import { fn } from '@storybook/test';
 
 const meta: Meta<ToastComponent> = {
   component: ToastComponent,
-  title: 'Toast Component',
+  title: 'Molecules/Toast',
   tags: ['autodocs'],
   parameters: {
     layout: 'fullscreen',

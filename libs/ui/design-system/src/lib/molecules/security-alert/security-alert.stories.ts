@@ -3,7 +3,7 @@ import { within, expect, userEvent } from '@storybook/test';
 import { SecurityAlertComponent } from './security-alert';
 
 const meta: Meta<SecurityAlertComponent> = {
-  title: 'Security/SecurityAlert',
+  title: 'Molecules/SecurityAlert',
   component: SecurityAlertComponent,
   decorators: [
     moduleMetadata({
