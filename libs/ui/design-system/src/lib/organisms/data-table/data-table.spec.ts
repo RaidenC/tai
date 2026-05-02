@@ -5,6 +5,8 @@ import {
   TableActionDef,
 } from './data-table';
 import { CdkTableModule } from '@angular/cdk/table';
+import { ButtonComponent } from '../../atoms/button/button.component';
+import { IconComponent } from '../../atoms/icon/icon.component';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 interface TestData {

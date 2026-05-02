@@ -83,7 +83,7 @@ export const Default: Story = {
     template: '<tai-notification-panel [events]="events"></tai-notification-panel>',
     styles: [':host { position: relative; height: 100vh; }']
   }),
-  play: async () => {
+  play: async ({ canvasElement }) => {
     const panelService = new NotificationPanelService();
     panelService.open();
   }
@@ -105,7 +105,7 @@ export const PanelOpen: Story = {
       styles: [':host { position: relative; height: 100vh; }']
     };
   },
-  play: async () => {
+  play: async ({ canvasElement }) => {
     const panel = canvasElement.querySelector('.notification-panel');
     if (panel) {
       console.log('Panel is visible');

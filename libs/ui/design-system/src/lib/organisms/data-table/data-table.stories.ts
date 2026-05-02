@@ -11,6 +11,7 @@ import {
   fn,
   userEvent,
   within,
+  waitFor,
 } from '@storybook/test';
 
 /**
