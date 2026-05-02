@@ -1,7 +1,8 @@
-import { Component, Input, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, Input, OnInit, DestroyRef, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, NavigationEnd, Router, RouterModule } from '@angular/router';
-import { Subject, filter, takeUntil } from 'rxjs';
+import { filter } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { StepperComponent, StepperStep } from '../stepper/stepper.component';
 
 export interface WizardStep {
@@ -19,7 +20,7 @@ export interface WizardStep {
   imports: [CommonModule, RouterModule, StepperComponent],
   templateUrl: './wizard.component.html',
 })
-export class WizardComponent implements OnInit, OnDestroy {
+export class WizardComponent implements OnInit {
   private readonly stepsSignal = signal<WizardStep[]>([]);
 
   @Input() set steps(value: WizardStep[]) {
@@ -34,7 +35,7 @@ export class WizardComponent implements OnInit, OnDestroy {
 
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
-  private readonly destroy$ = new Subject<void>();
+  private readonly destroyRef = inject(DestroyRef);
   private readonly routeUrl = signal(this.router.url);
 
   protected readonly currentStepId = computed(() => {
@@ -59,12 +60,12 @@ export class WizardComponent implements OnInit, OnDestroy {
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-        takeUntil(this.destroy$),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(() => this.routeUrl.set(this.router.url));
 
     if (this.steps.length === 0) {
-      this.route.data.pipe(takeUntil(this.destroy$)).subscribe((data) => {
+      this.route.data.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((data) => {
         if (data['wizardSteps']) {
           this.steps = data['wizardSteps'] as WizardStep[];
         }
@@ -73,11 +74,6 @@ export class WizardComponent implements OnInit, OnDestroy {
         }
       });
     }
-  }
-
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
   }
 
   protected onStepSelected(step: StepperStep): void {

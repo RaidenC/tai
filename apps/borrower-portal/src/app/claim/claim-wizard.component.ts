@@ -70,7 +70,7 @@ export class ClaimWizardComponent {
       startWith(null),
       map(() => this.currentRouteStepId()),
     ),
-    { initialValue: this.currentRouteStepId() },
+    { initialValue: 'borrower-info' },
   );
 
   readonly steps = computed<StepperStep[]>(() => {
@@ -112,11 +112,15 @@ export class ClaimWizardComponent {
   }
 
   private currentRouteStepId(): string {
-    const cleanUrl = this.router.url.split('?')[0].split('#')[0];
-    const segments = cleanUrl.split('/').filter(Boolean);
-    const lastSegment = segments.length > 0 ? segments[segments.length - 1] : '';
-    return this.claimSteps.some((step) => step.id === lastSegment)
-      ? lastSegment as ClaimStepId
-      : 'borrower-info';
+    try {
+      const cleanUrl = this.router.url.split('?')[0].split('#')[0];
+      const segments = cleanUrl.split('/').filter(Boolean);
+      const lastSegment = segments.length > 0 ? segments[segments.length - 1] : '';
+      return this.claimSteps.some((step) => step.id === lastSegment)
+        ? lastSegment as ClaimStepId
+        : 'borrower-info';
+    } catch {
+      return 'borrower-info';
+    }
   }
 }
