@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/angular';
 import { ToastComponent } from './toast.component';
 import { ToastService } from './toast.service';
-import { fn } from '@storybook/test';
 
 const meta: Meta<ToastComponent> = {
   component: ToastComponent,
@@ -18,7 +17,7 @@ export const Info: Story = {
   args: {
     // Storybook will handle the toast signal via the service
   },
-  play: async ({ canvasElement }) => {
+  play: async () => {
     const toastService = new ToastService();
     toastService.show('This is an info message', 'info');
   },
@@ -42,7 +41,7 @@ export const Critical: Story = {
 
 export const Dismissible: Story = {
   args: {},
-  play: async ({ canvasElement }) => {
+  play: async () => {
     const toastService = new ToastService();
     toastService.show('Click the X to dismiss', 'info');
 

@@ -4,7 +4,6 @@ import { LoginFormComponent } from './login-form';
 import { SecureInputComponent } from '../../atoms/secure-input/secure-input';
 import { ButtonComponent } from '../../atoms/button/button.component';
 import { FormFieldComponent } from '../../molecules/form-field/form-field.component';
-import { By } from '@angular/platform-browser';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 describe('LoginFormComponent', () => {
