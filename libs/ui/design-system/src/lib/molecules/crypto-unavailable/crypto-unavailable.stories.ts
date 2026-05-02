@@ -1,5 +1,5 @@
 import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
-import { within, expect } from 'storybook/test';
+import { within, expect } from '@storybook/test';
 import { CryptoUnavailableComponent } from './crypto-unavailable';
 
 const meta: Meta<CryptoUnavailableComponent> = {

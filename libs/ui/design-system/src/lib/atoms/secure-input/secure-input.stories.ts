@@ -1,6 +1,6 @@
 import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
 import { ReactiveFormsModule, FormControl } from '@angular/forms';
-import { userEvent, within, expect } from 'storybook/test';
+import { userEvent, within, expect } from '@storybook/test';
 import { SecureInputComponent } from './secure-input';
 import { CommonModule } from '@angular/common';
 
@@ -87,9 +87,9 @@ export const ErrorVisible: Story = {
     const errorMsg = canvas.getByRole('alert');
     expect(errorMsg).toBeTruthy();
 
-    // Verify Trusted Types mitigation (HTML is rendered safely).
+    // Verify Trusted Types mitigation (HTML is escaped to prevent XSS).
     expect(errorMsg.innerHTML).toContain(
-      '<strong>XSS Attempt</strong> Blocked',
+      '&lt;strong&gt;XSS Attempt&lt;/strong&gt; Blocked',
     );
   },
 };

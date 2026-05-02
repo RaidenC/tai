@@ -1,5 +1,5 @@
 import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
-import { within, expect, userEvent } from 'storybook/test';
+import { within, expect, userEvent } from '@storybook/test';
 import { SecurityAlertComponent } from './security-alert';
 
 const meta: Meta<SecurityAlertComponent> = {

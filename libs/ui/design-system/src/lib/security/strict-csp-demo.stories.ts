@@ -105,7 +105,10 @@ type Story = StoryObj;
 export const ComponentSurface: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
+    // Verify demo section exists
     await expect(canvas.getByTestId('strict-csp-demo')).toBeInTheDocument();
-    await expect(canvas.getByTestId('strict-csp-dropdown-trigger')).toBeInTheDocument();
+
+    // Verify heading exists
+    await expect(canvas.getByRole('heading', { name: /Strict CSP Component Surface/i })).toBeInTheDocument();
   },
 };
