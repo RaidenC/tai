@@ -4,7 +4,7 @@
 
 **Goal:** Replace the router-aware design-system wizard with a generic `tai-stepper` organism, while keeping borrower claim routing and workflow state in feature-owned code.
 
-**Architecture:** `libs/ui/design-system` owns a reusable, strict-CSP-safe `StepperComponent` with explicit typed step state and no Angular router dependency. `apps/borrower-portal` owns the claim wizard wrapper that maps router URL and NgRx validity selectors into `StepperStep[]`, handles navigation on `stepSelected`, and keeps `<router-outlet>` in the feature layer.
+**Architecture:** `libs/ui/design-system` owns a reusable, strict-CSP-safe `StepperComponent` with explicit typed step state and no Angular router dependency. `currentStepId` is the only source of current-step state; `StepperStep.status` represents non-current statuses only. `apps/borrower-portal` owns the claim wizard wrapper that maps router URL and existing NgRx validity selectors into `StepperStep[]`, rejects blocked navigation before calling the router, and keeps `<router-outlet>` in the feature layer. The public `WizardComponent` export stays as a deprecated compatibility shim over `StepperComponent`.
 
 **Tech Stack:** Angular 21 standalone components, Angular signal inputs/outputs, NgRx Store, Angular Router, Vitest Angular TestBed, Storybook Angular, Playwright E2E, Tailwind/static class strings, Nx.
 
@@ -30,9 +30,10 @@
   - Replace `WizardComponent` usage with `StepperComponent`; keep router-aware behavior in the feature component.
 - Modify: `apps/borrower-portal-e2e/src/example.spec.ts`
   - Replace `.wizard-stepper` selector with role/test-id based stepper queries.
-- Delete after migration verification: `libs/ui/design-system/src/lib/organisms/wizard/wizard.component.ts`
-- Delete after migration verification: `libs/ui/design-system/src/lib/organisms/wizard/wizard.component.html`
-- Remove export after migration verification: `libs/ui/design-system/src/index.ts` line exporting `wizard.component`
+- Modify: `libs/ui/design-system/src/lib/organisms/wizard/wizard.component.ts`
+  - Keep `WizardComponent` as a deprecated compatibility shim over `StepperComponent` for public API consumers.
+- Modify: `libs/ui/design-system/src/lib/organisms/wizard/wizard.component.html`
+  - Replace router-linked stepper markup with a `tai-stepper` composition while keeping projected wizard content.
 
 ---
 
@@ -53,7 +54,7 @@ import { StepperComponent, StepperStep } from './stepper.component';
 
 const steps: StepperStep[] = [
   { id: 'borrower-info', label: 'Borrower Info', status: 'completed' },
-  { id: 'incident-details', label: 'Incident Details', status: 'current' },
+  { id: 'incident-details', label: 'Incident Details', status: 'not-started' },
   { id: 'medical-providers', label: 'Medical Providers', status: 'blocked' },
   { id: 'review-sign', label: '<img src=x onerror=alert(1)>Review & Sign', status: 'not-started' },
 ];
@@ -135,7 +136,25 @@ describe('StepperComponent', () => {
     const error = fixture.nativeElement.querySelector('[data-testid="claim-stepper-status-two"]') as HTMLElement;
 
     expect(completed.textContent?.trim()).toBe('Completed');
-    expect(error.textContent?.trim()).toBe('Needs attention');
+    expect(error.textContent?.trim()).toBe('Current step, needs attention');
+    expect(completed.className).not.toContain('sr-only');
+    expect(error.className).not.toContain('sr-only');
+  });
+
+  it('uses currentStepId as the only current-state source of truth', () => {
+    fixture.componentRef.setInput('steps', [
+      { id: 'one', label: 'One', status: 'completed' },
+      { id: 'two', label: 'Two', status: 'not-started' },
+    ] satisfies StepperStep[]);
+    fixture.componentRef.setInput('currentStepId', 'two');
+    fixture.detectChanges();
+
+    const current = fixture.nativeElement.querySelector('[data-testid="claim-stepper-step-two"]') as HTMLButtonElement;
+    const previous = fixture.nativeElement.querySelector('[data-testid="claim-stepper-step-one"]') as HTMLButtonElement;
+
+    expect(current.getAttribute('aria-current')).toBe('step');
+    expect(current.getAttribute('aria-label')).toContain('Current step');
+    expect(previous.getAttribute('aria-current')).toBeNull();
   });
 
   it('applies vertical and compact variants through explicit internal class mapping', () => {
@@ -169,17 +188,18 @@ describe('StepperComponent', () => {
 Run:
 
 ```bash
-npx nx test design-system --testFile=libs/ui/design-system/src/lib/organisms/stepper/stepper.component.spec.ts --skip-nx-cache
+npx nx test design-system --include=src/lib/organisms/stepper/stepper.component.spec.ts --skip-nx-cache
 ```
 
 Expected: FAIL because `./stepper.component` does not exist yet.
 
-- [ ] **Step 3: Commit the failing test**
+- [ ] **Step 3: Keep the failing test uncommitted until the implementation passes**
 
 ```bash
-git add libs/ui/design-system/src/lib/organisms/stepper/stepper.component.spec.ts
-git commit -m "test: define generic stepper contract"
+git status --short libs/ui/design-system/src/lib/organisms/stepper
 ```
+
+Expected: the new failing spec is present in the worktree. Do not commit a red state.
 
 ---
 
@@ -202,7 +222,6 @@ export type StepperOrientation = 'horizontal' | 'vertical';
 export type StepperDensity = 'compact' | 'comfortable';
 export type StepperStepStatus =
   | 'not-started'
-  | 'current'
   | 'completed'
   | 'blocked'
   | 'error';
@@ -265,6 +284,10 @@ export class StepperComponent {
     this.stepSelected.emit(step);
   }
 
+  protected isCurrent(step: StepperStep): boolean {
+    return step.id === this.currentStepId();
+  }
+
   protected stepButtonClasses(step: StepperStep): string {
     const base =
       'tai-stepper__button inline-flex w-full min-w-0 items-center gap-3 rounded-md border-0 bg-transparent text-left outline-none transition-colors duration-200 focus-visible:ring-3 focus-visible:ring-blue-600/25 disabled:cursor-not-allowed disabled:opacity-60';
@@ -274,13 +297,13 @@ export class StepperComponent {
         : ' min-h-11 px-3 py-3 text-sm';
     const stateClasses: Record<StepperStepStatus, string> = {
       'not-started': ' text-gray-700 hover:bg-gray-50',
-      current: ' bg-blue-50 text-blue-900',
       completed: ' text-gray-900 hover:bg-gray-50',
       blocked: ' text-gray-500',
       error: ' bg-red-50 text-red-900 hover:bg-red-100',
     };
+    const currentClass = this.isCurrent(step) ? ' ring-2 ring-blue-600/35' : '';
 
-    return `${base}${densityClass}${stateClasses[step.status]}`;
+    return `${base}${densityClass}${stateClasses[step.status]}${currentClass}`;
   }
 
   protected indicatorClasses(step: StepperStep): string {
@@ -288,25 +311,27 @@ export class StepperComponent {
       'tai-stepper__indicator inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border text-xs font-semibold';
     const stateClasses: Record<StepperStepStatus, string> = {
       'not-started': ' border-gray-300 bg-white text-gray-600',
-      current: ' border-blue-600 bg-blue-600 text-white',
       completed: ' border-green-600 bg-green-600 text-white',
       blocked: ' border-gray-300 bg-gray-100 text-gray-500',
       error: ' border-red-600 bg-red-600 text-white',
     };
 
-    return `${base}${stateClasses[step.status]}`;
+    const currentClass = this.isCurrent(step) ? ' ring-2 ring-blue-600 ring-offset-2' : '';
+
+    return `${base}${stateClasses[step.status]}${currentClass}`;
   }
 
   protected statusText(step: StepperStep): string {
     const labels: Record<StepperStepStatus, string> = {
       'not-started': 'Not started',
-      current: 'Current step',
       completed: 'Completed',
       blocked: 'Blocked',
       error: 'Needs attention',
     };
 
-    return labels[step.status];
+    return this.isCurrent(step)
+      ? `Current step, ${labels[step.status].toLowerCase()}`
+      : labels[step.status];
   }
 
   protected stepAriaLabel(step: StepperStep, index: number): string {
@@ -341,7 +366,7 @@ Create `libs/ui/design-system/src/lib/organisms/stepper/stepper.component.html`:
           <span
             [class]="indicatorClasses(step)"
             aria-hidden="true"
-            [textContent]="step.status === 'completed' ? '✓' : i + 1"
+            [textContent]="step.status === 'completed' ? 'Done' : i + 1"
           ></span>
           <span class="tai-stepper__content min-w-0">
             <span class="tai-stepper__label block truncate font-semibold" [textContent]="step.label"></span>
@@ -349,7 +374,7 @@ Create `libs/ui/design-system/src/lib/organisms/stepper/stepper.component.html`:
               <span class="tai-stepper__description block truncate text-xs text-gray-500" [textContent]="step.description"></span>
             }
             <span
-              class="tai-stepper__status sr-only"
+              class="tai-stepper__status mt-1 block text-xs font-medium text-gray-600"
               [attr.data-testid]="testId() + '-status-' + step.id"
               [textContent]="statusText(step)"
             ></span>
@@ -453,7 +478,7 @@ Create `libs/ui/design-system/src/lib/organisms/stepper/stepper.component.scss`:
 Run:
 
 ```bash
-npx nx test design-system --testFile=libs/ui/design-system/src/lib/organisms/stepper/stepper.component.spec.ts --skip-nx-cache
+npx nx test design-system --include=src/lib/organisms/stepper/stepper.component.spec.ts --skip-nx-cache
 ```
 
 Expected: PASS for `StepperComponent`.
@@ -484,7 +509,7 @@ import { StepperComponent, StepperStep } from './stepper.component';
 
 const baseSteps: StepperStep[] = [
   { id: 'borrower-info', label: 'Borrower Info', status: 'completed' },
-  { id: 'incident-details', label: 'Incident Details', status: 'current' },
+  { id: 'incident-details', label: 'Incident Details', status: 'not-started' },
   { id: 'medical-providers', label: 'Medical Providers', status: 'not-started' },
   { id: 'review-sign', label: 'Review & Sign', status: 'not-started' },
 ];
@@ -538,7 +563,7 @@ export const CompletedAndCurrent: Story = {
 export const BlockedFutureSteps: Story = {
   args: {
     steps: [
-      { id: 'borrower-info', label: 'Borrower Info', status: 'current' },
+      { id: 'borrower-info', label: 'Borrower Info', status: 'not-started' },
       { id: 'incident-details', label: 'Incident Details', status: 'blocked' },
       { id: 'medical-providers', label: 'Medical Providers', status: 'blocked' },
       { id: 'review-sign', label: 'Review & Sign', status: 'blocked' },
@@ -558,6 +583,18 @@ export const ErrorState: Story = {
       { id: 'incident-details', label: 'Incident Details', status: 'error' },
       { id: 'medical-providers', label: 'Medical Providers', status: 'blocked' },
       { id: 'review-sign', label: 'Review & Sign', status: 'blocked' },
+    ],
+    currentStepId: 'incident-details',
+  },
+};
+
+export const LongLabels: Story = {
+  args: {
+    steps: [
+      { id: 'borrower-info', label: 'Borrower Information and Identity Confirmation', status: 'completed' },
+      { id: 'incident-details', label: 'Incident Details and Disability Timeline', status: 'not-started' },
+      { id: 'medical-providers', label: 'Medical Provider Contact and Treatment History', status: 'blocked' },
+      { id: 'review-sign', label: 'Review, Attest, and Sign Claim Submission', status: 'blocked' },
     ],
     currentStepId: 'incident-details',
   },
@@ -587,7 +624,7 @@ export const Security: Story = {
   args: {
     steps: [
       { id: 'safe', label: 'Safe Label', status: 'completed' },
-      { id: 'xss', label: '<img src=x onerror=alert(1)>Injected', status: 'current' },
+      { id: 'xss', label: '<img src=x onerror=alert(1)>Injected', status: 'not-started' },
     ],
     currentStepId: 'xss',
   },
@@ -604,6 +641,18 @@ export const SelectableStep: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByTestId('story-stepper-step-borrower-info'));
+    await expect(args.stepSelected).toHaveBeenCalled();
+  },
+};
+
+export const OpensWithKeyboard: Story = {
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const firstStep = canvas.getByTestId('story-stepper-step-borrower-info');
+
+    firstStep.focus();
+    await expect(firstStep).toHaveFocus();
+    await userEvent.keyboard('{Enter}');
     await expect(args.stepSelected).toHaveBeenCalled();
   },
 };
@@ -639,7 +688,17 @@ npx nx test design-system --skip-nx-cache
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit stories and export**
+- [ ] **Step 5: Run Storybook interaction tests**
+
+Run:
+
+```bash
+npx nx test-storybook design-system --skip-nx-cache
+```
+
+Expected: PASS. If this target is not available, stop and verify the Nx Storybook inferred target before continuing; do not treat unrun Storybook interactions as proven.
+
+- [ ] **Step 6: Commit stories and export**
 
 ```bash
 git add libs/ui/design-system/src/lib/organisms/stepper/stepper.stories.ts libs/ui/design-system/src/index.ts
@@ -665,11 +724,7 @@ import { provideMockStore, MockStore } from '@ngrx/store/testing';
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { Router } from '@angular/router';
 import { ClaimWizardComponent } from './claim-wizard.component';
-import {
-  selectBorrowerValid,
-  selectIncidentValid,
-  selectProvidersValid,
-} from './+state';
+import { selectStepValidity } from './+state';
 
 describe('ClaimWizardComponent', () => {
   let fixture: ComponentFixture<ClaimWizardComponent>;
@@ -683,9 +738,15 @@ describe('ClaimWizardComponent', () => {
       providers: [
         provideMockStore({
           selectors: [
-            { selector: selectBorrowerValid, value: true },
-            { selector: selectIncidentValid, value: false },
-            { selector: selectProvidersValid, value: false },
+            {
+              selector: selectStepValidity,
+              value: {
+                step1: true,
+                step2: false,
+                step3: false,
+                step4: false,
+              },
+            },
           ],
         }),
       ],
@@ -718,11 +779,11 @@ describe('ClaimWizardComponent', () => {
     expect(component.currentStepId()).toBe('incident-details');
   });
 
-  it('maps validity selectors to completed, current, and blocked step states', () => {
+  it('maps validity selectors to completed, not-started, and blocked step states', () => {
     const steps = component.steps();
 
     expect(steps.find((step) => step.id === 'borrower-info')?.status).toBe('completed');
-    expect(steps.find((step) => step.id === 'incident-details')?.status).toBe('current');
+    expect(steps.find((step) => step.id === 'incident-details')?.status).toBe('not-started');
     expect(steps.find((step) => step.id === 'medical-providers')?.status).toBe('blocked');
     expect(steps.find((step) => step.id === 'review-sign')?.status).toBe('blocked');
   });
@@ -733,12 +794,36 @@ describe('ClaimWizardComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/claim', 'borrower-info']);
   });
 
+  it('does not navigate when a blocked future step is selected directly', () => {
+    component.onStepSelected({ id: 'medical-providers', label: 'Medical Providers', status: 'blocked' });
+
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
   it('updates step status when store validity changes', () => {
-    store.overrideSelector(selectIncidentValid, true);
+    store.overrideSelector(selectStepValidity, {
+      step1: true,
+      step2: true,
+      step3: false,
+      step4: false,
+    });
     store.refreshState();
     fixture.detectChanges();
 
     expect(component.steps().find((step) => step.id === 'medical-providers')?.status).toBe('not-started');
+  });
+
+  it('uses document validity for the review step completion state', () => {
+    store.overrideSelector(selectStepValidity, {
+      step1: true,
+      step2: true,
+      step3: true,
+      step4: true,
+    });
+    store.refreshState();
+    fixture.detectChanges();
+
+    expect(component.steps().find((step) => step.id === 'review-sign')?.status).toBe('completed');
   });
 });
 ```
@@ -748,7 +833,7 @@ describe('ClaimWizardComponent', () => {
 Run:
 
 ```bash
-npx nx test borrower-portal --testFile=apps/borrower-portal/src/app/claim/claim-wizard.component.spec.ts --skip-nx-cache
+npx nx test borrower-portal --include=src/app/claim/claim-wizard.component.spec.ts --skip-nx-cache
 ```
 
 Expected: FAIL because `ClaimWizardComponent` still imports and renders `WizardComponent`, and it does not expose `currentStepId`, `steps`, or `onStepSelected`.
@@ -764,16 +849,19 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { Store } from '@ngrx/store';
 import { filter, map, startWith } from 'rxjs';
 import { StepperComponent, StepperStep } from '@tai/ui-design-system';
-import {
-  selectBorrowerValid,
-  selectIncidentValid,
-  selectProvidersValid,
-} from './+state';
+import { selectStepValidity } from './+state';
+
+type ClaimStepId =
+  | 'borrower-info'
+  | 'incident-details'
+  | 'medical-providers'
+  | 'review-sign';
 
 interface ClaimWizardStep {
-  id: string;
-  path: string;
+  id: ClaimStepId;
+  path: ClaimStepId;
   label: string;
+  validityKey: 'step1' | 'step2' | 'step3' | 'step4';
 }
 
 @Component({
@@ -806,15 +894,20 @@ export class ClaimWizardComponent {
   private readonly store = inject(Store);
 
   private readonly claimSteps: ClaimWizardStep[] = [
-    { id: 'borrower-info', path: 'borrower-info', label: 'Borrower Info' },
-    { id: 'incident-details', path: 'incident-details', label: 'Incident Details' },
-    { id: 'medical-providers', path: 'medical-providers', label: 'Medical Providers' },
-    { id: 'review-sign', path: 'review-sign', label: 'Review & Sign' },
+    { id: 'borrower-info', path: 'borrower-info', label: 'Borrower Info', validityKey: 'step1' },
+    { id: 'incident-details', path: 'incident-details', label: 'Incident Details', validityKey: 'step2' },
+    { id: 'medical-providers', path: 'medical-providers', label: 'Medical Providers', validityKey: 'step3' },
+    { id: 'review-sign', path: 'review-sign', label: 'Review & Sign', validityKey: 'step4' },
   ];
 
-  private readonly borrowerValid = toSignal(this.store.select(selectBorrowerValid), { initialValue: false });
-  private readonly incidentValid = toSignal(this.store.select(selectIncidentValid), { initialValue: false });
-  private readonly providersValid = toSignal(this.store.select(selectProvidersValid), { initialValue: false });
+  private readonly stepValidity = toSignal(this.store.select(selectStepValidity), {
+    initialValue: {
+      step1: false,
+      step2: false,
+      step3: false,
+      step4: false,
+    },
+  });
 
   readonly currentStepId = toSignal(
     this.router.events.pipe(
@@ -826,30 +919,14 @@ export class ClaimWizardComponent {
   );
 
   readonly steps = computed<StepperStep[]>(() => {
-    const validityById: Record<string, boolean> = {
-      'borrower-info': this.borrowerValid(),
-      'incident-details': this.incidentValid(),
-      'medical-providers': this.providersValid(),
-      'review-sign': false,
-    };
-
     return this.claimSteps.map((step, index) => {
-      const current = step.id === this.currentStepId();
-      const completed = validityById[step.id] === true;
-      const canAccess = this.claimSteps
-        .slice(0, index)
-        .every((priorStep) => validityById[priorStep.id] === true);
+      const completed = this.stepValidity()[step.validityKey] === true;
+      const canAccess = this.canAccessStep(index);
 
       return {
         id: step.id,
         label: step.label,
-        status: current
-          ? 'current'
-          : completed
-          ? 'completed'
-          : canAccess
-          ? 'not-started'
-          : 'blocked',
+        status: completed ? 'completed' : canAccess ? 'not-started' : 'blocked',
         disabled: !canAccess,
       } satisfies StepperStep;
     });
@@ -861,14 +938,29 @@ export class ClaimWizardComponent {
       return;
     }
 
-    void this.router.navigate(['/claim', claimStep.path]);
+    const stepIndex = this.claimSteps.findIndex((candidate) => candidate.id === claimStep.id);
+    if (!this.canAccessStep(stepIndex)) {
+      return;
+    }
+
+    void this.router.navigate(['/claim', claimStep.path]).catch(() => undefined);
+  }
+
+  private canAccessStep(index: number): boolean {
+    if (index < 0) {
+      return false;
+    }
+
+    return this.claimSteps
+      .slice(0, index)
+      .every((priorStep) => this.stepValidity()[priorStep.validityKey] === true);
   }
 
   private currentRouteStepId(): string {
     const cleanUrl = this.router.url.split('?')[0].split('#')[0];
     const lastSegment = cleanUrl.split('/').filter(Boolean).at(-1);
     return this.claimSteps.some((step) => step.id === lastSegment)
-      ? lastSegment as string
+      ? lastSegment as ClaimStepId
       : 'borrower-info';
   }
 }
@@ -879,7 +971,7 @@ export class ClaimWizardComponent {
 Run:
 
 ```bash
-npx nx test borrower-portal --testFile=apps/borrower-portal/src/app/claim/claim-wizard.component.spec.ts --skip-nx-cache
+npx nx test borrower-portal --include=src/app/claim/claim-wizard.component.spec.ts --skip-nx-cache
 ```
 
 Expected: PASS.
@@ -903,13 +995,12 @@ git commit -m "refactor: compose borrower wizard with generic stepper"
 
 ---
 
-### Task 5: Update E2E Selectors and Remove Router-Aware Wizard
+### Task 5: Update E2E Selectors and Keep Wizard Compatibility Shim
 
 **Files:**
 - Modify: `apps/borrower-portal-e2e/src/example.spec.ts`
-- Modify: `libs/ui/design-system/src/index.ts`
-- Delete: `libs/ui/design-system/src/lib/organisms/wizard/wizard.component.ts`
-- Delete: `libs/ui/design-system/src/lib/organisms/wizard/wizard.component.html`
+- Modify: `libs/ui/design-system/src/lib/organisms/wizard/wizard.component.ts`
+- Modify: `libs/ui/design-system/src/lib/organisms/wizard/wizard.component.html`
 
 - [ ] **Step 1: Update borrower E2E selectors**
 
@@ -924,45 +1015,158 @@ test('stepper shows 4 steps', async ({ page }) => {
   await expect(stepper.getByRole('button', { name: /Incident Details/ })).toBeVisible();
   await expect(stepper.getByRole('button', { name: /Medical Providers/ })).toBeVisible();
   await expect(stepper.getByRole('button', { name: /Review & Sign/ })).toBeVisible();
+  await expect(page.getByTestId('claim-stepper-step-borrower-info')).toHaveAttribute('aria-current', 'step');
+  await expect(page.getByTestId('claim-stepper-step-medical-providers')).toBeDisabled();
 });
 ```
 
-- [ ] **Step 2: Remove Wizard public export**
+- [ ] **Step 2: Refactor WizardComponent into a deprecated compatibility shim**
 
-In `libs/ui/design-system/src/index.ts`, delete this line:
+Replace `libs/ui/design-system/src/lib/organisms/wizard/wizard.component.ts` with:
 
 ```typescript
-export * from './lib/organisms/wizard/wizard.component';
+import { Component, Input, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ActivatedRoute, NavigationEnd, Router, RouterModule } from '@angular/router';
+import { Subject, filter, takeUntil } from 'rxjs';
+import { StepperComponent, StepperStep } from '../stepper/stepper.component';
+
+export interface WizardStep {
+  path: string;
+  label: string;
+}
+
+/**
+ * @deprecated Use StepperComponent in feature-owned router wrappers instead.
+ * This shim preserves the public tai-wizard API for existing package consumers.
+ */
+@Component({
+  selector: 'tai-wizard',
+  standalone: true,
+  imports: [CommonModule, RouterModule, StepperComponent],
+  templateUrl: './wizard.component.html',
+})
+export class WizardComponent implements OnInit, OnDestroy {
+  private readonly stepsSignal = signal<WizardStep[]>([]);
+
+  @Input() set steps(value: WizardStep[]) {
+    this.stepsSignal.set(value ?? []);
+  }
+
+  get steps(): WizardStep[] {
+    return this.stepsSignal();
+  }
+
+  @Input() title?: string;
+
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly destroy$ = new Subject<void>();
+  private readonly routeUrl = signal(this.router.url);
+
+  protected readonly currentStepId = computed(() => {
+    const cleanUrl = this.routeUrl().split('?')[0].split('#')[0];
+    const lastSegment = cleanUrl.split('/').filter(Boolean).at(-1);
+    const steps = this.stepsSignal();
+    return steps.some((step) => step.path === lastSegment)
+      ? lastSegment ?? steps[0]?.path ?? ''
+      : steps[0]?.path ?? '';
+  });
+
+  protected readonly stepperSteps = computed<StepperStep[]>(() =>
+    this.stepsSignal().map((step) => ({
+      id: step.path,
+      label: step.label,
+      status: 'not-started',
+    })),
+  );
+
+  ngOnInit(): void {
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntil(this.destroy$),
+      )
+      .subscribe(() => this.routeUrl.set(this.router.url));
+
+    if (this.steps.length === 0) {
+      this.route.data.pipe(takeUntil(this.destroy$)).subscribe((data) => {
+        if (data['wizardSteps']) {
+          this.steps = data['wizardSteps'] as WizardStep[];
+        }
+        if (data['title'] && !this.title) {
+          this.title = data['title'] as string;
+        }
+      });
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  protected onStepSelected(step: StepperStep): void {
+    void this.router.navigate([step.id], { relativeTo: this.route }).catch(() => undefined);
+  }
+}
 ```
 
-Keep this line from Task 3:
+Keep both public exports in `libs/ui/design-system/src/index.ts`:
 
 ```typescript
 export * from './lib/organisms/stepper/stepper.component';
+export * from './lib/organisms/wizard/wizard.component';
 ```
 
-- [ ] **Step 3: Delete the old router-aware wizard files**
+- [ ] **Step 3: Replace WizardComponent template with Stepper composition**
 
-Delete these files:
+Replace `libs/ui/design-system/src/lib/organisms/wizard/wizard.component.html` with:
 
-```bash
-git rm libs/ui/design-system/src/lib/organisms/wizard/wizard.component.ts
-git rm libs/ui/design-system/src/lib/organisms/wizard/wizard.component.html
+```html
+<div class="wizard mx-auto max-w-3xl p-8">
+  <header class="wizard-header mb-6">
+    @if (title) {
+      <h1 class="text-2xl font-semibold text-gray-900" [textContent]="title"></h1>
+    }
+  </header>
+
+  <tai-stepper
+    class="mb-8 block"
+    [steps]="stepperSteps()"
+    [currentStepId]="currentStepId()"
+    ariaLabel="Wizard progress"
+    testId="wizard-stepper"
+    (stepSelected)="onStepSelected($event)"
+  />
+
+  <main class="wizard-content min-h-[400px]">
+    <ng-content></ng-content>
+  </main>
+</div>
 ```
 
-Expected: the files are staged for deletion. Do not delete unrelated organism files.
+Expected: the compatibility wrapper no longer owns stepper markup directly; it delegates progress UI to `tai-stepper`.
 
-- [ ] **Step 4: Verify no consumers remain**
+- [ ] **Step 4: Verify borrower no longer consumes WizardComponent**
 
 Run:
 
 ```bash
-rg -n "WizardComponent|tai-wizard|wizardSteps|organisms/wizard" libs apps -g '!node_modules/**'
+rg -n "WizardComponent|tai-wizard|wizardSteps|organisms/wizard" apps/borrower-portal apps/borrower-portal-e2e -g '!node_modules/**'
 ```
 
-Expected: no matches in active source files. Matches in historical docs are acceptable only if the command is widened beyond `libs apps`.
+Expected: no matches. Matches inside `libs/ui/design-system/src/lib/organisms/wizard` are expected because the public compatibility shim remains.
 
 - [ ] **Step 5: Run design-system and borrower checks**
+
+First verify the inferred E2E target exists:
+
+```bash
+npx nx show project borrower-portal-e2e --json
+```
+
+Expected: output includes an `e2e` target inferred by `@nx/playwright/plugin`.
 
 Run:
 
@@ -978,8 +1182,8 @@ Expected: all PASS.
 
 ```bash
 git add apps/borrower-portal-e2e/src/example.spec.ts libs/ui/design-system/src/index.ts
-git add -u libs/ui/design-system/src/lib/organisms/wizard
-git commit -m "refactor: remove router-aware design-system wizard"
+git add libs/ui/design-system/src/lib/organisms/wizard/wizard.component.ts libs/ui/design-system/src/lib/organisms/wizard/wizard.component.html
+git commit -m "refactor: keep wizard shim over generic stepper"
 ```
 
 ---
@@ -1038,7 +1242,7 @@ Run:
 npx nx test-storybook design-system --skip-nx-cache
 ```
 
-Expected: PASS. If this target is not configured or cannot connect to a running Storybook server, record the exact failure and rely on `build-storybook` plus the existing `.storybook/test-runner.ts` guardrail until CI runs the target.
+Expected: PASS. If this target is not configured or cannot connect to a running Storybook server, record the exact failure as a blocker for claiming Storybook interaction/a11y coverage.
 
 - [ ] **Step 6: Run borrower portal tests and E2E**
 
@@ -1081,10 +1285,11 @@ Spec coverage:
 - Generic `StepperComponent`: Task 1 and Task 2.
 - Typed route-free `StepperStep` model: Task 2.
 - Storybook states: Task 3.
-- Unit tests for ARIA, keyboard activation, CSP, and no router dependency: Task 1.
+- Unit tests for ARIA, CSP, and no router dependency: Task 1.
+- Keyboard activation coverage: Task 3 Storybook interaction tests.
 - Borrower wrapper migration: Task 4.
 - E2E selector preservation: Task 5.
-- Wizard removal/deprecation path: Task 5 removes after consumer migration.
+- Wizard compatibility path: Task 5 keeps the deprecated public shim while migrating borrower portal away from it.
 - Verification commands: Task 6.
 
 Placeholder scan:
