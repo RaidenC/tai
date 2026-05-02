@@ -1,31 +1,22 @@
-<!-- 
-  Audit-Proof Accessibility: 
-  Utilizes Angular CDK cdkMenu/cdkMenuItem for automated focus management and keyboard 
-  navigation (Roving Tabindex), adhering to WCAG 2.1 standards for accessible enterprise 
-  navigation. Semantic buttons ensure consistent behavior across screen readers. 
--->
 <nav
-  class="sidebar flex flex-col bg-gray-800 text-gray-100 h-screen shadow-lg transition-all duration-300"
+  class="sidebar flex h-screen flex-col bg-gray-800 text-gray-100 shadow-lg transition-all duration-300"
   aria-label="Main Navigation"
   [class.collapsed]="collapsed()"
   [class.w-[250px]]="!collapsed()"
   [class.w-[64px]]="collapsed()"
 >
   @if (!collapsed()) {
-    <div class="sidebar-header p-4 font-bold text-xl border-b border-gray-700">
+    <div class="sidebar-header border-b border-gray-700 p-4 text-xl font-bold">
       Portal
     </div>
   }
-  <ul
-    class="sidebar-menu flex flex-col py-2 list-none m-0 grow focus:outline-none"
-    cdkMenu
-  >
+
+  <ul class="sidebar-menu m-0 flex grow list-none flex-col py-2" role="menu">
     @for (item of menuItems(); track item.label) {
       <li role="none">
-        <button
-          class="sidebar-menu-item px-4 py-3 cursor-pointer flex items-center no-underline color-inherit transition-colors duration-200 bg-transparent border-none w-full text-left font-inherit select-none outline-none box-border hover:bg-gray-700 focus:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:ring-inset"
-          cdkMenuItem
-          type="button"
+        <a
+          class="sidebar-menu-item box-border flex w-full cursor-pointer items-center px-4 py-3 text-left font-inherit text-inherit no-underline outline-none transition-colors duration-200 hover:bg-gray-700 focus:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+          role="menuitem"
           [routerLink]="item.link"
           [title]="item.label"
         >
@@ -33,15 +24,16 @@
             <span
               class="sidebar-menu-item-icon mr-3 text-lg"
               [class.mr-0]="collapsed()"
-              >{{ item.icon }}</span
-            >
+              [textContent]="item.icon"
+            ></span>
           }
           @if (!collapsed()) {
-            <span class="sidebar-menu-item-label truncate">{{
-              item.label
-            }}</span>
+            <span
+              class="sidebar-menu-item-label truncate"
+              [textContent]="item.label"
+            ></span>
           }
-        </button>
+        </a>
       </li>
     }
   </ul>

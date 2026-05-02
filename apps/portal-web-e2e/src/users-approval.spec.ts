@@ -53,7 +53,7 @@ test.describe('Users Approval Workflow', () => {
     await expect(row).toContainText('Pending');
 
     // Trigger the action menu for this specific user
-    const actionMenuTrigger = row.locator('[data-testid^="action-menu-trigger-"]');
+    const actionMenuTrigger = row.locator('[data-testid^="action-menu-"]');
     await actionMenuTrigger.click();
     
     const approveAction = page.getByTestId('action-approve');

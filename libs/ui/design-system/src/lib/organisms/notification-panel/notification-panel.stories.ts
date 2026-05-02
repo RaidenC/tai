@@ -51,7 +51,7 @@ const mockEvents: AuditLogDetails[] = [
 ];
 
 const meta: Meta<NotificationPanelComponent> = {
-  title: 'Design System/NotificationPanel',
+  title: 'Organisms/NotificationPanel',
   component: NotificationPanelComponent,
   tags: ['autodocs'],
   parameters: {

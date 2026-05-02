@@ -1,6 +1,6 @@
 import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
 import { ReactiveFormsModule } from '@angular/forms';
-import { userEvent, within, expect, waitFor } from 'storybook/test';
+import { userEvent, within, expect, waitFor } from '@storybook/test';
 import { OtpVerificationFormComponent } from './otp-verification-form';
 import { SecureInputComponent } from '../../atoms/secure-input/secure-input';
 import { CommonModule } from '@angular/common';
@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
  * identity activation.
  */
 const meta: Meta<OtpVerificationFormComponent> = {
-  title: 'Identity/OtpVerificationForm',
+  title: 'Organisms/OtpVerificationForm',
   component: OtpVerificationFormComponent,
   decorators: [
     moduleMetadata({

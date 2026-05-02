@@ -1,5 +1,5 @@
 import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
-import { userEvent, within, expect } from 'storybook/test';
+import { userEvent, within, expect } from '@storybook/test';
 import { PendingApprovalsTileComponent } from './pending-approvals-tile';
 import { CommonModule } from '@angular/common';
 
@@ -11,7 +11,7 @@ import { CommonModule } from '@angular/common';
  * pending users and trigger the secondary approval action.
  */
 const meta: Meta<PendingApprovalsTileComponent> = {
-  title: 'Identity/PendingApprovalsTile',
+  title: 'Molecules/PendingApprovalsTile',
   component: PendingApprovalsTileComponent,
   decorators: [
     moduleMetadata({

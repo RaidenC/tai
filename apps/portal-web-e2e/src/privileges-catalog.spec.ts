@@ -78,7 +78,7 @@ test.describe('Privileges Catalog E2E', () => {
     await page.keyboard.press('Tab'); // Status
     await page.keyboard.press('Tab'); // First Row Action Trigger
     
-    const firstActionTrigger = page.locator('[data-testid^="action-menu-trigger-"]').first();
+    const firstActionTrigger = page.locator('[data-testid^="action-menu-"]');
     await expect(firstActionTrigger).toBeFocused({ timeout: 10000 });
     
     // 4. Open menu with Enter

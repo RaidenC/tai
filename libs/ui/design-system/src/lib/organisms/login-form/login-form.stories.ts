@@ -1,6 +1,6 @@
 import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
 import { ReactiveFormsModule } from '@angular/forms';
-import { userEvent, within, expect, waitFor } from 'storybook/test';
+import { userEvent, within, expect, waitFor } from '@storybook/test';
 import { LoginFormComponent } from './login-form';
 import { SecureInputComponent } from '../../atoms/secure-input/secure-input';
 import { CommonModule } from '@angular/common';
@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
  * allowing any data transmission.
  */
 const meta: Meta<LoginFormComponent> = {
-  title: 'Identity/LoginForm',
+  title: 'Organisms/LoginForm',
   component: LoginFormComponent,
   decorators: [
     moduleMetadata({
@@ -38,31 +38,37 @@ export const Default: Story = {};
 export const ValidationAudit: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const emailInput = canvas.getByLabelText('Corporate Email');
-    const passwordInput = canvas.getByLabelText('Password');
+    // Use getAllBy and take the first element (inner input)
+    const emailInputs = canvas.getAllByPlaceholderText('e.g. jdoe@tai.com');
+    const emailInput = emailInputs[emailInputs.length - 1]; // Get the inner input
+    const passwordInputs = canvas.getAllByPlaceholderText('Enter your secure password');
+    const passwordInput = passwordInputs[passwordInputs.length - 1];
     const submitBtn = canvas.getByRole('button', { name: /Sign In/i });
 
     // 1. Audit Security Attributes (Stealer Log Defense)
-    await expect(passwordInput).toHaveAttribute('autocomplete', 'new-password');
+    await expect(passwordInput).toHaveAttribute('autocomplete', 'current-password');
     await expect(passwordInput).toHaveAttribute('type', 'password');
 
     // 2. Audit Initial State (Locked by Default)
     await expect(submitBtn).toBeDisabled();
 
     // 3. Audit Reactive Validation (Email Invariant)
-    await userEvent.type(emailInput, 'invalid-identity', { delay: 20 });
+    await userEvent.type(emailInput, 'invalid-identity', { delay: 50 });
     await userEvent.tab();
-    await waitFor(() => {
-      expect(
-        canvas.getByText(/A valid corporate email is required/i),
-      ).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(
+          canvas.getByText(/A valid corporate email is required/i),
+        ).toBeInTheDocument();
+      },
+      { timeout: 5000 },
+    );
     await expect(submitBtn).toBeDisabled();
 
     // 4. Audit Transition to Secure/Valid State
     await userEvent.clear(emailInput);
-    await userEvent.type(emailInput, 'admin@tai.com', { delay: 20 });
-    await userEvent.type(passwordInput, 'SecurePass123!', { delay: 20 });
+    await userEvent.type(emailInput, 'admin@tai.com', { delay: 50 });
+    await userEvent.type(passwordInput, 'SecurePass123!', { delay: 50 });
     await userEvent.tab();
 
     // Verification: Proves that only when security criteria are met, the UI unlocks

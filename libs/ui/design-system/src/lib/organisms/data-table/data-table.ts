@@ -9,9 +9,12 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkTableModule } from '@angular/cdk/table';
-import { CdkMenuModule } from '@angular/cdk/menu';
 import { ButtonComponent } from '../../atoms/button/button.component';
 import { IconComponent } from '../../atoms/icon/icon.component';
+import {
+  DropdownMenuComponent,
+  DropdownMenuItem,
+} from '../../molecules/dropdown-menu/dropdown-menu.component';
 
 /**
  * Action definition for the DataTable.
@@ -61,7 +64,7 @@ export interface TableColumnDef<T> {
   imports: [
     CommonModule,
     CdkTableModule,
-    CdkMenuModule,
+    DropdownMenuComponent,
     ButtonComponent,
     IconComponent,
   ],
@@ -193,5 +196,41 @@ export class DataTableComponent<T> {
    */
   public isActionVisible(action: TableActionDef<T>, row: T): boolean {
     return action.visible ? action.visible(row) : true;
+  }
+
+  /**
+   * Returns the visible actions for a specific row.
+   */
+  public visibleActionsFor(row: T): TableActionDef<T>[] {
+    return this.actions().filter((action) => this.isActionVisible(action, row));
+  }
+
+  /**
+   * Returns dropdown menu items for a specific row.
+   */
+  public dropdownItemsFor(row: T): DropdownMenuItem[] {
+    return this.visibleActionsFor(row).map((action) => ({
+      id: action.id,
+      label: action.label,
+    }));
+  }
+
+  /**
+   * Handles dropdown action selection.
+   */
+  public onDropdownAction(action: TableActionDef<T>, row: T): void {
+    this.onAction(action.id, row);
+  }
+
+  /**
+   * Handles dropdown item selection from tai-dropdown-menu.
+   */
+  public onDropdownItemSelected(item: DropdownMenuItem, row: T): void {
+    const action = this.visibleActionsFor(row).find(
+      (candidate) => candidate.id === item.id,
+    );
+    if (action) {
+      this.onDropdownAction(action, row);
+    }
   }
 }

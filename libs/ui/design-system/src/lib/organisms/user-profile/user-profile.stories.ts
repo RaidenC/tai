@@ -4,7 +4,7 @@ import { within, userEvent, expect, fn } from '@storybook/test';
 
 const meta: Meta<UserProfileComponent> = {
   component: UserProfileComponent,
-  title: 'UserProfileComponent',
+  title: 'Organisms/UserProfile',
   args: {
     logout: fn(),
   },

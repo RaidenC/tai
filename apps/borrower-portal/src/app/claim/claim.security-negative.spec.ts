@@ -21,7 +21,9 @@ describe('Negative Security Tests', () => {
   it('reducer strips SSN even on direct draftLoaded dispatch (bypass effect)', () => {
     TestBed.configureTestingModule({
       providers: [
-        provideStore({ [claimFeature.name]: claimFeature.reducer }),
+        provideStore({ [claimFeature.name]: claimFeature.reducer }, {
+          initialState: { [claimFeature.name]: initialClaimState }
+        }),
       ],
     });
     const store = TestBed.inject(Store);

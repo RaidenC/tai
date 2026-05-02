@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { UserProfileComponent } from './user-profile.component';
 import { describe, it, expect, beforeEach } from 'vitest';
+import { DropdownMenuItem } from '../../molecules/dropdown-menu/dropdown-menu.component';
 
 describe('UserProfileComponent', () => {
   let component: UserProfileComponent;
@@ -63,5 +64,27 @@ describe('UserProfileComponent', () => {
     const logoutSpy = vi.spyOn(component.logout, 'emit');
     component.onLogout();
     expect(logoutSpy).toHaveBeenCalled();
+  });
+
+  it('renders profile actions through tai-dropdown-menu', () => {
+    fixture.componentRef.setInput('user', { name: 'John Doe' });
+    fixture.detectChanges();
+
+    const dropdown = fixture.nativeElement.querySelector('tai-dropdown-menu');
+    expect(dropdown).toBeTruthy();
+  });
+
+  it('emits logout when logout dropdown item is selected', () => {
+    const logoutSpy = vi.fn();
+    component.logout.subscribe(logoutSpy);
+
+    component.onProfileAction({ id: 'logout', label: 'Logout' } as DropdownMenuItem);
+
+    expect(logoutSpy).toHaveBeenCalled();
+  });
+
+  it('does not render CDK menu directives', () => {
+    expect(fixture.nativeElement.querySelector('[cdkMenu]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[cdkMenuItem]')).toBeNull();
   });
 });

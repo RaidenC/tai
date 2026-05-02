@@ -1,5 +1,3 @@
-export * from './lib/design-system/hello-world';
-
 export * from './lib/atoms/button/button.component';
 export * from './lib/atoms/checkbox/checkbox.component';
 export * from './lib/atoms/icon/icon.component';
@@ -10,6 +8,7 @@ export * from './lib/atoms/secure-input/trusted-types.service';
 
 export * from './lib/molecules/confirmation-dialog/confirmation-dialog';
 export * from './lib/molecules/crypto-unavailable/crypto-unavailable';
+export * from './lib/molecules/dropdown-menu/dropdown-menu.component';
 export * from './lib/molecules/form-field/form-field.component';
 export * from './lib/molecules/notification-toggle/notification-toggle.component';
 export * from './lib/molecules/pending-approvals-tile/pending-approvals-tile';

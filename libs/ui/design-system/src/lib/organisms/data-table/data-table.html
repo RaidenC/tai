@@ -81,35 +81,16 @@
         *cdkCellDef="let row"
         class="px-6 py-4 border-b border-gray-100 text-right"
       >
-        <tai-button
-          type="button"
-          variant="ghost"
-          ariaLabel="Actions"
-          [testId]="'action-menu-trigger-' + (row.id || row.Id)"
-          [cdkMenuTriggerFor]="menu"
-        >
-          <tai-icon name="more-vertical" />
-        </tai-button>
-
-        <ng-template #menu>
-          <div
-            class="flex flex-col min-w-[120px] bg-white border border-gray-200 rounded-lg shadow-xl py-1 z-50 overflow-hidden"
-            cdkMenu
-          >
-            @for (action of actions(); track action.id) { @if
-            (isActionVisible(action, row)) {
-            <tai-button
-              type="button"
-              variant="ghost"
-              [testId]="'action-' + action.id"
-              (click)="onAction(action.id, row)"
-              cdkMenuItem
-            >
-              <span [textContent]="action.label"></span>
-            </tai-button>
-            } }
-          </div>
-        </ng-template>
+        <tai-dropdown-menu
+          ariaLabel="Row actions"
+          triggerIcon="more-vertical"
+          placement="bottom-end"
+          mobileMode="sheet"
+          density="compact"
+          [items]="dropdownItemsFor(row)"
+          [testId]="'action-menu-' + (row.id || row.Id)"
+          (itemSelected)="onDropdownItemSelected($event, row)"
+        ></tai-dropdown-menu>
       </td>
     </ng-container>
     }
