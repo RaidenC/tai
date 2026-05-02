@@ -38,7 +38,7 @@
           [disabled]="item.disabled"
           [attr.aria-disabled]="item.disabled ? 'true' : null"
           [attr.aria-current]="item.active ? 'page' : null"
-          [attr.data-testid]="testId() + '-item-' + item.id"
+          [attr.data-testid]="'action-' + item.id"
           [class]="itemClasses()"
           [class.text-red-600]="item.destructive"
           [class.text-gray-900]="!item.destructive"
