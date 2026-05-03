@@ -4,6 +4,7 @@
     "description": "",
     "main": "index.js",
     "scripts": {
+        "check:confirmation-boundary": "tools/check-confirmation-boundary.sh",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "keywords": [],
