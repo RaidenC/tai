@@ -1,0 +1,76 @@
+.tai-stepper {
+  display: block;
+}
+
+.tai-stepper__list {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tai-stepper__list--horizontal {
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.tai-stepper__list--vertical {
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tai-stepper__item {
+  align-items: center;
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.tai-stepper__list--vertical .tai-stepper__item {
+  flex: none;
+}
+
+.tai-stepper__connector {
+  background: rgb(229 231 235);
+  display: block;
+  flex: 1 1 1rem;
+  height: 2px;
+  margin-left: 0.5rem;
+  min-width: 1rem;
+}
+
+.tai-stepper__list--vertical .tai-stepper__connector {
+  display: none;
+}
+
+.tai-stepper__button {
+  box-sizing: border-box;
+}
+
+.sr-only {
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
+}
+
+@media (max-width: 640px) {
+  .tai-stepper__list--horizontal {
+    flex-direction: column;
+  }
+
+  .tai-stepper__list--horizontal .tai-stepper__connector {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tai-stepper__button {
+    transition-duration: 0ms;
+  }
+}

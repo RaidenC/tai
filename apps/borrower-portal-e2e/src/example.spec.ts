@@ -17,10 +17,11 @@ test('shows step 1 borrower info form', async ({ page }) => {
 test('stepper shows 4 steps', async ({ page }) => {
   await page.goto('/claim/borrower-info');
 
-  // Check stepper labels using more specific selectors
-  const stepper = page.locator('.wizard-stepper');
-  await expect(stepper.locator('.step-label:has-text("Borrower Info")')).toBeVisible();
-  await expect(stepper.locator('.step-label:has-text("Incident Details")')).toBeVisible();
-  await expect(stepper.locator('.step-label:has-text("Medical Providers")')).toBeVisible();
-  await expect(stepper.locator('.step-label:has-text("Review & Sign")')).toBeVisible();
+  const stepper = page.getByRole('navigation', { name: 'Claim progress' });
+  await expect(stepper.getByRole('button', { name: /Borrower Info/ })).toBeVisible();
+  await expect(stepper.getByRole('button', { name: /Incident Details/ })).toBeVisible();
+  await expect(stepper.getByRole('button', { name: /Medical Providers/ })).toBeVisible();
+  await expect(stepper.getByRole('button', { name: /Review & Sign/ })).toBeVisible();
+  await expect(page.getByTestId('claim-stepper-step-borrower-info')).toHaveAttribute('aria-current', 'step');
+  await expect(page.getByTestId('claim-stepper-step-medical-providers')).toBeDisabled();
 });

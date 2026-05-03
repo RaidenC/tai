@@ -1,67 +1,71 @@
-import { Component, Input, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, Input, OnInit, DestroyRef, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, ActivatedRoute } from '@angular/router';
-import { Subject, takeUntil } from 'rxjs';
+import { ActivatedRoute, NavigationEnd, Router, RouterModule } from '@angular/router';
+import { filter } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { StepperComponent, StepperStep } from '../stepper/stepper.component';
 
-/**
- * Wizard step configuration
- */
 export interface WizardStep {
-  /** Route path for this step */
   path: string;
-  /** Display label for this step */
   label: string;
 }
 
 /**
- * Wizard Component - Generic Stepper UI
- *
- * A pure presentation component that displays a multi-step wizard
- * with navigation. Step components are rendered via router-outlet.
- *
- * Usage with router (steps passed via route data):
- * ```typescript
- * // app.routes.ts
- * {
- *   path: 'claim',
- *   component: WizardComponent,
- *   data: {
- *     wizardSteps: [
- *       { path: 'step1', label: 'Step One' },
- *       { path: 'step2', label: 'Step Two' },
- *     ]
- *   },
- *   children: [...]
- * }
- * ```
- *
- * Or standalone (steps passed via input):
- * ```html
- * <tai-wizard [steps]="steps" title="My Wizard">
- *   <router-outlet></router-outlet>
- * </tai-wizard>
- * ```
+ * @deprecated Use StepperComponent in feature-owned router wrappers instead.
+ * This shim preserves the public tai-wizard API for existing package consumers.
  */
 @Component({
   selector: 'tai-wizard',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, StepperComponent],
   templateUrl: './wizard.component.html',
 })
-export class WizardComponent implements OnInit, OnDestroy {
-  /** Array of wizard steps with path and label */
-  @Input() steps: WizardStep[] = [];
+export class WizardComponent implements OnInit {
+  private readonly stepsSignal = signal<WizardStep[]>([]);
 
-  /** Optional title displayed at the top */
+  @Input() set steps(value: WizardStep[]) {
+    this.stepsSignal.set(value ?? []);
+  }
+
+  get steps(): WizardStep[] {
+    return this.stepsSignal();
+  }
+
   @Input() title?: string;
 
-  private route = inject(ActivatedRoute);
-  private destroy$ = new Subject<void>();
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly routeUrl = signal(this.router.url);
+
+  protected readonly currentStepId = computed(() => {
+    const cleanUrl = this.routeUrl().split('?')[0].split('#')[0];
+    const segments = cleanUrl.split('/').filter(Boolean);
+    const lastSegment = segments.length > 0 ? segments[segments.length - 1] : undefined;
+    const steps = this.stepsSignal();
+    return steps.some((step) => step.path === lastSegment)
+      ? lastSegment ?? steps[0]?.path ?? ''
+      : steps[0]?.path ?? '';
+  });
+
+  protected readonly stepperSteps = computed<StepperStep[]>(() =>
+    this.stepsSignal().map((step) => ({
+      id: step.path,
+      label: step.label,
+      status: 'not-started',
+    })),
+  );
 
   ngOnInit(): void {
-    // If steps not provided via @Input(), subscribe to route data
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => this.routeUrl.set(this.router.url));
+
     if (this.steps.length === 0) {
-      this.route.data.pipe(takeUntil(this.destroy$)).subscribe((data) => {
+      this.route.data.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((data) => {
         if (data['wizardSteps']) {
           this.steps = data['wizardSteps'] as WizardStep[];
         }
@@ -72,8 +76,7 @@ export class WizardComponent implements OnInit, OnDestroy {
     }
   }
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
+  protected onStepSelected(step: StepperStep): void {
+    void this.router.navigate([step.id], { relativeTo: this.route }).catch(() => undefined);
   }
 }
