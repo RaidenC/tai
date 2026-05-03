@@ -6,22 +6,16 @@ import {
 } from './confirmation-dialog';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-/**
- * ConfirmationDialogComponent Unit Tests
- *
- * Verifies that the dialog correctly renders content from the provided data
- * and emits the appropriate signals to the DialogRef when actions are triggered.
- */
-describe('ConfirmationDialogComponent', () => {
-  let component: ConfirmationDialogComponent;
+describe('ConfirmationDialogComponent compatibility wrapper', () => {
   let fixture: ComponentFixture<ConfirmationDialogComponent>;
   let mockDialogRef: { close: (result?: boolean) => void };
 
   const mockData: ConfirmationDialogData = {
-    title: 'Test Confirmation',
-    message: 'Are you sure you want to proceed?',
-    confirmText: 'Yes, Proceed',
-    cancelText: 'No, Stop',
+    title: 'Approve User Registration',
+    message: 'Approve Jane Doe for access to the portal.',
+    confirmText: 'Approve User',
+    cancelText: 'Cancel',
+    confirmButtonClass: 'bg-indigo-600 hover:bg-indigo-700',
   };
 
   beforeEach(async () => {
@@ -38,72 +32,39 @@ describe('ConfirmationDialogComponent', () => {
     }).compileComponents();
 
     fixture = TestBed.createComponent(ConfirmationDialogComponent);
-    component = fixture.componentInstance;
     fixture.detectChanges();
   });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
+  it('renders the deprecated tai-confirmation-dialog wrapper through tai-confirmation-panel', () => {
+    expect(fixture.nativeElement.querySelector('tai-confirmation-panel')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[data-testid="modal-title"]').textContent.trim()).toBe('Approve User Registration');
+    expect(fixture.nativeElement.querySelector('[data-testid="modal-message"]').textContent.trim()).toBe('Approve Jane Doe for access to the portal.');
   });
 
-  it('should render the provided title and message', () => {
-    const compiled = fixture.nativeElement as HTMLElement;
-    const title = compiled.querySelector('[data-testid="modal-title"]');
-    const message = compiled.querySelector('[data-testid="modal-message"]');
-
-    expect(title?.textContent?.trim()).toBe(mockData.title);
-    expect(message?.textContent?.trim()).toBe(mockData.message);
+  it('maps legacy confirm and cancel labels', () => {
+    expect(fixture.nativeElement.querySelector('[data-testid="modal-confirm-button"]').textContent.trim()).toBe('Approve User');
+    expect(fixture.nativeElement.querySelector('[data-testid="modal-cancel-button"]').textContent.trim()).toBe('Cancel');
   });
 
-  it('should render custom button labels', () => {
-    const compiled = fixture.nativeElement as HTMLElement;
-    const confirmBtn = compiled.querySelector(
-      '[data-testid="modal-confirm-button"]',
-    );
-    const cancelBtn = compiled.querySelector(
-      '[data-testid="modal-cancel-button"]',
-    );
+  it('ignores legacy confirmButtonClass instead of applying caller classes', () => {
+    const confirm = fixture.nativeElement.querySelector('[data-testid="modal-confirm-button"]') as HTMLButtonElement;
 
-    expect(confirmBtn?.textContent?.trim()).toBe(mockData.confirmText);
-    expect(cancelBtn?.textContent?.trim()).toBe(mockData.cancelText);
+    expect(confirm.className).not.toContain('bg-indigo-600');
+    expect(confirm.className).not.toContain('hover:bg-indigo-700');
+    expect(confirm.className).toContain('bg-blue-600');
   });
 
-  it('should call dialogRef.close(true) when confirm button is clicked', () => {
-    const confirmBtn = fixture.nativeElement.querySelector(
-      '[data-testid="modal-confirm-button"]',
-    ) as HTMLButtonElement;
-    confirmBtn.click();
+  it('closes the legacy DialogRef with true on confirm', () => {
+    const confirm = fixture.nativeElement.querySelector('[data-testid="modal-confirm-button"]') as HTMLButtonElement;
+    confirm.click();
+
     expect(mockDialogRef.close).toHaveBeenCalledWith(true);
   });
 
-  it('should call dialogRef.close(false) when cancel button is clicked', () => {
-    const cancelBtn = fixture.nativeElement.querySelector(
-      '[data-testid="modal-cancel-button"]',
-    ) as HTMLButtonElement;
-    cancelBtn.click();
+  it('closes the legacy DialogRef with false on cancel', () => {
+    const cancel = fixture.nativeElement.querySelector('[data-testid="modal-cancel-button"]') as HTMLButtonElement;
+    cancel.click();
+
     expect(mockDialogRef.close).toHaveBeenCalledWith(false);
-  });
-
-  it('should apply custom button class to confirm button', async () => {
-    // Reconfigure for custom class test
-    TestBed.resetTestingModule();
-    const customClass = 'bg-red-600';
-    await TestBed.configureTestingModule({
-      imports: [ConfirmationDialogComponent],
-      providers: [
-        { provide: DialogRef, useValue: mockDialogRef },
-        {
-          provide: DIALOG_DATA,
-          useValue: { ...mockData, confirmButtonClass: customClass },
-        },
-      ],
-    }).compileComponents();
-
-    const customFixture = TestBed.createComponent(ConfirmationDialogComponent);
-    customFixture.detectChanges();
-    const confirmBtn = customFixture.nativeElement.querySelector(
-      '[data-testid="modal-confirm-button"]',
-    );
-    expect(confirmBtn.classList.contains(customClass)).toBe(true);
   });
 });
