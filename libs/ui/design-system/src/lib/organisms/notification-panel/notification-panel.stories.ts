@@ -1,4 +1,4 @@
-import { type Meta, type StoryObj, applicationConfig } from '@storybook/angular';
+import { type Meta, type StoryObj, applicationConfig, moduleMetadata } from '@storybook/angular';
 import { provideRouter } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { NotificationPanelComponent } from './notification-panel.component';
@@ -52,6 +52,31 @@ const mockEvents: AuditLogDetails[] = [
   }
 ];
 
+interface StoryPanelState {
+  open?: boolean;
+  severity?: 'all' | 'critical' | 'warning' | 'info';
+  search?: string;
+}
+
+const withPanelState = ({ open = true, severity = 'all', search = '' }: StoryPanelState = {}) =>
+  moduleMetadata({
+    providers: [
+      {
+        provide: NotificationPanelService,
+        useFactory: () => {
+          const service = new NotificationPanelService();
+          if (open) {
+            service.open();
+          }
+          service.setSeverityFilter(severity);
+          service.setSearchText(search);
+          service.setUnreadCount(mockEvents.length);
+          return service;
+        },
+      },
+    ],
+  });
+
 const meta: Meta<NotificationPanelComponent> = {
   title: 'Organisms/NotificationPanel',
   component: NotificationPanelComponent,
@@ -59,6 +84,9 @@ const meta: Meta<NotificationPanelComponent> = {
   decorators: [
     applicationConfig({
       providers: [provideRouter([])],
+    }),
+    moduleMetadata({
+      imports: [CommonModule, NotificationPanelComponent],
     }),
   ],
   parameters: {
@@ -84,12 +112,14 @@ export const Default: Story = {
   args: {
     events: mockEvents
   },
+  decorators: [withPanelState()],
 };
 
 export const PanelOpen: Story = {
   args: {
     events: mockEvents
   },
+  decorators: [withPanelState()],
   play: async ({ canvasElement }) => {
     const panel = canvasElement.querySelector('.notification-panel');
     if (panel) {
@@ -102,22 +132,26 @@ export const FilteredByCritical: Story = {
   args: {
     events: mockEvents
   },
+  decorators: [withPanelState({ severity: 'critical' })],
 };
 
 export const WithSearchFilter: Story = {
   args: {
     events: mockEvents
   },
+  decorators: [withPanelState({ search: 'permission' })],
 };
 
 export const EmptyState: Story = {
   args: {
     events: []
   },
+  decorators: [withPanelState()],
 };
 
 export const PanelClosed: Story = {
   args: {
     events: mockEvents
   },
+  decorators: [withPanelState({ open: false })],
 };
