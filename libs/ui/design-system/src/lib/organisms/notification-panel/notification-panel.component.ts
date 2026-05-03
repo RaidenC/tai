@@ -28,9 +28,10 @@ export class NotificationPanelComponent {
 
     return allEvents
       .filter(event => {
-        const matchesSeverity = filter === 'all' || this.getEventSeverity(event.action) === filter;
+        const matchesSeverity = filter === 'all' || this.getEventSeverity(event) === filter;
         const matchesSearch = !search ||
           event.action.toLowerCase().includes(search) ||
+          (event.eventType && event.eventType.toLowerCase().includes(search)) ||
           (event.details && event.details.toLowerCase().includes(search));
         return matchesSeverity && matchesSearch;
       })
@@ -50,12 +51,21 @@ export class NotificationPanelComponent {
     this.panelService.close();
   }
 
-  getEventSeverity(action: string): string {
-    const actionLower = action.toLowerCase();
-    if (actionLower.includes('critical') || actionLower.includes('anomaly')) {
+  getEventSeverity(eventOrAction: AuditLogDetails | string): string {
+    const rawEvent = typeof eventOrAction === 'string'
+      ? eventOrAction
+      : `${eventOrAction.eventType || ''} ${eventOrAction.action}`;
+    const eventText = rawEvent.toLowerCase();
+
+    if (
+      eventText.includes('critical') ||
+      eventText.includes('anomaly') ||
+      eventText.includes('privilege') ||
+      eventText.includes('security')
+    ) {
       return 'critical';
     }
-    if (actionLower.includes('warning')) {
+    if (eventText.includes('warning')) {
       return 'warning';
     }
     return 'info';

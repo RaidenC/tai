@@ -99,7 +99,8 @@ public class AuthorizationController : Controller {
     identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
             .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
             .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
-            .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user));
+            .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
+            .SetClaim("tenant_id", user.TenantId.Value.ToString());
 
     // Add roles to the claims.
     var roles = await _userManager.GetRolesAsync(user);
@@ -215,7 +216,8 @@ public class AuthorizationController : Controller {
       identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
               .SetClaim(Claims.Email, await _userManager.GetEmailAsync(user))
               .SetClaim(Claims.Name, await _userManager.GetUserNameAsync(user))
-              .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user));
+              .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user))
+              .SetClaim("tenant_id", user.TenantId.Value.ToString());
 
       var roles = await _userManager.GetRolesAsync(user);
       identity.SetClaims(Claims.Role, [.. roles]);
@@ -338,6 +340,7 @@ public class AuthorizationController : Controller {
         yield break;
 
       case "privileges":
+      case "tenant_id":
         yield return Destinations.AccessToken;
         yield return Destinations.IdentityToken;
         yield break;

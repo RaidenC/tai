@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using OpenIddict.Validation.AspNetCore;
+using Tai.Portal.Core.Application.Interfaces;
 
 namespace Tai.Portal.Api.Hubs;
 
@@ -18,12 +19,18 @@ namespace Tai.Portal.Api.Hubs;
  */
 [Authorize(AuthenticationSchemes = $"{OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme},Identity.Application")]
 public class NotificationHub : Hub {
+  private readonly ITenantService _tenantService;
+
+  public NotificationHub(ITenantService tenantService) {
+    _tenantService = tenantService;
+  }
+
   /**
    * OnConnectedAsync is triggered whenever a new client (browser) connects.
    * We add the user to a SignalR group based on their TenantId for tenant-isolated broadcasts.
    */
   public override async Task OnConnectedAsync() {
-    var tenantId = GetTenantIdFromClaims();
+    var tenantId = GetTenantGroupId();
 
     if (!string.IsNullOrEmpty(tenantId)) {
       // Add user to tenant-specific group for isolated broadcast channels
@@ -38,7 +45,7 @@ public class NotificationHub : Hub {
    * We remove the user from their tenant group.
    */
   public override async Task OnDisconnectedAsync(Exception? exception) {
-    var tenantId = GetTenantIdFromClaims();
+    var tenantId = GetTenantGroupId();
 
     if (!string.IsNullOrEmpty(tenantId)) {
       await Groups.RemoveFromGroupAsync(Context.ConnectionId, tenantId);
@@ -48,10 +55,14 @@ public class NotificationHub : Hub {
   }
 
   /**
-   * Extracts TenantId from the user's claims.
-   * The claim is set during authentication in AuthorizationController.
+   * Resolves the tenant group for this connection.
    */
-  private string? GetTenantIdFromClaims() {
+  private string? GetTenantGroupId() {
+    var resolvedTenantId = _tenantService.TenantId;
+    if (resolvedTenantId.Value != Guid.Empty) {
+      return resolvedTenantId.Value.ToString();
+    }
+
     // Try to get tenant_id claim (set in AuthorizationController)
     var tenantClaim = Context.User?.FindFirst("tenant_id")?.Value;
 

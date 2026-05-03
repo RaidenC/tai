@@ -17,25 +17,33 @@ public class PrivilegeModifiedEventHandler : INotificationHandler<DomainEventNot
   private readonly PortalDbContext _dbContext;
   private readonly IMessageBus _messageBus;
   private readonly ICurrentUserService _currentUserService;
-
-  private static readonly TenantId SystemTenantId = new(Guid.Parse("00000000-0000-0000-0000-000000000001"));
+  private readonly IRealTimeNotifier _realTimeNotifier;
 
   public PrivilegeModifiedEventHandler(
       PortalDbContext dbContext,
       IMessageBus messageBus,
-      ICurrentUserService currentUserService) {
+      ICurrentUserService currentUserService,
+      IRealTimeNotifier realTimeNotifier) {
     _dbContext = dbContext;
     _messageBus = messageBus;
     _currentUserService = currentUserService;
+    _realTimeNotifier = realTimeNotifier;
   }
 
   public async Task Handle(DomainEventNotification<PrivilegeModifiedEvent> notification, CancellationToken cancellationToken) {
     var domainEvent = notification.DomainEvent;
     var userId = _currentUserService.UserId ?? "System";
 
+    // Validate tenant is set before processing
+    var tenantId = _dbContext.CurrentTenantId;
+    if (tenantId == default) {
+        throw new InvalidOperationException("TenantId must be set before processing PrivilegeModifiedEvent");
+    }
+    var tenantIdString = tenantId.Value.ToString();
+
     // 1. Record immutable audit entry
     var auditEntry = new AuditEntry(
-        SystemTenantId,
+        tenantId,
         userId,
         "PrivilegeModified",
         domainEvent.PrivilegeId.ToString(),
@@ -55,5 +63,17 @@ public class PrivilegeModifiedEventHandler : INotificationHandler<DomainEventNot
       ModifiedBy = userId,
       Timestamp = System.DateTimeOffset.UtcNow
     }, cancellationToken);
+
+    // 3. Send tenant-scoped SignalR notification after commit
+    _dbContext.RegisterPostCommitAction(ct =>
+      _realTimeNotifier.SendSecurityEventAsync(
+        tenantIdString,
+        "PrivilegeChange",
+        new {
+          EventId = auditEntry.Id,
+          Timestamp = auditEntry.Timestamp,
+          Action = "privilege_modified"
+        },
+        ct));
   }
 }

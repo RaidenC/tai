@@ -91,6 +91,7 @@ builder.Services.AddDbContext<PortalDbContext>(options => {
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<PortalDbContext>()
     .AddDefaultTokenProviders();
+builder.Services.AddScoped<IUserClaimsPrincipalFactory<ApplicationUser>, TenantUserClaimsPrincipalFactory>();
 
 builder.Services.ConfigureApplicationCookie(options => {
   options.LoginPath = "/Account/Login";
