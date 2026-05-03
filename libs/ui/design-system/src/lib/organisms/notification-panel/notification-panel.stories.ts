@@ -1,4 +1,6 @@
-import { type Meta, type StoryObj } from '@storybook/angular';
+import { type Meta, type StoryObj, applicationConfig } from '@storybook/angular';
+import { provideRouter } from '@angular/router';
+import { CommonModule } from '@angular/common';
 import { NotificationPanelComponent } from './notification-panel.component';
 import { NotificationPanelService } from './notification-panel.service';
 import { AuditLogDetails } from './notification-panel.types';
@@ -54,6 +56,11 @@ const meta: Meta<NotificationPanelComponent> = {
   title: 'Organisms/NotificationPanel',
   component: NotificationPanelComponent,
   tags: ['autodocs'],
+  decorators: [
+    applicationConfig({
+      providers: [provideRouter([])],
+    }),
+  ],
   parameters: {
     layout: 'fullscreen',
   },
@@ -63,6 +70,11 @@ const meta: Meta<NotificationPanelComponent> = {
       description: 'Array of notification events to display'
     }
   },
+  render: (args) => ({
+    props: args,
+    imports: [CommonModule],
+    template: '<tai-notification-panel [events]="events"></tai-notification-panel>',
+  }),
 };
 
 export default meta;
@@ -72,38 +84,11 @@ export const Default: Story = {
   args: {
     events: mockEvents
   },
-  parameters: {
-    onPanelService: new NotificationPanelService()
-  },
-  render: (args) => ({
-    props: {
-      ...args,
-      panelService: new NotificationPanelService()
-    },
-    template: '<tai-notification-panel [events]="events"></tai-notification-panel>',
-    styles: [':host { position: relative; height: 100vh; }']
-  }),
-  play: async ({ canvasElement }) => {
-    const panelService = new NotificationPanelService();
-    panelService.open();
-  }
 };
 
 export const PanelOpen: Story = {
   args: {
     events: mockEvents
-  },
-  render: (args) => {
-    const panelService = new NotificationPanelService();
-    panelService.open();
-    return {
-      props: {
-        ...args,
-        panelService
-      },
-      template: '<tai-notification-panel [events]="events"></tai-notification-panel>',
-      styles: [':host { position: relative; height: 100vh; }']
-    };
   },
   play: async ({ canvasElement }) => {
     const panel = canvasElement.querySelector('.notification-panel');
@@ -117,37 +102,11 @@ export const FilteredByCritical: Story = {
   args: {
     events: mockEvents
   },
-  render: (args) => {
-    const panelService = new NotificationPanelService();
-    panelService.open();
-    panelService.setSeverityFilter('critical');
-    return {
-      props: {
-        ...args,
-        panelService
-      },
-      template: '<tai-notification-panel [events]="events"></tai-notification-panel>',
-      styles: [':host { position: relative; height: 100vh; }']
-    };
-  },
 };
 
 export const WithSearchFilter: Story = {
   args: {
     events: mockEvents
-  },
-  render: (args) => {
-    const panelService = new NotificationPanelService();
-    panelService.open();
-    panelService.setSearchText('login');
-    return {
-      props: {
-        ...args,
-        panelService
-      },
-      template: '<tai-notification-panel [events]="events"></tai-notification-panel>',
-      styles: [':host { position: relative; height: 100vh; }']
-    };
   },
 };
 
@@ -155,34 +114,10 @@ export const EmptyState: Story = {
   args: {
     events: []
   },
-  render: (args) => {
-    const panelService = new NotificationPanelService();
-    panelService.open();
-    return {
-      props: {
-        ...args,
-        panelService
-      },
-      template: '<tai-notification-panel [events]="events"></tai-notification-panel>',
-      styles: [':host { position: relative; height: 100vh; }']
-    };
-  },
 };
 
 export const PanelClosed: Story = {
   args: {
     events: mockEvents
-  },
-  render: (args) => {
-    const panelService = new NotificationPanelService();
-    // Panel stays closed
-    return {
-      props: {
-        ...args,
-        panelService
-      },
-      template: '<tai-notification-panel [events]="events"></tai-notification-panel>',
-      styles: [':host { position: relative; height: 100vh; }']
-    };
   },
 };
