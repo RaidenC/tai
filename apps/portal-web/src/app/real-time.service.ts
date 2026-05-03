@@ -6,7 +6,7 @@ import { AuthService } from './auth.service';
 import { BehaviorSubject } from 'rxjs';
 import { SecurityEventPayload, AuditLogDetails } from './models/security-event.model';
 import { NotificationSignalStore } from './store/notification-signal.store';
-import { ToastService } from '@tai/ui-design-system';
+import { NotificationPanelService, ToastService } from '@tai/ui-design-system';
 
 /**
  * RealTimeService
@@ -25,6 +25,7 @@ export class RealTimeService implements OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly ngZone = inject(NgZone);
   private readonly store = inject(NotificationSignalStore);
+  private readonly panelService = inject(NotificationPanelService);
   private readonly toastService = inject(ToastService);
 
   private hubConnection: HubConnection | null = null;
@@ -167,6 +168,7 @@ export class RealTimeService implements OnDestroy {
         // Emit the full details inside Angular zone to trigger change detection
         this.ngZone.run(() => {
           this.store.addEvent(detailsWithType);
+          this.panelService.setUnreadCount(this.store.eventBuffer().length);
           console.log('RealTimeService: Added event to store:', detailsWithType);
         });
       },
@@ -180,10 +182,9 @@ export class RealTimeService implements OnDestroy {
    * Fetch full audit log details from REST API (Claim Check).
    */
   private fetchAuditLogDetails(eventId: string) {
-    const apiUrl = `http://${window.location.hostname}:5217/api/AuditLogs/${eventId}`;
+    const apiUrl = `/api/AuditLogs/${eventId}`;
     return this.http.get<AuditLogDetails>(apiUrl, {
-      withCredentials: true,
-      headers: { 'X-Bypass-Tenant': 'true' }
+      withCredentials: true
     });
   }
 

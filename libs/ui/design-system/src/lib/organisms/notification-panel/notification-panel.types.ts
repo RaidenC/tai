@@ -11,4 +11,5 @@ export interface AuditLogDetails {
   timestamp: string;
   ipAddress: string | null;
   details: string | null;
+  eventType?: string;
 }
