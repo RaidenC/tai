@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { UsersConfirmationHostComponent } from './users-confirmation-host.component';
 import { User } from './users.service';
+import { ConfirmationPanelData } from '@tai/ui-design-system';
 
 const pendingUser: User = {
   id: 'user-1',
@@ -37,6 +38,54 @@ describe('UsersConfirmationHostComponent', () => {
     expect(fixture.nativeElement.querySelector('[data-testid="modal-title"]').textContent).toContain('Approve User Registration');
     expect(fixture.nativeElement.querySelector('[data-testid="modal-message"]').textContent).toContain('jane@example.com');
     expect(component.isOpen()).toBe(true);
+    expect(document.activeElement).toBe(fixture.nativeElement.querySelector('[data-testid="modal-confirm-button"]'));
+
+    component.handlePanelAction({ action: 'cancel' });
+    await expect(promise).resolves.toBe(false);
+  });
+
+  it('opens generic danger confirmation without explicit initialFocus on cancel', async () => {
+    const dangerData: ConfirmationPanelData = {
+      title: 'Delete User Account',
+      message: 'This action cannot be undone.',
+      confirm: {
+        label: 'Delete Account',
+        tone: 'danger',
+      },
+      cancel: {
+        label: 'Keep Account',
+      },
+    };
+
+    const promise = component.openConfirmation(dangerData);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="modal-title"]').textContent).toContain('Delete User Account');
+    expect(document.activeElement).toBe(fixture.nativeElement.querySelector('[data-testid="modal-cancel-button"]'));
+
+    component.handlePanelAction({ action: 'cancel' });
+    await expect(promise).resolves.toBe(false);
+  });
+
+  it('honors explicit initialFocus override for generic confirmations', async () => {
+    const dangerData: ConfirmationPanelData = {
+      title: 'Delete User Account',
+      message: 'This action cannot be undone.',
+      confirm: {
+        label: 'Delete Account',
+        tone: 'danger',
+      },
+      cancel: {
+        label: 'Keep Account',
+      },
+      initialFocus: 'confirm',
+    };
+
+    const promise = component.openConfirmation(dangerData);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
     expect(document.activeElement).toBe(fixture.nativeElement.querySelector('[data-testid="modal-confirm-button"]'));
 
     component.handlePanelAction({ action: 'cancel' });
@@ -98,11 +147,12 @@ describe('UsersConfirmationHostComponent', () => {
     component.handlePanelAction({ action: 'cancel' });
 
     await expect(promise).resolves.toBe(false);
+    await Promise.resolve(); // wait for queueMicrotask in close()
     expect(document.activeElement).toBe(opener);
     opener.remove();
   });
 
-  it('suppresses duplicate confirm while loading and clears loading after failure reset', async () => {
+  it('suppresses duplicate confirm while loading and clears loading to allow confirm', async () => {
     const promise = component.confirmApproval(pendingUser);
     fixture.detectChanges();
 

@@ -166,7 +166,14 @@ export class UsersConfirmationHostComponent implements AfterViewChecked {
       return;
     }
 
-    const target = host.querySelector<HTMLElement>('[data-confirmation-focus="confirm"]')
+    // Use explicit initialFocus if provided, otherwise default based on tone
+    const data = this.panelData();
+    const tone = data.confirm?.tone;
+    const explicitFocus = data.initialFocus;
+    const defaultFocus = tone === 'danger' ? 'cancel' : 'confirm';
+    const focusTarget = explicitFocus ?? defaultFocus;
+
+    const target = host.querySelector<HTMLElement>(`[data-confirmation-focus="${focusTarget}"]`)
       ?? this.focusableElements(host)[0];
     target?.focus();
   }
