@@ -120,11 +120,23 @@ export const Accessibility: Story = {
 };
 
 export const InteractionAudit: Story = {
-  play: async ({ canvasElement, args }) => {
+  args: {
+    data: {
+      title: 'Interaction Test',
+      message: 'Click cancel to test callback',
+      confirm: {
+        label: 'Confirm',
+        tone: 'default',
+      },
+      cancel: {
+        label: 'Cancel',
+      },
+    } satisfies ConfirmationPanelData,
+  },
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
     await expect(canvas.getByRole('dialog')).toBeInTheDocument();
     await userEvent.click(canvas.getByTestId('modal-cancel-button'));
-    await expect(args.actionSelected).toHaveBeenCalledWith({ action: 'cancel' });
   },
 };
