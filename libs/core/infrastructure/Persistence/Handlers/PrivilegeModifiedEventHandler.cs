@@ -37,7 +37,7 @@ public class PrivilegeModifiedEventHandler : INotificationHandler<DomainEventNot
     // Validate tenant is set before processing
     var tenantId = _dbContext.CurrentTenantId;
     if (tenantId == default) {
-        throw new InvalidOperationException("TenantId must be set before processing PrivilegeModifiedEvent");
+      throw new InvalidOperationException("TenantId must be set before processing PrivilegeModifiedEvent");
     }
     var tenantIdString = tenantId.Value.ToString();
 
