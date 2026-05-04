@@ -6,6 +6,7 @@ import { HubConnectionState } from '@microsoft/signalr';
 import { BehaviorSubject, of, firstValueFrom } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AuditLogDetails } from './models/security-event.model';
+import { NotificationPanelService } from '@tai/ui-design-system';
 
 describe('RealTimeService', () => {
   let service: RealTimeService;
@@ -14,6 +15,7 @@ describe('RealTimeService', () => {
   let httpClientMock: {
     get: ReturnType<typeof vi.fn>;
   };
+  let panelService: NotificationPanelService;
 
   beforeEach(() => {
     isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
@@ -52,6 +54,7 @@ describe('RealTimeService', () => {
     });
 
     service = TestBed.inject(RealTimeService);
+    panelService = TestBed.inject(NotificationPanelService);
   });
 
   it('should be created', () => {
@@ -74,6 +77,23 @@ describe('RealTimeService', () => {
   it('should have securityEvents$ that starts with null', async () => {
     const details = await firstValueFrom(service.securityEvents$);
     expect(details).toBeNull();
+  });
+
+  it('should fetch audit log details through the relative API route', () => {
+    (service as any).fetchAuditLogDetails('event-123').subscribe();
+
+    expect(httpClientMock.get).toHaveBeenCalledWith('/api/AuditLogs/event-123', {
+      withCredentials: true,
+    });
+  });
+
+  it('should add fetched security events to the notification panel unread count', () => {
+    (service as any).handleSecurityEvent({
+      eventType: 'PrivilegeChange',
+      payload: { eventId: 'event-123' },
+    });
+
+    expect(panelService.unreadCount()()).toBe(1);
   });
 
   describe('Model Types', () => {

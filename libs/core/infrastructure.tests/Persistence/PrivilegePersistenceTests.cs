@@ -10,6 +10,7 @@ using Tai.Portal.Core.Infrastructure.Persistence.Handlers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Domain.Entities;
@@ -140,18 +141,22 @@ public class PrivilegePersistenceTests : IAsyncLifetime {
   }
 
   [Fact]
-  public async Task Privilege_Modification_ShouldPublishEventAndAudit() {
-    // Arrange
+  public async Task Privilege_Modification_ShouldPublishTenantAuditOutboxAndSignalRAfterCommit() {
     var options = CreateOptions();
+    var tenantId = new TenantId(Guid.Parse("11111111-1111-1111-1111-111111111111"));
+
     var tenantServiceMock = new Mock<ITenantService>();
+    tenantServiceMock.Setup(s => s.TenantId).Returns(tenantId);
+    tenantServiceMock.Setup(s => s.IsGlobalAccess).Returns(false);
+
     var currentUserServiceMock = new Mock<ICurrentUserService>();
     currentUserServiceMock.Setup(s => s.UserId).Returns("admin-user");
+    currentUserServiceMock.Setup(s => s.CorrelationId).Returns("corr-privilege-edit");
 
     var messageBusMock = new Mock<IMessageBus>();
+    var realTimeNotifierMock = new Mock<IRealTimeNotifier>();
     var serviceProviderMock = new Mock<IServiceProvider>();
     serviceProviderMock.Setup(s => s.GetService(typeof(ICurrentUserService))).Returns(currentUserServiceMock.Object);
-    serviceProviderMock.Setup(s => s.GetService(typeof(IMessageBus))).Returns(messageBusMock.Object);
-    serviceProviderMock.Setup(s => s.GetService(typeof(IPublisher))).Returns(new Mock<IPublisher>().Object);
 
     using (var context = new PortalDbContext(options, tenantServiceMock.Object, serviceProviderMock.Object)) {
       await context.Database.EnsureCreatedAsync();
@@ -160,28 +165,47 @@ public class PrivilegePersistenceTests : IAsyncLifetime {
       context.Privileges.Add(privilege);
       await context.SaveChangesAsync();
 
-      // Act
       privilege.SetRiskLevel(RiskLevel.High);
 
-      // We need to setup the IPublisher to actually call our handler since we are bypassing MediatR in this test
-      var handler = new PrivilegeModifiedEventHandler(context, messageBusMock.Object, currentUserServiceMock.Object);
+      var handler = new PrivilegeModifiedEventHandler(
+        context,
+        messageBusMock.Object,
+        currentUserServiceMock.Object,
+        realTimeNotifierMock.Object);
+
       var publisherMock = new Mock<IPublisher>();
       publisherMock.Setup(p => p.Publish(It.IsAny<object>(), It.IsAny<CancellationToken>()))
-          .Callback<object, CancellationToken>(async (notif, ct) => {
-            if (notif is DomainEventNotification<PrivilegeModifiedEvent> pNotif) {
-              await handler.Handle(pNotif, ct);
-            }
-          });
+        .Callback<object, CancellationToken>(async (notif, ct) => {
+          if (notif is DomainEventNotification<PrivilegeModifiedEvent> pNotif) {
+            await handler.Handle(pNotif, ct);
+          }
+        });
       serviceProviderMock.Setup(s => s.GetService(typeof(IPublisher))).Returns(publisherMock.Object);
+
+      realTimeNotifierMock.Invocations.Should().BeEmpty(
+        "SignalR must not fire before SaveChangesAsync commits the transaction");
 
       await context.SaveChangesAsync();
 
-      // Assert
-      var auditLog = await context.AuditLogs.IgnoreQueryFilters().FirstOrDefaultAsync(l => l.Action == "PrivilegeModified" && l.ResourceId == privilege.Id.ToString());
+      var auditLog = await context.AuditLogs
+        .IgnoreQueryFilters()
+        .FirstOrDefaultAsync(l => l.Action == "PrivilegeModified" && l.ResourceId == privilege.Id.ToString());
+
       auditLog.Should().NotBeNull();
-      auditLog!.UserId.Should().Be("admin-user");
+      auditLog!.TenantId.Should().Be(tenantId);
+      auditLog.UserId.Should().Be("admin-user");
 
       messageBusMock.Verify(m => m.PublishAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Once);
+
+      var signalRInvocation = realTimeNotifierMock.Invocations
+        .Single(i => i.Method.Name == nameof(IRealTimeNotifier.SendSecurityEventAsync));
+
+      signalRInvocation.Arguments[0].Should().Be(tenantId.Value.ToString());
+      signalRInvocation.Arguments[1].Should().Be("PrivilegeChange");
+
+      var payloadJson = System.Text.Json.JsonSerializer.Serialize(signalRInvocation.Arguments[2]);
+      payloadJson.Should().Contain(auditLog.Id.ToString());
+      payloadJson.Should().Contain("privilege_modified");
     }
   }
 }
