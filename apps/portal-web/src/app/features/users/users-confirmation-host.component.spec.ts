@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 import { UsersConfirmationHostComponent } from './users-confirmation-host.component';
 import { User } from './users.service';
 import { ConfirmationPanelData } from '@tai/ui-design-system';

@@ -14,17 +14,22 @@ import { User } from './users.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (isOpen()) {
+      <!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus -->
       <div
         class="fixed inset-0 z-50 flex min-h-dvh items-center justify-center bg-gray-950/45 px-4 py-6"
         data-testid="users-confirmation-backdrop"
+        role="presentation"
         (click)="onBackdropClick($event)"
-        (keydown)="onKeydown($event)"
       >
+        <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events -->
         <div
           class="w-full max-w-md"
           data-testid="users-confirmation-host"
           #hostPanel
+          role="dialog"
+          aria-modal="true"
           (click)="$event.stopPropagation()"
+          (keydown)="onKeydown($event)"
         >
           <tai-confirmation-panel
             [data]="panelData()"
