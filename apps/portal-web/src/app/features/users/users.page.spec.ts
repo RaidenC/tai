@@ -2,19 +2,18 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { UsersPage } from './users.page';
 import { UsersStore } from './users.store';
 import { signal } from '@angular/core';
-import { Dialog, DialogModule } from '@angular/cdk/dialog';
 import { of, Subject } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { User } from './users.service';
 import { By } from '@angular/platform-browser';
 import { Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { UsersConfirmationHostComponent } from './users-confirmation-host.component';
 
 describe('UsersPage', () => {
   let component: UsersPage;
   let fixture: ComponentFixture<UsersPage>;
   let mockStore: any;
-  let mockDialog: any;
   let mockRouter: any;
   let mockActivatedRoute: any;
 
@@ -35,12 +34,6 @@ describe('UsersPage', () => {
       approveUser: vi.fn(),
     };
 
-    mockDialog = {
-      open: vi.fn().mockReturnValue({
-        closed: of(true)
-      }),
-    };
-
     mockRouter = {
       navigate: vi.fn()
     };
@@ -53,16 +46,16 @@ describe('UsersPage', () => {
     };
 
     await TestBed.configureTestingModule({
-      imports: [UsersPage, FormsModule],
+      imports: [UsersPage, FormsModule, UsersConfirmationHostComponent],
     })
     .overrideComponent(UsersPage, {
-      remove: { imports: [DialogModule] },
-      add: { providers: [
-        { provide: UsersStore, useValue: mockStore },
-        { provide: Dialog, useValue: mockDialog },
-        { provide: Router, useValue: mockRouter },
-        { provide: ActivatedRoute, useValue: mockActivatedRoute }
-      ]}
+      add: {
+        providers: [
+          { provide: UsersStore, useValue: mockStore },
+          { provide: Router, useValue: mockRouter },
+          { provide: ActivatedRoute, useValue: mockActivatedRoute },
+        ],
+      },
     })
     .compileComponents();
 
@@ -90,48 +83,71 @@ describe('UsersPage', () => {
     }));
   });
 
-  it('should trigger approval flow when approve action is clicked', () => {
-    const testUser: User = { 
-      id: 'user-1', 
-      firstName: 'John', 
-      lastName: 'Doe', 
-      email: 'john@example.com', 
-      status: 'PendingApproval', 
-      rowVersion: 123 
+  it('triggers approval through the local confirmation host when confirmed', async () => {
+    const testUser: User = {
+      id: 'user-1',
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john@example.com',
+      status: 'PendingApproval',
+      rowVersion: 123,
     };
-    
-    // Explicitly call the handler that would be triggered by (actionTriggered)
-    component['onAction']({ actionId: 'approve', row: testUser });
 
-    expect(mockDialog.open).toHaveBeenCalled();
+    const host = fixture.debugElement.query(By.css('app-users-confirmation-host')).componentInstance;
+    vi.spyOn(host, 'confirmApproval').mockResolvedValue(true);
+
+    component['onAction']({ actionId: 'approve', row: testUser });
+    await fixture.whenStable();
+
+    expect(host.confirmApproval).toHaveBeenCalledWith(testUser);
     expect(mockStore.approveUser).toHaveBeenCalledWith('user-1', 123);
   });
 
-  it('should navigate to details on view action', () => {
-    const testUser: User = { 
-      id: 'user-1', 
-      firstName: 'John', 
-      lastName: 'Doe', 
-      email: 'john@example.com', 
-      status: 'Active', 
-      rowVersion: 123 
+  it('does not approve when the local confirmation host resolves false', async () => {
+    const testUser: User = {
+      id: 'user-1',
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john@example.com',
+      status: 'PendingApproval',
+      rowVersion: 123,
     };
-    
+
+    const host = fixture.debugElement.query(By.css('app-users-confirmation-host')).componentInstance;
+    vi.spyOn(host, 'confirmApproval').mockResolvedValue(false);
+
+    component['onAction']({ actionId: 'approve', row: testUser });
+    await fixture.whenStable();
+
+    expect(host.confirmApproval).toHaveBeenCalledWith(testUser);
+    expect(mockStore.approveUser).not.toHaveBeenCalled();
+  });
+
+  it('should navigate to details on view action', () => {
+    const testUser: User = {
+      id: 'user-1',
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john@example.com',
+      status: 'Active',
+      rowVersion: 123
+    };
+
     component['onAction']({ actionId: 'view', row: testUser });
 
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/users', 'user-1'], { queryParams: {} });
   });
 
   it('should navigate to details with edit param on edit action', () => {
-    const testUser: User = { 
-      id: 'user-1', 
-      firstName: 'John', 
-      lastName: 'Doe', 
-      email: 'john@example.com', 
-      status: 'Active', 
-      rowVersion: 123 
+    const testUser: User = {
+      id: 'user-1',
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john@example.com',
+      status: 'Active',
+      rowVersion: 123
     };
-    
+
     component['onAction']({ actionId: 'edit', row: testUser });
 
     expect(mockRouter.navigate).toHaveBeenCalledWith(['/users', 'user-1'], { queryParams: { edit: 'true' } });
@@ -150,11 +166,11 @@ describe('UsersPage', () => {
   it('should define columns and actions correctly', () => {
     expect(component['columns'].length).toBe(3);
     expect(component['actions'].length).toBe(3);
-    
+
     const approveAction = component['actions'].find(a => a.id === 'approve');
     const activeUser = { status: 'Active' } as User;
     const pendingUser = { status: 'PendingApproval' } as User;
-    
+
     expect(approveAction?.visible?.(activeUser)).toBe(false);
     expect(approveAction?.visible?.(pendingUser)).toBe(true);
 
@@ -165,7 +181,7 @@ describe('UsersPage', () => {
   it('should pass loading state to data table', () => {
     mockStore.isLoading.set(true);
     fixture.detectChanges();
-    
+
     const table = fixture.debugElement.query(By.css('tai-data-table'));
     expect(table.componentInstance.loading()).toBe(true);
   });
@@ -174,7 +190,7 @@ describe('UsersPage', () => {
     const users: User[] = [{ id: '1', firstName: 'T', lastName: 'E', email: 'test@tai.com', status: 'Active', rowVersion: 1 }];
     mockStore.users.set(users);
     fixture.detectChanges();
-    
+
     const table = fixture.debugElement.query(By.css('tai-data-table'));
     expect(table.componentInstance.data()).toEqual(users);
   });
@@ -190,9 +206,9 @@ describe('UsersPage', () => {
   it('should update search term and navigate when search changes', async () => {
     vi.useFakeTimers();
     component['onSearchChange']('test');
-    
+
     vi.advanceTimersByTime(400);
-    
+
     expect(mockRouter.navigate).toHaveBeenCalledWith([], expect.objectContaining({
       queryParams: { search: 'test', page: 1 },
       queryParamsHandling: 'merge'
