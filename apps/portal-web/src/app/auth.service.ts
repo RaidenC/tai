@@ -9,6 +9,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  tenantId: string | null;
   roles: string[];
   privileges: string[];
 }
@@ -21,6 +22,8 @@ interface RawUserData {
   name?: string;
   preferred_username?: string;
   email: string;
+  tenant_id?: string;
+  tenantId?: string;
   role?: string | string[];
   roles?: string | string[];
   privileges?: string[];
@@ -55,6 +58,7 @@ export class AuthService {
         id: data.sub, // 'sub' is the standard OIDC unique identifier (Subject).
         name: data.name || data.preferred_username || 'User',
         email: data.email,
+        tenantId: data.tenant_id || data.tenantId || null,
         roles: this.extractRoles(data),
         privileges: data.privileges || [],
       };
