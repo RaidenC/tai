@@ -2,7 +2,7 @@
 
 Canonical reference notes for technical interview preparation. Built from the tai-portal codebase (.NET 10 + Angular 21 + PostgreSQL) with real-world examples.
 
-**30 notes** across 7 stages — ✨ = new or restructured in April 2026
+**31 notes** across 7 stages — ✨ = new or restructured in April 2026
 
 ## Topics (Interview Priority Order)
 
@@ -28,6 +28,7 @@ Canonical reference notes for technical interview preparation. Built from the ta
 |-------|------------|--------|-------------|
 | [[Angular-Core]] | L1-L3 | ✅ Complete | DI, Signals, Standalone, Change Detection |
 | [[Change-Detection-Signals]] | L1-Staff | ✨ New | Zone.js, zoneless Angular, OnPush, signals, effects, RxJS interop |
+| [[Reactive-Forms-Custom-Controls]] | L1-Staff | ✨ New | Reactive forms, CVA, async validators, dynamic forms, form-state architecture |
 | [[Design-System-Architecture]] | L1-Staff | ✨ New | Token systems, theming, Storybook patterns, component API design |
 | [[Storybook]] | L1-Staff | ✨ New | Storybook 8, Angular stories, interaction tests, a11y, CSP guardrails |
 | [[RxJS-Signals]] | L1-L3 | ✅ Complete | Observables, Operators, Signals, toSignal() bridge, Store pattern |
@@ -99,4 +100,4 @@ When adding new notes:
 
 ---
 
-*Last updated: 2026-05-03*
+*Last updated: 2026-05-05*
