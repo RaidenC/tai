@@ -3,7 +3,7 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from './auth.service';
-import { BehaviorSubject, firstValueFrom } from 'rxjs';
+import { BehaviorSubject, firstValueFrom, Subscription } from 'rxjs';
 import { SecurityEventPayload, AuditLogDetails } from './models/security-event.model';
 import { NotificationSignalStore } from './store/notification-signal.store';
 import { NotificationPanelService, ToastService } from '@tai/ui-design-system';
@@ -33,6 +33,7 @@ export class RealTimeService implements OnDestroy {
 
   private hubConnection: HubConnection | null = null;
   private readonly _connectionStatus$ = new BehaviorSubject<HubConnectionState>(HubConnectionState.Disconnected);
+  private readonly subscriptions = new Subscription();
 
   public readonly connectionStatus$ = this._connectionStatus$.asObservable();
 
@@ -46,21 +47,26 @@ export class RealTimeService implements OnDestroy {
 
   constructor() {
     // Subscribe to store's latestEvent to keep backward-compatible observable in sync
-    toObservable(this.store.latestEvent).subscribe(event => {
-      this._securityEvents$.next(event);
-    });
+    this.subscriptions.add(
+      toObservable(this.store.latestEvent).subscribe(event => {
+        this._securityEvents$.next(event);
+      })
+    );
 
     // Automatically manage connection based on authentication state
-    this.authService.isAuthenticated$.subscribe(isAuthenticated => {
-      if (isAuthenticated) {
-        this.startConnection();
-      } else {
-        this.stopConnection();
-      }
-    });
+    this.subscriptions.add(
+      this.authService.isAuthenticated$.subscribe(isAuthenticated => {
+        if (isAuthenticated) {
+          this.startConnection();
+        } else {
+          this.stopConnection();
+        }
+      })
+    );
   }
 
   ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
     this.stopConnection();
   }
 
