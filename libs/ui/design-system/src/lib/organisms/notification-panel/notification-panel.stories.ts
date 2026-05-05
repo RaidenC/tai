@@ -3,52 +3,48 @@ import { provideRouter } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { NotificationPanelComponent } from './notification-panel.component';
 import { NotificationPanelService } from './notification-panel.service';
-import { AuditLogDetails } from './notification-panel.types';
+import { NotificationPanelItem } from './notification-panel.types';
 
-const mockEvents: AuditLogDetails[] = [
+const mockNotifications: NotificationPanelItem[] = [
   {
     id: '1',
-    tenantId: 'tenant-1',
-    userId: 'user-1',
-    action: 'LoginAnomaly',
-    resourceId: 'resource-1',
-    correlationId: 'corr-1',
+    title: 'Login Anomaly Detected',
+    summary: 'Suspicious login detected from unknown location',
+    severity: 'critical',
+    category: 'authentication',
+    actor: 'user-1',
     timestamp: new Date().toISOString(),
-    ipAddress: '192.168.1.1',
-    details: 'Suspicious login detected from unknown location'
+    userId: 'user-1'
   },
   {
     id: '2',
-    tenantId: 'tenant-1',
-    userId: 'user-2',
-    action: 'CriticalSecurityAlert',
-    resourceId: 'resource-2',
-    correlationId: 'corr-2',
+    title: 'Security Alert',
+    summary: 'Multiple failed login attempts',
+    severity: 'critical',
+    category: 'security',
+    actor: 'user-2',
     timestamp: new Date(Date.now() - 60000).toISOString(),
-    ipAddress: '10.0.0.1',
-    details: 'Multiple failed login attempts'
+    userId: 'user-2'
   },
   {
     id: '3',
-    tenantId: 'tenant-1',
-    userId: 'user-3',
-    action: 'UserPermissionChanged',
-    resourceId: 'resource-3',
-    correlationId: null,
+    title: 'Privilege Modified',
+    summary: 'Admin permissions granted',
+    severity: 'critical',
+    category: 'privilege',
+    actor: 'user-3',
     timestamp: new Date(Date.now() - 3600000).toISOString(),
-    ipAddress: null,
-    details: 'Admin permissions granted'
+    userId: 'user-3'
   },
   {
     id: '4',
-    tenantId: 'tenant-1',
-    userId: 'user-4',
-    action: 'WarningRateLimit',
-    resourceId: 'resource-4',
-    correlationId: 'corr-4',
+    title: 'Rate Limit Warning',
+    summary: 'Rate limit approaching threshold',
+    severity: 'warning',
+    category: 'security',
+    actor: 'user-4',
     timestamp: new Date(Date.now() - 7200000).toISOString(),
-    ipAddress: '172.16.0.1',
-    details: 'Rate limit approaching threshold'
+    userId: 'user-4'
   }
 ];
 
@@ -70,7 +66,7 @@ const withPanelState = ({ open = true, severity = 'all', search = '' }: StoryPan
           }
           service.setSeverityFilter(severity);
           service.setSearchText(search);
-          service.setUnreadCount(mockEvents.length);
+          service.setUnreadCount(mockNotifications.length);
           return service;
         },
       },
@@ -93,15 +89,15 @@ const meta: Meta<NotificationPanelComponent> = {
     layout: 'fullscreen',
   },
   argTypes: {
-    events: {
+    notifications: {
       control: 'object',
-      description: 'Array of notification events to display'
+      description: 'Array of notifications to display'
     }
   },
   render: (args) => ({
     props: args,
     imports: [CommonModule],
-    template: '<tai-notification-panel [events]="events"></tai-notification-panel>',
+    template: '<tai-notification-panel [notifications]="notifications"></tai-notification-panel>',
   }),
 };
 
@@ -110,14 +106,14 @@ type Story = StoryObj<NotificationPanelComponent>;
 
 export const Default: Story = {
   args: {
-    events: mockEvents
+    notifications: mockNotifications
   },
   decorators: [withPanelState()],
 };
 
 export const PanelOpen: Story = {
   args: {
-    events: mockEvents
+    notifications: mockNotifications
   },
   decorators: [withPanelState()],
   play: async ({ canvasElement }) => {
@@ -130,28 +126,28 @@ export const PanelOpen: Story = {
 
 export const FilteredByCritical: Story = {
   args: {
-    events: mockEvents
+    notifications: mockNotifications
   },
   decorators: [withPanelState({ severity: 'critical' })],
 };
 
 export const WithSearchFilter: Story = {
   args: {
-    events: mockEvents
+    notifications: mockNotifications
   },
   decorators: [withPanelState({ search: 'permission' })],
 };
 
 export const EmptyState: Story = {
   args: {
-    events: []
+    notifications: []
   },
   decorators: [withPanelState()],
 };
 
 export const PanelClosed: Story = {
   args: {
-    events: mockEvents
+    notifications: mockNotifications
   },
   decorators: [withPanelState({ open: false })],
 };

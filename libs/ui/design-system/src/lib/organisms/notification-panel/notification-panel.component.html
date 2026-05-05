@@ -43,14 +43,14 @@
 
     <div class="event-list">
       @for (event of filteredEvents(); track event.id) {
-        <div class="event-item" [class]="getSeverityClass(getEventSeverity(event))">
+        <div class="event-item" [class]="getSeverityClass(event.severity)">
           <div class="event-severity-bar"></div>
           <div class="event-content">
-            <div class="event-action">{{ event.action }}</div>
+            <div class="event-action">{{ event.title }}</div>
             <div class="event-meta">
               <span class="event-time">{{ formatTime(event.timestamp) }}</span>
-              @if (event.userId) {
-                <span class="event-user">{{ event.userId }}</span>
+              @if (event.actor) {
+                <span class="event-user">{{ event.actor }}</span>
               }
             </div>
           </div>
