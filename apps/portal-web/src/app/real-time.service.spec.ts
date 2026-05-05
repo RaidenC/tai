@@ -20,9 +20,19 @@ describe('RealTimeService', () => {
   beforeEach(() => {
     isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
 
+    const userSubject = new BehaviorSubject<any>({
+      id: 'user-1',
+      name: 'Test User',
+      email: 'test@tai.com',
+      tenantId: 'tenant-1',
+      roles: ['Admin'],
+      privileges: [],
+    });
+
     // Mock AuthService
     authServiceMock = {
       isAuthenticated$: isAuthenticatedSubject.asObservable(),
+      user$: userSubject.asObservable(),
       checkAuth: vi.fn(() => of({ isAuthenticated: true })),
     };
 
@@ -87,8 +97,8 @@ describe('RealTimeService', () => {
     });
   });
 
-  it('should add fetched security events to the notification panel unread count', () => {
-    (service as any).handleSecurityEvent({
+  it('should add fetched security events to the notification panel unread count', async () => {
+    await (service as any).handleSecurityEvent({
       eventType: 'PrivilegeChange',
       payload: { eventId: 'event-123' },
     });
