@@ -346,6 +346,75 @@ The #2 most common "I don't understand `z-index`" bug: developer sets a huge `z-
 ##### Trade-offs
 <span style="color: #ff4444; font-weight: bold;">Implicit stacking contexts are footguns</span> — adding `transform` to a card for a hover effect silently traps any popovers inside. <span style="color: #00C851;">Use `isolation: isolate` deliberately</span> for modals, dropdowns, tooltips so their `z-index` math is local.
 
+##### Best Strategy for Large Design Systems (50+ Components)
+
+**The Tier System (With Isolation)**
+
+| Global Layer | z-index | Purpose |
+|-------------|---------|---------|
+| Base | 0 | Normal content |
+| Sticky | 100 | Headers, banners |
+| Overlay | 200 | Dropdowns, tooltips |
+| Modal | 300 | Dialogs |
+| Toast | 400 | Notifications |
+| Max | 500 | Highest level |
+
+**Where to Use `isolation: isolate`**
+
+```css
+/* Component-level isolation - use simple local z-index numbers */
+.card { isolation: isolate; }
+.dropdown { isolation: isolate; }
+.tooltip { isolation: isolate; }
+.modal { isolation: isolate; }
+/* Inside each: z-index: 1, 2, 3 - no conflicts! */
+```
+
+**The Hybrid Approach**
+
+| Global (No Isolation) | Component-Level (With Isolation) |
+|----------------------|----------------------------------|
+| App shell, nav, footer | Cards, Dropdowns, Tooltips |
+| Modals, Dialogs | Accordions, Tabs |
+| Toast notifications | Modals (if nested) |
+| Fixed position elements | Any internal overlays |
+
+**Practical Rules**
+
+1. **Define 3-5 global z-index tiers** in your design system
+2. **Add `isolation: isolate` to most components** — now each uses local z-index
+3. **Inside isolated components, use simple numbers** (1, 2, 3) — no coordination needed
+
+**Example Structure**
+
+```css
+/* Global application layers */
+:root {
+  --z-base: 0;
+  --z-sticky: 100;
+  --z-overlay: 200;    /* dropdowns, tooltips */
+  --z-modal: 300;     /* modals, dialogs */
+  --z-toast: 400;     /* notifications */
+  --z-max: 500;
+}
+
+/* Component styles with isolation */
+.card { isolation: isolate; }
+.dropdown { isolation: isolate; }
+.tooltip { isolation: isolate; }
+```
+
+```html
+<!-- Usage -->
+<nav class="z-sticky">...</nav>              <!-- global tier -->
+<div class="dropdown z-overlay">...</div>    <!-- global tier -->
+<div class="modal z-modal">                  <!-- global tier -->
+  <div class="tooltip">...</div>             <!-- isolated, no conflict -->
+</div>
+```
+
+**TL;DR:** Define 3-5 global tiers → add `isolation: isolate` to components → use simple numbers inside → no spreadsheet of 50 components needed.
+
 ---
 
 #### Containment (`contain`, `content-visibility`)
@@ -852,6 +921,129 @@ Tailwind ships ~thousands of single-purpose utility classes (`p-4`, `text-red-50
 
 ---
 
+#### Variants, Arbitrary Values & JIT
+
+##### What Are Variants?
+Variants are prefixes that scope a utility to a specific state or condition: `hover:`, `focus:`, `dark:`, `md:`, `aria-disabled:`, `data-[state=open]:`, `peer-checked:`, `group-hover:`, `motion-reduce:`.
+
+##### How Variants Work
+```html
+<!-- Stack of variants — all apply together (AND logic) -->
+<button class="
+  bg-blue-500 hover:bg-blue-700 focus:ring-2 focus:ring-blue-300
+  disabled:opacity-50 disabled:cursor-not-allowed
+  md:px-6 lg:px-8
+  dark:bg-blue-600 dark:hover:bg-blue-800
+  motion-reduce:transition-none
+">
+  Submit
+</button>
+```
+
+| Variant | Meaning | Example |
+|---------|---------|---------|
+| `hover:` | Mouse over | `hover:bg-blue-700` |
+| `focus:` | Has focus | `focus:ring-2` |
+| `dark:` | Dark mode | `dark:bg-gray-800` |
+| `md:` | Media query (breakpoint) | `md:px-6` |
+| `aria-disabled:` | ARIA attribute | `aria-disabled:opacity-50` |
+| `data-[state=open]:` | Data attribute | `data-[state=open]:block` |
+| `peer-checked:` | Sibling checked | `peer-checked:bg-blue-500` |
+| `group-hover:` | Parent hovered | `group-hover:text-blue-500` |
+| `motion-reduce:` | Prefers-reduced-motion | `motion-reduce:transition-none` |
+
+##### Arbitrary Values
+Square brackets pass through raw CSS — for one-off values not in Tailwind's default scale:
+```css
+/* Arbitrary values for one-off needs */
+<div class="grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">...</div>
+<div class="bg-[oklch(60%_0.18_30)]">...</div>
+<div class="top-[calc(100%+8px)]">...</div>
+<div class="w-[300px]">...</div>
+```
+
+##### group / peer — Parent & Sibling State
+```html
+<!-- group — style children based on parent's state -->
+<details class="group">
+  <summary>Toggle</summary>
+  <div class="hidden group-open:block">Content</div>
+</details>
+
+<!-- peer — style sibling based on input state -->
+<input id="email" class="peer" />
+<label for="email" class="peer-focus:text-blue-500">Email</label>
+```
+
+| Peer State | Trigger |
+|------------|---------|
+| `peer-hover` | Any sibling has `:hover` |
+| `peer-focus` | Any sibling has `:focus` |
+| `peer-active` | Any sibling has `:active` |
+| `peer-invalid` | Any sibling has `:invalid` |
+| `peer-checked` | Any sibling is `:checked` |
+| `peer-focus-within` | Any sibling or child has focus |
+| `peer-placeholder-shown` | Sibling has placeholder visible |
+
+##### JIT — Just-In-Time
+
+| Old (Generation) | JIT (On-Demand) |
+|-------------------|-----------------|
+| Generate all ~3MB of Tailwind | Generate ONLY what's used |
+| Then remove unused | ~0KB base, ~10KB output |
+| Can't handle arbitrary values | Arbitrary values work! |
+| Slow rebuilds | Fast rebuilds |
+
+**How JIT works:**
+```
+Source files → Scan for classes → Generate ONLY what's used → Final CSS
+```
+
+**The Constraint:**
+```javascript
+// ❌ DOESN'T work - variable class name (JIT never sees it!)
+const color = 'blue';
+<div class={`text-${color}-500`}>Hello</div>
+
+// ✅ WORKS - literal class name in source
+const colorMap = { blue: 'text-blue-500', red: 'text-red-500' };
+<div class={colorMap[color]}>Hello</div>
+// JIT sees "text-blue-500" as literal!
+```
+
+##### Flexbox vs Grid — When to Use Each
+
+**Flexbox** — 1-D layout (single row OR single column with wrapping)
+
+| Use For | Example |
+|---------|---------|
+| Toolbar | `<nav class="flex gap-2">...</nav>` |
+| Nav bar | `<ul class="flex items-center">...</ul>` |
+| Form row | `<div class="flex gap-4">...</div>` |
+| Centered modal | `<div class="flex justify-center items-center">...</div>` |
+| Card with footer | Stack (column), footer at bottom (flex-grow + auto) |
+
+**Grid** — 2-D layout (rows AND columns coordinated)
+
+| Use For | Example |
+|---------|---------|
+| App shell | `<main class="grid grid-cols-[250px_1fr]">...</main>` |
+| Card gallery | `<div class="grid grid-cols-3 gap-4">...</div>` |
+| Data table | `<table class="grid ...">` |
+| Dashboard | `<div class="grid grid-cols-[sidebar_main]">...</div>` |
+
+**The Tell:**
+- Finding yourself nesting `flex` inside `flex` inside `flex` to achieve a layout? → You wanted **Grid**
+- Using Grid for a simple horizontal toolbar? → You wanted **Flex**
+
+**Responsive Card Gallery Without Media Queries:**
+```css
+grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))
+```
+This is the canonical responsive card pattern — `auto-fit` creates as many columns as fit, `minmax(280px, 1fr)` ensures cards are at least 280px but can grow to fill space.
+
+---
+
 #### Tailwind v4 — CSS-First Config & OKLCH
 
 ##### What
@@ -888,50 +1080,6 @@ This generates `bg-brand-500`, `text-brand-700`, `font-sans`, `3xl:` variants au
 
 ##### Trade-offs
 <span style="color: #ffbb33;">v3 → v4 migration</span> — config moves from JS to CSS, plugin ecosystem catching up, some v3 plugins won't work. <span style="color: #ff4444;">Documentation drift</span> — v3 examples online are everywhere; double-check the v4 docs.
-
----
-
-#### Variants, Arbitrary Values & JIT
-
-##### What
-Tailwind variants are prefixes that scope a utility to a state or condition: `hover:`, `focus:`, `dark:`, `md:`, `aria-disabled:`, `data-[state=open]:`, `peer-checked:`, `group-hover:`, `motion-reduce:`.
-
-##### How
-```html
-<!-- Stack of variants -->
-<button class="
-  bg-blue-500 hover:bg-blue-700 focus:ring-2 focus:ring-blue-300
-  disabled:opacity-50 disabled:cursor-not-allowed
-  md:px-6 lg:px-8
-  dark:bg-blue-600 dark:hover:bg-blue-800
-  motion-reduce:transition-none
-">
-  Submit
-</button>
-
-<!-- Arbitrary values for one-off needs -->
-<div class="grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">...</div>
-<div class="bg-[oklch(60%_0.18_30)]">...</div>
-<div class="top-[calc(100%+8px)]">...</div>
-
-<!-- group / peer for parent / sibling state -->
-<details class="group">
-  <summary>Toggle</summary>
-  <div class="hidden group-open:block">Content</div>
-</details>
-
-<input id="email" class="peer" />
-<label for="email" class="peer-focus:text-blue-500">Email</label>
-```
-
-##### JIT — Just-In-Time
-The Tailwind engine scans your source files at build time; only classes that **literally appear in source** get generated. This means:
-- The output CSS is tiny (only what you use)
-- Arbitrary values (`grid-cols-[repeat(...)]`) work
-- You can NOT compose class names dynamically: `text-${color}-500` won't work — the engine doesn't see the full string
-
-##### Trade-offs
-<span style="color: #ff4444;">Dynamic class names break JIT</span> — for variant by prop, use a lookup map: `const colorMap = { blue: 'text-blue-500', red: 'text-red-500' };` so the literal strings appear in source.
 
 ---
 
