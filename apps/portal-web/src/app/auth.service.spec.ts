@@ -109,6 +109,68 @@ describe('AuthService', () => {
     expect(user).toBeNull();
   });
 
+  it('should map tenant_id from OIDC claim to tenantId', async () => {
+    const mockRawUser = {
+      sub: '789',
+      name: 'Tenant User',
+      email: 'admin@tai.com',
+      tenant_id: 'tenant-1',
+      role: ['Admin']
+    };
+
+    const userPromise = firstValueFrom(service.user$.pipe(skip(1)));
+
+    mockUserDataSubject.next({
+      userData: mockRawUser,
+      allUserData: [{ configId: 'test', userData: mockRawUser }]
+    });
+
+    const user = await userPromise;
+    expect(user).toBeTruthy();
+    expect(user?.tenantId).toBe('tenant-1');
+  });
+
+  it('should map tenantId from OIDC claim to tenantId', async () => {
+    const mockRawUser = {
+      sub: '790',
+      name: 'Tenant User 2',
+      email: 'admin2@tai.com',
+      tenantId: 'tenant-2',
+      role: ['Admin']
+    };
+
+    const userPromise = firstValueFrom(service.user$.pipe(skip(1)));
+
+    mockUserDataSubject.next({
+      userData: mockRawUser,
+      allUserData: [{ configId: 'test', userData: mockRawUser }]
+    });
+
+    const user = await userPromise;
+    expect(user).toBeTruthy();
+    expect(user?.tenantId).toBe('tenant-2');
+  });
+
+  it('should set tenantId to null when tenant claim is missing', async () => {
+    const mockRawUser = {
+      sub: '999',
+      name: 'No Tenant User',
+      email: 'notenant@tai.com',
+      role: ['User']
+    };
+
+    const userPromise = firstValueFrom(service.user$.pipe(skip(1)));
+
+    mockUserDataSubject.next({
+      userData: mockRawUser,
+      allUserData: []
+    });
+
+    const user = await userPromise;
+    expect(user).toBeTruthy();
+    expect(user?.tenantId).toBeNull();
+  });
+
   describe('hasPrivilege', () => {
     it('should return false if user is null', async () => {
       mockUserDataSubject.next({ userData: null, allUserData: [] });

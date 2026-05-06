@@ -42,15 +42,16 @@
     </div>
 
     <div class="event-list">
-      @for (event of filteredEvents(); track event.id) {
-        <div class="event-item" [class]="getSeverityClass(getEventSeverity(event))">
+      @for (notification of filteredNotifications(); track notification.id) {
+        <div class="event-item" [class]="getSeverityClass(notification.severity)">
           <div class="event-severity-bar"></div>
           <div class="event-content">
-            <div class="event-action">{{ event.action }}</div>
+            <div class="event-action">{{ notification.title }}</div>
+            <div class="event-summary">{{ notification.summary }}</div>
             <div class="event-meta">
-              <span class="event-time">{{ formatTime(event.timestamp) }}</span>
-              @if (event.userId) {
-                <span class="event-user">{{ event.userId }}</span>
+              <span class="event-time">{{ formatTime(notification.timestamp) }}</span>
+              @if (notification.actor) {
+                <span class="event-user">{{ notification.actor }}</span>
               }
             </div>
           </div>

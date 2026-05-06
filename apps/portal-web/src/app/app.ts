@@ -1,8 +1,9 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterModule, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from './auth.service';
-import { AppShellComponent, MenuItem, NotificationToggleComponent, NotificationPanelComponent, ToastComponent } from '@tai/ui-design-system';
+import { AppShellComponent, MenuItem, NotificationToggleComponent, NotificationPanelComponent, NotificationPanelItem, ToastComponent } from '@tai/ui-design-system';
 import { OnboardingStore } from './features/onboarding/onboarding.store';
 import { RealTimeService } from './real-time.service';
 import { NotificationSignalStore } from './store/notification-signal.store';
@@ -17,13 +18,28 @@ import { combineLatest, map, of } from 'rxjs';
 export class App implements OnInit {
     private readonly authService = inject(AuthService);
     private readonly realTimeService = inject(RealTimeService); // Ensure RealTimeService is initialized
+    private readonly destroyRef = inject(DestroyRef);
     public readonly router = inject(Router);
     protected readonly onboardingStore = inject(OnboardingStore);
     protected readonly notificationStore = inject(NotificationSignalStore);
-    
+
     protected title = 'portal-web';
     protected user$ = this.authService.user$;
     protected isAuthenticated$ = this.authService.isAuthenticated$;
+
+    // Maps NotificationItem to NotificationPanelItem for the NotificationPanel component
+    protected get notificationPanelItems(): NotificationPanelItem[] {
+      return this.notificationStore.notifications().map(item => ({
+        id: item.id,
+        title: item.title,
+        summary: item.summary,
+        severity: item.severity,
+        category: item.category,
+        actor: item.actor,
+        timestamp: item.timestamp,
+        userId: item.userId
+      }));
+    }
 
     private readonly allMenuItems: (MenuItem & { requiredPrivilege?: string })[] = [
         { label: 'Collections', link: '/collections', icon: '📥' },
@@ -48,7 +64,7 @@ export class App implements OnInit {
 
     ngOnInit() {
         this.authService.checkAuth().subscribe();
-        this.isAuthenticated$.subscribe(auth => {
+        this.isAuthenticated$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(auth => {
           if (auth) {
             this.onboardingStore.loadPendingApprovals();
           }

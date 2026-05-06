@@ -20,7 +20,7 @@ export interface SecurityEventPayload {
 export interface AuditLogDetails {
   id: string;
   tenantId: string;
-  userId: string;
+  userId?: string | null;
   action: string;
   resourceId: string;
   correlationId: string | null;
@@ -28,5 +28,5 @@ export interface AuditLogDetails {
   ipAddress: string | null;
   details: string | null;
   /** Event type from the original SignalR payload (e.g., 'LoginAnomaly', 'PrivilegeChange') */
-  eventType?: string;
+  eventType?: string | null;
 }

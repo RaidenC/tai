@@ -3,10 +3,13 @@ import { toObservable } from '@angular/core/rxjs-interop';
 import { HubConnection, HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from './auth.service';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, firstValueFrom, Subscription } from 'rxjs';
 import { SecurityEventPayload, AuditLogDetails } from './models/security-event.model';
 import { NotificationSignalStore } from './store/notification-signal.store';
 import { NotificationPanelService, ToastService } from '@tai/ui-design-system';
+import { mapAuditLogToNotification } from './notifications/notification.mapper';
+import { NOTIFICATION_TOAST_MESSAGES } from './notifications/notification-toast.constants';
+import { NotificationItem } from './models/notification-item.model';
 
 /**
  * RealTimeService
@@ -30,6 +33,7 @@ export class RealTimeService implements OnDestroy {
 
   private hubConnection: HubConnection | null = null;
   private readonly _connectionStatus$ = new BehaviorSubject<HubConnectionState>(HubConnectionState.Disconnected);
+  private readonly subscriptions = new Subscription();
 
   public readonly connectionStatus$ = this._connectionStatus$.asObservable();
 
@@ -43,21 +47,26 @@ export class RealTimeService implements OnDestroy {
 
   constructor() {
     // Subscribe to store's latestEvent to keep backward-compatible observable in sync
-    toObservable(this.store.latestEvent).subscribe(event => {
-      this._securityEvents$.next(event);
-    });
+    this.subscriptions.add(
+      toObservable(this.store.latestEvent).subscribe(event => {
+        this._securityEvents$.next(event);
+      })
+    );
 
     // Automatically manage connection based on authentication state
-    this.authService.isAuthenticated$.subscribe(isAuthenticated => {
-      if (isAuthenticated) {
-        this.startConnection();
-      } else {
-        this.stopConnection();
-      }
-    });
+    this.subscriptions.add(
+      this.authService.isAuthenticated$.subscribe(isAuthenticated => {
+        if (isAuthenticated) {
+          this.startConnection();
+        } else {
+          this.stopConnection();
+        }
+      })
+    );
   }
 
   ngOnDestroy(): void {
+    this.subscriptions.unsubscribe();
     this.stopConnection();
   }
 
@@ -116,9 +125,9 @@ export class RealTimeService implements OnDestroy {
    * Handle security event using Claim Check pattern.
    * 1. Receive minimal payload from SignalR (eventId, timestamp)
    * 2. Fetch full details via REST API
-   * 3. Emit to subscribers
+   * 3. Map to NotificationItem and add to store
    */
-  private handleSecurityEvent(data: any): void {
+  private async handleSecurityEvent(data: any): Promise<void> {
     console.log('RealTimeService: Full payload:', JSON.stringify(data));
 
     // Handle nested payload from SignalR - could be any case
@@ -146,36 +155,67 @@ export class RealTimeService implements OnDestroy {
       return;
     }
 
-    // Show toast immediately for critical events
-    if (eventType === 'LoginAnomaly' || eventType === 'PrivilegeChange') {
-      console.log('RealTimeService: Showing toast for', eventType);
+    // Get current tenant ID from AuthService for validation
+    let tenantId: string | null = null;
+    try {
+      const user = await firstValueFrom(this.authService.user$);
+      tenantId = user?.tenantId ?? null;
+    } catch {
+      // User stream may error if not authenticated
+      tenantId = null;
+    }
+
+    if (!tenantId) {
+      console.warn('RealTimeService: No tenant ID available, skipping notification');
       this.toastService.show(
-        `${eventType}: ${reason || 'Security alert'}`,
-        'critical'
+        NOTIFICATION_TOAST_MESSAGES.tenantUnavailable,
+        'warning'
       );
+      return;
     }
 
     // Fetch full details using Claim Check pattern
     console.log('RealTimeService: Fetching audit log details for:', eventId);
-    this.fetchAuditLogDetails(eventId).subscribe({
-      next: (details) => {
-        console.log('RealTimeService: Got details:', details);
-        // Add eventType to the details for downstream consumers
-        const detailsWithType: AuditLogDetails = {
-          ...details,
-          eventType
-        };
-        // Emit the full details inside Angular zone to trigger change detection
-        this.ngZone.run(() => {
-          this.store.addEvent(detailsWithType);
-          this.panelService.setUnreadCount(this.store.eventBuffer().length);
-          console.log('RealTimeService: Added event to store:', detailsWithType);
-        });
-      },
-      error: (err) => {
-        console.error('RealTimeService: Failed to fetch audit log details:', err);
+
+    try {
+      const details = await firstValueFrom(this.fetchAuditLogDetails(eventId));
+      console.log('RealTimeService: Got details:', details);
+
+      // Map AuditLogDetails to NotificationItem
+      const notification = mapAuditLogToNotification(details, {
+        source: 'signalr',
+        expectedEventId: eventId,
+        expectedTenantId: tenantId,
+      });
+
+      // If mapper returns null, skip (event ID or tenant mismatch)
+      if (!notification) {
+        console.warn('RealTimeService: Failed to map audit log to notification');
+        return;
       }
-    });
+
+      // Run inside Angular zone to trigger change detection
+      this.ngZone.run(() => {
+        // Use addNotification instead of addEvent
+        this.store.addNotification(notification);
+        this.panelService.setUnreadCount(this.store.eventBuffer().length);
+        console.log('RealTimeService: Added notification to store:', notification);
+
+        // Show toast for critical notifications using the notification title
+        if (notification.severity === 'critical') {
+          this.toastService.show(
+            notification.title,
+            'critical'
+          );
+        }
+      });
+    } catch (err) {
+      console.error('RealTimeService: Failed to fetch audit log details:', err);
+      this.toastService.show(
+        NOTIFICATION_TOAST_MESSAGES.loadFailed,
+        'warning'
+      );
+    }
   }
 
   /**

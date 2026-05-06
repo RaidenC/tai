@@ -2,7 +2,7 @@ import { Component, Input, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NotificationPanelService, SeverityFilter } from './notification-panel.service';
-import { AuditLogDetails } from './notification-panel.types';
+import { NotificationPanelItem } from './notification-panel.types';
 
 @Component({
   selector: 'tai-notification-panel',
@@ -14,28 +14,28 @@ import { AuditLogDetails } from './notification-panel.types';
 export class NotificationPanelComponent {
   private readonly panelService = inject(NotificationPanelService);
 
-  @Input() events: AuditLogDetails[] = [];
+  @Input() notifications: NotificationPanelItem[] = [];
 
   readonly isOpen = this.panelService.isOpen;
   readonly severityFilter = this.panelService.severityFilter;
   readonly searchText = this.panelService.searchText;
 
-  // Filtered events based on severity and search
-  readonly filteredEvents = (): AuditLogDetails[] => {
-    const allEvents = this.events || [];
+  // Filtered notifications based on severity and search
+  readonly filteredNotifications = (): NotificationPanelItem[] => {
+    const allNotifications = this.notifications || [];
     const filter = this.severityFilter()();
     const search = this.searchText()().toLowerCase();
 
-    return allEvents
-      .filter(event => {
-        const matchesSeverity = filter === 'all' || this.getEventSeverity(event) === filter;
+    return allNotifications
+      .filter(notification => {
+        const matchesSeverity = filter === 'all' || notification.severity === filter;
         const matchesSearch = !search ||
-          event.action.toLowerCase().includes(search) ||
-          (event.eventType && event.eventType.toLowerCase().includes(search)) ||
-          (event.details && event.details.toLowerCase().includes(search));
+          notification.title.toLowerCase().includes(search) ||
+          (notification.summary && notification.summary.toLowerCase().includes(search)) ||
+          notification.actor.toLowerCase().includes(search);
         return matchesSeverity && matchesSearch;
       })
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   };
 
   setSeverity(filter: SeverityFilter): void {
@@ -51,24 +51,25 @@ export class NotificationPanelComponent {
     this.panelService.close();
   }
 
-  getEventSeverity(eventOrAction: AuditLogDetails | string): string {
-    const rawEvent = typeof eventOrAction === 'string'
-      ? eventOrAction
-      : `${eventOrAction.eventType || ''} ${eventOrAction.action}`;
-    const eventText = rawEvent.toLowerCase();
-
-    if (
-      eventText.includes('critical') ||
-      eventText.includes('anomaly') ||
-      eventText.includes('privilege') ||
-      eventText.includes('security')
-    ) {
-      return 'critical';
+  getEventSeverity(eventOrAction: NotificationPanelItem | string): string {
+    if (typeof eventOrAction === 'string') {
+      // Legacy support for string input
+      const eventText = eventOrAction.toLowerCase();
+      if (
+        eventText.includes('critical') ||
+        eventText.includes('anomaly') ||
+        eventText.includes('privilege') ||
+        eventText.includes('security')
+      ) {
+        return 'critical';
+      }
+      if (eventText.includes('warning')) {
+        return 'warning';
+      }
+      return 'info';
     }
-    if (eventText.includes('warning')) {
-      return 'warning';
-    }
-    return 'info';
+    // For NotificationPanelItem, use the severity field directly
+    return eventOrAction.severity;
   }
 
   getSeverityClass(severity: string): string {
