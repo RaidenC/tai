@@ -108,8 +108,15 @@ function isValidAuditLog(
   // Check required fields are non-empty (cast via unknown)
   const log = auditLog as unknown as Record<string, unknown>;
   if (!log['id'] || !(log['id'] as string).trim()) return false;
-  if (!log['tenantId'] || !(log['tenantId'] as string).trim()) return false;
   if (!log['action'] || !(log['action'] as string).trim()) return false;
+
+  // Get tenantId string (may be string or object format)
+  const tenantIdValue = log['tenantId'];
+  const tenantIdString = typeof tenantIdValue === 'string'
+    ? tenantIdValue
+    : typeof tenantIdValue === 'object' && tenantIdValue !== null
+      ? (tenantIdValue as Record<string, unknown>)['value'] as string
+      : undefined;
 
   // Validate expectedEventId if provided
   if (
@@ -122,12 +129,25 @@ function isValidAuditLog(
   // Validate expectedTenantId if provided
   if (
     options.expectedTenantId &&
-    log['tenantId'] !== options.expectedTenantId
+    tenantIdString !== options.expectedTenantId
   ) {
     return false;
   }
 
   return true;
+}
+
+/**
+ * Gets the string value from tenantId, handling both string and object formats.
+ */
+function getTenantIdString(tenantId: unknown): string {
+  if (typeof tenantId === 'string') {
+    return tenantId;
+  }
+  if (typeof tenantId === 'object' && tenantId !== null) {
+    return (tenantId as Record<string, unknown>)['value'] as string;
+  }
+  return '';
 }
 
 /**
@@ -176,9 +196,12 @@ export function mapAuditLogToNotification(
   const title = toPlainDisplayText(log.action, classification.title);
   const summary = toPlainDisplayText(log.details, title);
 
+  // Extract tenantId as string (could be object or string)
+  const tenantIdString = getTenantIdString(log.tenantId);
+
   return {
     id: log.id,
-    tenantId: log.tenantId,
+    tenantId: tenantIdString,
     eventType: log.eventType || log.action,
     severity: classification.severity,
     category: classification.category,
