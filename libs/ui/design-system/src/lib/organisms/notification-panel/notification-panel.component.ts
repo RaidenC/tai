@@ -20,8 +20,8 @@ export class NotificationPanelComponent {
   readonly severityFilter = this.panelService.severityFilter;
   readonly searchText = this.panelService.searchText;
 
-  // Filtered events based on severity and search
-  readonly filteredEvents = (): NotificationPanelItem[] => {
+  // Filtered notifications based on severity and search
+  readonly filteredNotifications = (): NotificationPanelItem[] => {
     const allNotifications = this.notifications || [];
     const filter = this.severityFilter()();
     const search = this.searchText()().toLowerCase();
@@ -35,7 +35,7 @@ export class NotificationPanelComponent {
           notification.actor.toLowerCase().includes(search);
         return matchesSeverity && matchesSearch;
       })
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   };
 
   setSeverity(filter: SeverityFilter): void {
