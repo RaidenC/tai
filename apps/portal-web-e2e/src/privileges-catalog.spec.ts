@@ -26,10 +26,10 @@ test.describe('Privileges Catalog E2E', () => {
   });
 
   test('should pass accessibility checks', async ({ page }) => {
-    // Skip this test - there's a known nested-interactive violation from tai-button used with CDK menu
-    // This is an Angular CDK + atomic component pattern issue, not a blocking a11y issue
-    // The pattern is used throughout the codebase (actions buttons in data tables)
-    test.skip(true, 'Known CDK menu + tai-button nested-interactive violation');
+    await checkA11y(page, undefined, {
+      detailedReport: true,
+      detailedReportOptions: { html: true },
+    });
   });
 
   test('should display the datatable with privileges', async ({ page }) => {

@@ -1,58 +1,53 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DialogRef, DIALOG_DATA } from '@angular/cdk/dialog';
+import {
+  ConfirmationPanelActionSelected,
+  ConfirmationPanelComponent,
+  ConfirmationPanelData,
+} from '../confirmation-panel/confirmation-panel.component';
 
-/**
- * Interface defining the data structure for the ConfirmationDialogComponent.
- */
 export interface ConfirmationDialogData {
-  /** The title of the dialog. */
   title: string;
-  /** The main message or prompt. */
   message: string;
-  /** Custom text for the confirm button. Defaults to 'Confirm'. */
   confirmText?: string;
-  /** Custom text for the cancel button. Defaults to 'Cancel'. */
   cancelText?: string;
-  /** Optional custom CSS classes for the confirm button. */
+  /**
+   * @deprecated Caller-provided classes are ignored. Use typed confirmation tones
+   * through ConfirmationPanelComponent for new code.
+   */
   confirmButtonClass?: string;
 }
 
 /**
- * ConfirmationDialogComponent
- *
- * A reusable, accessible confirmation dialog built using @angular/cdk/dialog.
- * Styled with Tailwind CSS 4.0.
- *
- * Features:
- * 1. Accessible using CDK primitives.
- * 2. Tailwind 4.0 styling for modern aesthetics.
- * 3. data-testid attributes for E2E testing.
+ * @deprecated Use ConfirmationPanelComponent inside a feature-owned modal host.
+ * This wrapper preserves the old tai-confirmation-dialog selector and DialogRef
+ * contract for existing CDK Dialog consumers during migration.
  */
 @Component({
   selector: 'tai-confirmation-dialog',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ConfirmationPanelComponent],
   templateUrl: './confirmation-dialog.html',
   styleUrl: './confirmation-dialog.scss',
 })
 export class ConfirmationDialogComponent {
-  /** The dialog reference for closing the modal. */
-  public readonly dialogRef = inject(DialogRef<boolean>);
-  /** The data injected into the dialog. */
-  public readonly data = inject<ConfirmationDialogData>(DIALOG_DATA);
+  private readonly dialogRef = inject(DialogRef<boolean>);
+  readonly data = inject<ConfirmationDialogData>(DIALOG_DATA);
 
-  /**
-   * Closes the dialog and returns 'true' indicating confirmation.
-   */
-  public onConfirm(): void {
-    this.dialogRef.close(true);
-  }
+  protected readonly panelData = computed<ConfirmationPanelData>(() => ({
+    title: this.data.title,
+    message: this.data.message,
+    confirm: {
+      label: this.data.confirmText ?? 'Confirm',
+      tone: 'default',
+    },
+    cancel: {
+      label: this.data.cancelText ?? 'Cancel',
+    },
+  }));
 
-  /**
-   * Closes the dialog and returns 'false' indicating cancellation.
-   */
-  public onCancel(): void {
-    this.dialogRef.close(false);
+  protected onActionSelected(event: ConfirmationPanelActionSelected): void {
+    this.dialogRef.close(event.action === 'confirm');
   }
 }

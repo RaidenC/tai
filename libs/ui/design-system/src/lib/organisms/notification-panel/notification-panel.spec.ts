@@ -42,6 +42,18 @@ describe('NotificationPanelComponent', () => {
       timestamp: new Date(Date.now() - 3600000).toISOString(),
       ipAddress: null,
       details: 'User logged in'
+    },
+    {
+      id: '4',
+      tenantId: 'tenant-1',
+      userId: 'user-4',
+      action: 'PrivilegeModified',
+      resourceId: 'resource-4',
+      correlationId: 'corr-4',
+      timestamp: new Date(Date.now() - 120000).toISOString(),
+      ipAddress: null,
+      details: 'Privilege was modified',
+      eventType: 'PrivilegeChange'
     }
   ];
 
@@ -106,7 +118,7 @@ describe('NotificationPanelComponent', () => {
       fixture.detectChanges();
 
       const eventItems = fixture.nativeElement.querySelectorAll('.event-item');
-      expect(eventItems.length).toBe(1);
+      expect(eventItems.length).toBe(2);
     });
 
     it('should filter by warning', () => {
@@ -122,7 +134,7 @@ describe('NotificationPanelComponent', () => {
       fixture.detectChanges();
 
       const eventItems = fixture.nativeElement.querySelectorAll('.event-item');
-      expect(eventItems.length).toBe(3);
+      expect(eventItems.length).toBe(4);
     });
 
     it('should show info for non-critical/warning events', () => {
@@ -181,7 +193,7 @@ describe('NotificationPanelComponent', () => {
       fixture.detectChanges();
 
       const eventItems = fixture.nativeElement.querySelectorAll('.event-item');
-      expect(eventItems.length).toBe(3);
+      expect(eventItems.length).toBe(4);
     });
   });
 
@@ -272,6 +284,21 @@ describe('NotificationPanelComponent', () => {
 
     it('should get event severity for info', () => {
       expect(component.getEventSeverity('UserLogin')).toBe('info');
+    });
+
+    it('should get critical severity for privilege changes', () => {
+      expect(component.getEventSeverity({
+        id: '4',
+        tenantId: 'tenant-1',
+        userId: 'user-4',
+        action: 'PrivilegeModified',
+        resourceId: 'resource-4',
+        correlationId: 'corr-4',
+        timestamp: new Date().toISOString(),
+        ipAddress: null,
+        details: 'Privilege was modified',
+        eventType: 'PrivilegeChange'
+      })).toBe('critical');
     });
 
     it('should format time as Just now', () => {

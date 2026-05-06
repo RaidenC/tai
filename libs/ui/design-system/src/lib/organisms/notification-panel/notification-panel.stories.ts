@@ -1,4 +1,6 @@
-import { type Meta, type StoryObj } from '@storybook/angular';
+import { type Meta, type StoryObj, applicationConfig, moduleMetadata } from '@storybook/angular';
+import { provideRouter } from '@angular/router';
+import { CommonModule } from '@angular/common';
 import { NotificationPanelComponent } from './notification-panel.component';
 import { NotificationPanelService } from './notification-panel.service';
 import { AuditLogDetails } from './notification-panel.types';
@@ -50,10 +52,43 @@ const mockEvents: AuditLogDetails[] = [
   }
 ];
 
+interface StoryPanelState {
+  open?: boolean;
+  severity?: 'all' | 'critical' | 'warning' | 'info';
+  search?: string;
+}
+
+const withPanelState = ({ open = true, severity = 'all', search = '' }: StoryPanelState = {}) =>
+  moduleMetadata({
+    providers: [
+      {
+        provide: NotificationPanelService,
+        useFactory: () => {
+          const service = new NotificationPanelService();
+          if (open) {
+            service.open();
+          }
+          service.setSeverityFilter(severity);
+          service.setSearchText(search);
+          service.setUnreadCount(mockEvents.length);
+          return service;
+        },
+      },
+    ],
+  });
+
 const meta: Meta<NotificationPanelComponent> = {
   title: 'Organisms/NotificationPanel',
   component: NotificationPanelComponent,
   tags: ['autodocs'],
+  decorators: [
+    applicationConfig({
+      providers: [provideRouter([])],
+    }),
+    moduleMetadata({
+      imports: [CommonModule, NotificationPanelComponent],
+    }),
+  ],
   parameters: {
     layout: 'fullscreen',
   },
@@ -63,6 +98,11 @@ const meta: Meta<NotificationPanelComponent> = {
       description: 'Array of notification events to display'
     }
   },
+  render: (args) => ({
+    props: args,
+    imports: [CommonModule],
+    template: '<tai-notification-panel [events]="events"></tai-notification-panel>',
+  }),
 };
 
 export default meta;
@@ -72,39 +112,14 @@ export const Default: Story = {
   args: {
     events: mockEvents
   },
-  parameters: {
-    onPanelService: new NotificationPanelService()
-  },
-  render: (args) => ({
-    props: {
-      ...args,
-      panelService: new NotificationPanelService()
-    },
-    template: '<tai-notification-panel [events]="events"></tai-notification-panel>',
-    styles: [':host { position: relative; height: 100vh; }']
-  }),
-  play: async ({ canvasElement }) => {
-    const panelService = new NotificationPanelService();
-    panelService.open();
-  }
+  decorators: [withPanelState()],
 };
 
 export const PanelOpen: Story = {
   args: {
     events: mockEvents
   },
-  render: (args) => {
-    const panelService = new NotificationPanelService();
-    panelService.open();
-    return {
-      props: {
-        ...args,
-        panelService
-      },
-      template: '<tai-notification-panel [events]="events"></tai-notification-panel>',
-      styles: [':host { position: relative; height: 100vh; }']
-    };
-  },
+  decorators: [withPanelState()],
   play: async ({ canvasElement }) => {
     const panel = canvasElement.querySelector('.notification-panel');
     if (panel) {
@@ -117,72 +132,26 @@ export const FilteredByCritical: Story = {
   args: {
     events: mockEvents
   },
-  render: (args) => {
-    const panelService = new NotificationPanelService();
-    panelService.open();
-    panelService.setSeverityFilter('critical');
-    return {
-      props: {
-        ...args,
-        panelService
-      },
-      template: '<tai-notification-panel [events]="events"></tai-notification-panel>',
-      styles: [':host { position: relative; height: 100vh; }']
-    };
-  },
+  decorators: [withPanelState({ severity: 'critical' })],
 };
 
 export const WithSearchFilter: Story = {
   args: {
     events: mockEvents
   },
-  render: (args) => {
-    const panelService = new NotificationPanelService();
-    panelService.open();
-    panelService.setSearchText('login');
-    return {
-      props: {
-        ...args,
-        panelService
-      },
-      template: '<tai-notification-panel [events]="events"></tai-notification-panel>',
-      styles: [':host { position: relative; height: 100vh; }']
-    };
-  },
+  decorators: [withPanelState({ search: 'permission' })],
 };
 
 export const EmptyState: Story = {
   args: {
     events: []
   },
-  render: (args) => {
-    const panelService = new NotificationPanelService();
-    panelService.open();
-    return {
-      props: {
-        ...args,
-        panelService
-      },
-      template: '<tai-notification-panel [events]="events"></tai-notification-panel>',
-      styles: [':host { position: relative; height: 100vh; }']
-    };
-  },
+  decorators: [withPanelState()],
 };
 
 export const PanelClosed: Story = {
   args: {
     events: mockEvents
   },
-  render: (args) => {
-    const panelService = new NotificationPanelService();
-    // Panel stays closed
-    return {
-      props: {
-        ...args,
-        panelService
-      },
-      template: '<tai-notification-panel [events]="events"></tai-notification-panel>',
-      styles: [':host { position: relative; height: 100vh; }']
-    };
-  },
+  decorators: [withPanelState({ open: false })],
 };

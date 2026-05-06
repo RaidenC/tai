@@ -25,12 +25,5 @@ public class SignalRRealTimeNotifier : IRealTimeNotifier {
           EventType = eventType,
           Payload = payload
         }, cancellationToken);
-
-    // ALSO broadcast to "All" for testing/dev purposes
-    await _hubContext.Clients.All
-        .SendAsync("SecurityEvent", new {
-          EventType = eventType,
-          Payload = payload
-        }, cancellationToken);
   }
 }
