@@ -10,7 +10,7 @@
  * @param fallback - Fallback text if value is not a valid string or after processing is empty
  * @returns Plain text representation or fallback
  */
-export function toPlainDisplayText(value: unknown, fallback: string = ''): string {
+export function toPlainDisplayText(value: unknown, fallback = ''): string {
   if (typeof value !== 'string') {
     return fallback;
   }
@@ -18,8 +18,9 @@ export function toPlainDisplayText(value: unknown, fallback: string = ''): strin
   const normalized = value
     // Strip HTML tags
     .replace(/<[^>]*>/g, ' ')
-    // Remove control characters
-    .replace(/[\x00-\x1f\x7f]/g, ' ')
+    // Remove control characters (exclude tab, newline, carriage return which are \t\n\r)
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, ' ')
     // Normalize various case formats to spaces
     .replace(/([a-z])([A-Z])/g, '$1 $2')   // camelCase -> camel Case
     .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2') // PascalCase -> Pascal Case
