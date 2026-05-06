@@ -1,7 +1,7 @@
 ---
 title: TypeScript
 difficulty: L1 | L2 | L3 | Staff
-lastUpdated: 2026-04-09
+lastUpdated: 2026-05-05
 relatedTopics:
   - Angular-Core
   - RxJS-Signals
@@ -32,6 +32,12 @@ stack:
       2.3.2 [`const` Type Parameters & `as const`](#10-const-type-parameters--as-const)
       2.3.3 [Template Literal Types](#11-template-literal-types)
       2.3.4 [Enums vs Union Types vs `as const` Objects](#12-enums-vs-union-types-vs-as-const-objects)
+   2.4 [Senior TypeScript Patterns](#concept-group-4-senior-typescript-patterns)
+      2.4.1 [Keyof-Driven Component APIs](#13-keyof-driven-component-apis)
+      2.4.2 [Exhaustive Records and Configuration Maps](#14-exhaustive-records-and-configuration-maps)
+      2.4.3 [Typed Dependency Injection Tokens](#15-typed-dependency-injection-tokens)
+      2.4.4 [Declaration Merging and Module Augmentation](#16-declaration-merging-and-module-augmentation)
+      2.4.5 [Type-Level API Boundaries](#17-type-level-api-boundaries)
 3. [Architecture & Data Flow](#architecture--data-flow)
 4. [Real-World Examples](#real-world-examples)
    4.1 [Generic DataTable Interfaces](#1-generic-datatable-interfaces)
@@ -39,6 +45,10 @@ stack:
    4.3 [Record & Partial in DPoP Service](#3-record--partial-in-dpop-service)
    4.4 [Generic PaginatedList](#4-generic-paginatedlist)
    4.5 [Signal-Based Store with Type-Safe State](#5-signal-based-store-with-type-safe-state)
+   4.6 [Keyof Generic TransferList](#6-keyof-generic-transferlist)
+   4.7 [Exhaustive Dropdown Placement Map](#7-exhaustive-dropdown-placement-map)
+   4.8 [Typed Replay Mode InjectionToken](#8-typed-replay-mode-injectiontoken)
+   4.9 [Planned Declaration Merging for Runtime Config](#9-planned-declaration-merging-for-runtime-config)
 5. [Comparison Tables](#comparison-tables)
 6. [Interview Q&A](#interview-qa)
    6.1 [L1: Junior](#l1-junior-knowledge)
@@ -51,9 +61,11 @@ stack:
    6.3 [L3: Senior](#l3-senior-knowledge)
       6.3.1 [Structural Typing Pitfalls in Enterprise Apps](#l3-structural-typing-pitfalls-in-enterprise-apps)
       6.3.2 [Mapped Types for API Contract Safety](#l3-mapped-types-for-api-contract-safety)
+      6.3.3 [Designing Keyof-Based Component APIs](#l3-designing-keyof-based-component-apis)
    6.4 [Staff](#staff-system-architecture)
       6.4.1 [Designing a Type-Safe Event System](#staff-designing-a-type-safe-event-system)
       6.4.2 [TypeScript Compiler Configuration for Monorepos](#staff-typescript-compiler-configuration-for-monorepos)
+      6.4.3 [Where Declaration Merging Belongs](#staff-where-declaration-merging-belongs)
 7. [Cross-References](#cross-references)
 8. [Further Reading](#further-reading)
 
@@ -62,6 +74,8 @@ stack:
 ## TL;DR
 
 TypeScript 5.8 (2026) is no longer "JavaScript with types" — it is a <span style="color: #33b5e5; font-weight: bold;">full type-level programming language</span> with mapped types, conditional types, template literal types, and `satisfies` for compile-time safety without runtime cost. The tai-portal frontend is written entirely in TypeScript with Angular 21, using <span style="color: #00C851; font-weight: bold;">union types for state machines</span> (`'Idle' | 'Loading' | 'Success' | 'Error'`), <span style="color: #33b5e5; font-weight: bold;">generics for reusable components</span> (`TableColumnDef<T>`, `PaginatedList<T>`), and <span style="color: #00C851; font-weight: bold;">utility types</span> (`Partial<Privilege>`, `Record<string, unknown>`, `Required<T>`) for safe API contracts. The key trade-off for 2026 interviews: TypeScript uses <span style="color: #ffbb33; font-weight: bold;">structural typing</span> (shape-based), not nominal typing (name-based) — two types with the same shape are interchangeable, which is powerful for composition but dangerous when you need to distinguish between semantically different types (e.g., `UserId` vs `TenantId`). Mastering generics, discriminated unions, and `satisfies` is now table stakes for senior roles.
+
+2026 tai-portal update: the workspace currently uses TypeScript `~5.9.2`, so senior TypeScript depth here means going beyond "I know generics" into <span style="color: #00C851; font-weight: bold;">type-level API design</span>: `keyof`-driven component APIs, exhaustive `Record` maps, typed DI tokens, safe declaration merging, conditional return types, and clear boundaries between compile-time guarantees and runtime validation.
 
 ---
 
@@ -562,6 +576,221 @@ Use **string literal unions** for simple status/state types — zero bundle cost
 
 ---
 
+### Concept Group 4: Senior TypeScript Patterns
+
+#### 13. Keyof-Driven Component APIs
+
+##### What
+<span style="color: #33b5e5; font-weight: bold;">`keyof`-driven APIs</span> use `keyof T` to let callers identify valid properties of a generic type. Instead of accepting arbitrary strings, the API accepts only keys that actually exist on the caller's data model.
+
+##### Why
+Without `keyof`, reusable components often accept `displayKey: string` or `trackKey: string`, which compiles even when the key does not exist. The bug then appears at runtime as blank UI, broken tracking, or inaccessible labels. A senior TypeScript API should push that failure to compile time.
+
+##### How
+`tai-portal` uses this pattern in `TransferListComponent`:
+
+```typescript
+export interface TransferItem {
+  id: string | number;
+}
+
+export class TransferListComponent<T extends TransferItem> {
+  public readonly items = input.required<T[]>();
+  public readonly displayKey = input<keyof T>('name' as keyof T);
+  public readonly trackKey = input<keyof T>('id' as keyof T);
+}
+```
+
+For a stronger future API, constrain display values to string-compatible keys:
+
+```typescript
+type StringKeys<T> = {
+  [K in keyof T]-?: T[K] extends string ? K : never;
+}[keyof T];
+
+type IdKeys<T> = {
+  [K in keyof T]-?: T[K] extends string | number ? K : never;
+}[keyof T];
+
+interface TransferListConfig<T> {
+  displayKey: StringKeys<T>;
+  trackKey: IdKeys<T>;
+}
+```
+
+##### When
+Use `keyof T` in reusable component APIs, table columns, form builders, filter builders, sort descriptors, and route query mappers. Use plain `string` only when the key is genuinely dynamic and cannot be known at compile time.
+
+##### Trade-offs
+<span style="color: #ffbb33; font-weight: bold;">`keyof` APIs can expose type complexity to consumers.</span> If error messages become unreadable, provide simpler overloads or helper builders. <span style="color: #ff4444; font-weight: bold;">Avoid casting defaults like `'name' as keyof T` unless you document the expectation</span>; a generic `T` might not have a `name` property.
+
+---
+
+#### 14. Exhaustive Records and Configuration Maps
+
+##### What
+An <span style="color: #33b5e5; font-weight: bold;">exhaustive `Record` map</span> uses `Record<Union, Value>` to force every member of a union to be handled exactly once in a configuration object.
+
+##### Why
+Without exhaustive maps, adding a new union member silently breaks UI states. A new dropdown placement, button variant, risk level, or notification severity might compile while rendering with missing classes.
+
+##### How
+`DropdownMenuComponent` uses this pattern:
+
+```typescript
+export type DropdownPlacement =
+  | 'bottom-start'
+  | 'bottom-end'
+  | 'top-start'
+  | 'top-end';
+
+const classes: Record<DropdownPlacement, string> = {
+  'bottom-start': 'absolute left-0 right-auto top-full mt-2',
+  'bottom-end': 'absolute right-0 left-auto top-full mt-2',
+  'top-start': 'absolute left-0 right-auto bottom-full mb-2',
+  'top-end': 'absolute right-0 left-auto bottom-full mb-2',
+};
+```
+
+If `DropdownPlacement` adds `'left-start'`, the map fails to compile until the new placement is handled.
+
+##### When
+Use exhaustive records for variant classes, placement maps, status labels, severity colors, icon maps, route titles, feature-flag policies, and action availability matrices.
+
+##### Trade-offs
+<span style="color: #ffbb33; font-weight: bold;">`Record<string, T>` is not exhaustive.</span> It means "any string key is allowed." Use `Record<SpecificUnion, T>` when you need coverage. Combine with `satisfies` when you want validation without widening literal values.
+
+---
+
+#### 15. Typed Dependency Injection Tokens
+
+##### What
+Angular's <span style="color: #33b5e5; font-weight: bold;">`InjectionToken<T>`</span> carries a TypeScript type for values that do not have a class constructor, such as config objects, feature flags, strategies, and runtime context.
+
+##### Why
+Without typed tokens, app-level configuration becomes `any` or unstructured objects. That hides mistakes until runtime: missing flags, wrong config shape, or stringly typed environment values.
+
+##### How
+`borrower-portal` uses a typed token for replay mode:
+
+```typescript
+export const REPLAY_MODE = new InjectionToken<{ active: boolean }>(
+  'Replay Mode Flag',
+  { providedIn: 'root', factory: () => ({ active: false }) },
+);
+
+export const fetchWorkersCompTemplate = createEffect(
+  (
+    actions$ = inject(Actions),
+    store = inject(Store),
+    replayMode = inject(REPLAY_MODE),
+  ) => {
+    return actions$.pipe(filter(() => !replayMode.active));
+  },
+  { functional: true },
+);
+```
+
+The injected value is strongly typed, so `replayMode.active` is checked and autocompleted.
+
+##### When
+Use typed tokens for app config, feature flags, environment-specific services, strategy functions, multi-provider registries, and non-class values. Prefer class injection for services with behavior.
+
+##### Trade-offs
+<span style="color: #ff4444; font-weight: bold;">A typed token validates TypeScript shape, not runtime shape.</span> If config arrives from server-side JSON or `window`, validate it at runtime before providing it.
+
+---
+
+#### 16. Declaration Merging and Module Augmentation
+
+##### What
+<span style="color: #33b5e5; font-weight: bold;">Declaration merging</span> lets TypeScript combine multiple declarations with the same name, most commonly interfaces. <span style="color: #33b5e5; font-weight: bold;">Module augmentation</span> extends types from an existing module.
+
+##### Why
+Some boundaries are intentionally global or externally owned: `Window`, Storybook types, test matchers, Express request objects, DOM events, or library module declarations. Declaration merging lets you describe those extensions without forking the library.
+
+##### How
+No production tai-portal app currently needs declaration merging. A realistic fit would be typed runtime config loaded before Angular bootstraps:
+
+```typescript
+// src/types/runtime-config.d.ts
+export {};
+
+declare global {
+  interface Window {
+    __TAI_PORTAL_CONFIG__?: {
+      apiBaseUrl: string;
+      identityAuthority: string;
+      appVersion: string;
+    };
+  }
+}
+
+const config = window.__TAI_PORTAL_CONFIG__;
+```
+
+For module augmentation:
+
+```typescript
+declare module '@storybook/angular' {
+  interface Parameters {
+    securityReview?: {
+      cspStrict: boolean;
+      a11yRequired: boolean;
+    };
+  }
+}
+```
+
+##### When
+Use declaration merging for global/browser boundaries, test framework custom matchers, library augmentation, and cross-cutting framework metadata. Do not use it for normal application models just because you want to split a type across files.
+
+##### Trade-offs
+<span style="color: #ff4444; font-weight: bold;">Declaration merging is global and easy to abuse.</span> It can make types appear from nowhere, hide ownership, and create spooky coupling. Keep augmentations in dedicated `.d.ts` files with clear names and tests that prove the runtime value exists.
+
+---
+
+#### 17. Type-Level API Boundaries
+
+##### What
+<span style="color: #33b5e5; font-weight: bold;">Type-level API boundaries</span> define where TypeScript types are trusted, where runtime validation is required, and where generated contracts should replace hand-written interfaces.
+
+##### Why
+TypeScript only checks source code before runtime. Data from HTTP, storage, identity claims, WebSocket messages, and `window` can lie. Senior engineers know that TypeScript types protect internal code flow, not external inputs.
+
+##### How
+Use this boundary model:
+
+```typescript
+// Internal compile-time contract
+interface Privilege {
+  id: string;
+  name: string;
+  rowVersion: string;
+}
+
+// External boundary still needs runtime validation
+function isPrivilege(value: unknown): value is Privilege {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'id' in value &&
+    'name' in value &&
+    'rowVersion' in value
+  );
+}
+```
+
+Best long-term approach for tai-portal: generate frontend DTO types from backend OpenAPI and add runtime validation at high-risk boundaries such as identity claims, encrypted draft recovery, and document-signing callbacks.
+
+##### When
+Trust TypeScript inside the compiled app. Validate at process boundaries. Generate types for API contracts when the backend becomes stable enough to make drift costly.
+
+##### Trade-offs
+<span style="color: #ffbb33; font-weight: bold;">Generated types reduce drift but add build and ownership complexity.</span> Runtime validators add code and maintenance cost. Use them where bad data can affect security, money, signing, or persistence.
+
+---
+
 ### Architecture & Data Flow
 
 This diagram shows how TypeScript's type system layers operate from source code to runtime, and where each concept lives:
@@ -708,6 +937,98 @@ public readonly selectedPrivilege = this._selectedPrivilege.asReadonly();
 
 ---
 
+### 6. Keyof Generic TransferList
+
+📍 From tai-portal: `libs/ui/design-system/src/lib/organisms/transfer-list/transfer-list.ts`
+
+`TransferListComponent<T>` uses a generic item type plus `keyof T` for configurable display and tracking keys. This lets the component stay reusable while still preserving a relationship to the caller's item shape.
+
+```typescript
+export class TransferListComponent<T extends TransferItem>
+  implements ControlValueAccessor
+{
+  public readonly items = input.required<T[]>();
+  public readonly displayKey = input<keyof T>('name' as keyof T);
+  public readonly trackKey = input<keyof T>('id' as keyof T);
+}
+```
+
+Senior read: this is directionally correct, but the default `'name' as keyof T` is a contract by convention. A stricter future version should make `displayKey` required or constrain it to keys whose values are displayable strings.
+
+---
+
+### 7. Exhaustive Dropdown Placement Map
+
+📍 From tai-portal: `libs/ui/design-system/src/lib/molecules/dropdown-menu/dropdown-menu.component.ts`
+
+The dropdown placement map uses `Record<DropdownPlacement, string>`, which forces every placement variant to have a class string.
+
+```typescript
+export type DropdownPlacement =
+  | 'bottom-start'
+  | 'bottom-end'
+  | 'top-start'
+  | 'top-end';
+
+const classes: Record<DropdownPlacement, string> = {
+  'bottom-start': 'absolute left-0 right-auto top-full mt-2',
+  'bottom-end': 'absolute right-0 left-auto top-full mt-2',
+  'top-start': 'absolute left-0 right-auto bottom-full mb-2',
+  'top-end': 'absolute right-0 left-auto bottom-full mb-2',
+};
+```
+
+This is the pattern to use for variant maps in buttons, badges, alerts, density settings, severity colors, and status labels.
+
+---
+
+### 8. Typed Replay Mode InjectionToken
+
+📍 From tai-portal: `apps/borrower-portal/src/app/claim/+state/claim.effects.ts`
+
+`REPLAY_MODE` is a typed Angular DI token. The type parameter gives every consumer a strongly typed config object instead of `unknown` or `any`.
+
+```typescript
+export const REPLAY_MODE = new InjectionToken<{ active: boolean }>(
+  'Replay Mode Flag',
+  { providedIn: 'root', factory: () => ({ active: false }) },
+);
+```
+
+This is the right shape for non-class configuration values. Future tokens for runtime config, feature flags, document provider selection, or telemetry settings should follow the same pattern and add runtime validation if values come from JSON.
+
+---
+
+### 9. Planned Declaration Merging for Runtime Config
+
+🔧 Fits tai-portal: Angular app bootstrap and deployment configuration
+
+The repository does not currently use declaration merging in production app code. A natural future use is a typed `window.__TAI_PORTAL_CONFIG__` object injected by deployment:
+
+```typescript
+// apps/portal-web/src/types/runtime-config.d.ts
+export {};
+
+declare global {
+  interface Window {
+    __TAI_PORTAL_CONFIG__?: {
+      apiBaseUrl: string;
+      identityAuthority: string;
+      appVersion: string;
+    };
+  }
+}
+```
+
+Implementation plan:
+
+- keep the augmentation in a dedicated `.d.ts` file
+- validate the runtime object before Angular bootstraps
+- provide the validated config through `InjectionToken<PortalRuntimeConfig>`
+- never read raw `window.__TAI_PORTAL_CONFIG__` deep inside components
+
+---
+
 ## Comparison Tables
 
 ### `interface` vs `type` vs `class`
@@ -744,6 +1065,17 @@ public readonly selectedPrivilege = this._selectedPrivilege.asReadonly();
 | **Property access** | ✅ No checks | ❌ Must narrow first | ❌ Dead code |
 | **Use case** | Migration, `JSON.parse` | API boundaries, catch blocks | Exhaustive checks, `throw` |
 | **Safety** | <span style="color: #ff4444; font-weight: bold;">Unsafe — disables checking</span> | <span style="color: #00C851; font-weight: bold;">Safe — forces narrowing</span> | <span style="color: #00C851; font-weight: bold;">Safe — unreachable</span> |
+
+### Senior TypeScript Pattern Selection
+
+| Problem | Pattern | tai-portal Example | Senior Caveat |
+|---------|---------|--------------------|---------------|
+| **Reusable row component** | Generic interface `T` | `TableColumnDef<T>` | `T` should flow through callbacks, not exist for decoration |
+| **Property key config** | `keyof T` | `TransferListComponent.displayKey` | constrain to value-compatible keys when possible |
+| **Variant class map** | `Record<Union, Value>` | `Record<DropdownPlacement, string>` | use a specific union, not `Record<string, T>` |
+| **Runtime config object** | `InjectionToken<T>` | `REPLAY_MODE` | validate JSON before providing the token |
+| **External global extension** | declaration merging | planned runtime config | isolate in `.d.ts`; avoid normal app models |
+| **API DTO drift** | generated types or mapped types | `Partial<Privilege>` | `Partial<T>` is shallow and can be too permissive |
 
 ---
 
@@ -815,6 +1147,15 @@ public readonly selectedPrivilege = this._selectedPrivilege.asReadonly();
 **Question:** How would you use mapped types to keep frontend TypeScript types in sync with a backend API?
 
 **Answer:** The core problem is <span style="color: #ff4444; font-weight: bold;">type drift</span> — the backend adds a field, the frontend doesn't know about it, and data silently goes missing. The <span style="color: #00C851; font-weight: bold;">ideal solution is code generation</span> — tools like `openapi-typescript` or NSwag generate TypeScript interfaces directly from the backend's OpenAPI spec, making drift impossible. When code generation isn't available, mapped types provide a second line of defense: derive all DTO types from a single source-of-truth interface using `Pick`, `Omit`, and custom mapped types. For example, define `Privilege` once, then derive `PrivilegeCreateDto = Pick<Privilege, 'name' | 'module' | 'description'>` and `PrivilegeUpdateDto = Partial<Omit<Privilege, 'id'>>`. When the base `Privilege` type changes, all derived types update automatically. <span style="color: #ffbb33; font-weight: bold;">The trade-off is that mapped types can only *remove* properties from the base type</span> — if the create DTO has fields that don't exist on the entity (like `password` or `confirmPassword`), you need `type CreateDto = Pick<Privilege, 'name'> & { password: string }`. In tai-portal, we use `Partial<Privilege>` for updates, which is a pragmatic starting point.
+
+---
+
+#### L3: Designing Keyof-Based Component APIs {#l3-designing-keyof-based-component-apis}
+**Difficulty:** L3 (Senior)
+
+**Question:** How would you design a generic Angular component API that accepts property names, like a data table or transfer list?
+
+**Answer:** I would avoid accepting arbitrary `string` keys unless the component truly works with unknown data. For a generic model `T`, I would start with `keyof T` so the caller can only pass real keys. If the component needs a string label, I would go further and derive `StringKeys<T>` with a mapped type so only properties whose values are strings are allowed. If it needs stable identity, I would derive `IdKeys<T>` for `string | number` values. This gives good autocomplete and catches typos at compile time. <span style="color: #ffbb33; font-weight: bold;">The trade-off is API complexity</span>; if the generic errors become too hard for product engineers, I would provide a helper builder that hides the type-level machinery.
 
 ---
 
@@ -896,6 +1237,15 @@ tsconfig.base.json          ← Path aliases, shared strict settings
 
 ---
 
+#### Staff: Where Declaration Merging Belongs {#staff-where-declaration-merging-belongs}
+**Difficulty:** Staff
+
+**Question:** When would you allow declaration merging in a strict enterprise Angular codebase?
+
+**Answer:** I would allow declaration merging only at boundaries that are already global or externally owned: browser globals, test framework matchers, third-party module augmentation, custom DOM events, or deployment-injected runtime config. I would not use it to split ordinary application models across files because it hides ownership and makes types appear by side effect. In tai-portal, a valid use would be a dedicated `runtime-config.d.ts` that augments `Window` with `__TAI_PORTAL_CONFIG__`, followed immediately by runtime validation and an `InjectionToken<PortalRuntimeConfig>`. The declaration file should be easy to find, covered by bootstrap tests, and treated as infrastructure, not feature code. <span style="color: #ff4444; font-weight: bold;">The staff-level concern is that declaration merging scales socially worse than it scales technically</span>: it can make local changes affect unrelated code through ambient global types.
+
+---
+
 ## Cross-References
 
 - [[Angular-Core]] — TypeScript is Angular's language; Signals, DI, and decorators all leverage TS generics and type inference
@@ -903,6 +1253,8 @@ tsconfig.base.json          ← Path aliases, shared strict settings
 - [[Testing]] — Type-safe mocks with `Partial<ServiceName>`, `jasmine.SpyObj<T>`, Vitest's `vi.fn<T>`
 - [[Nx-Monorepo]] — tsconfig hierarchy, path aliases, `isolatedModules` — the TS compiler config that powers the workspace
 - [[CSharp-Fundamentals]] — Compare structural (TS) vs nominal (C#) typing, generics with constraints, pattern matching
+- [[Design-System-Architecture]] — Generic component APIs, variant maps, and type-safe design-system contracts
+- [[Reactive-Forms-Custom-Controls]] — `Required<typeof form.value>`, typed controls, and CVA value contracts
 
 ---
 
@@ -916,3 +1268,5 @@ tsconfig.base.json          ← Path aliases, shared strict settings
 ---
 
 *Last updated: 2026-04-09*
+
+*Advanced TypeScript update added: 2026-05-05*

@@ -103,3 +103,62 @@ markmap:
    - tai-portal `PrivilegesStatus` for store state
 3. `as const` object: runtime access + literal types
    - 2026 recommended default for new code
+
+## **4. Senior TypeScript Patterns**
+### **4.1 Keyof-Driven Component APIs**
+1. `keyof T` accepts only real model keys
+   - Prevents stringly typed display/track configuration
+   - tai-portal: `TransferListComponent<T>`
+2. Key filtering with mapped types
+   - `StringKeys<T>`
+   - `IdKeys<T>`
+3. Senior caveat
+   - Avoid `as keyof T` defaults unless documented
+   - Hide complex errors behind helper builders when needed
+
+### **4.2 Exhaustive Records**
+1. `Record<Union, Value>` forces complete coverage
+   - Missing union member becomes compile error
+2. tai-portal example
+   - `Record<DropdownPlacement, string>`
+   - Dropdown placement class map
+3. Avoid broad records
+   - `Record<string, T>` is dictionary typing
+   - It does not prove exhaustiveness
+
+### **4.3 Typed Dependency Injection Tokens**
+1. `InjectionToken<T>` types non-class DI values
+   - Config objects
+   - Feature flags
+   - Strategy values
+2. tai-portal example
+   - `REPLAY_MODE`
+   - `{ active: boolean }`
+3. Runtime boundary
+   - TypeScript checks source
+   - JSON still needs validation
+
+### **4.4 Declaration Merging**
+1. Valid uses
+   - `Window`
+   - test matchers
+   - third-party modules
+   - custom event maps
+2. tai-portal fit
+   - deployment runtime config
+   - dedicated `.d.ts`
+   - validated before DI
+3. Anti-pattern
+   - splitting normal app models
+   - ambient ownership surprises
+
+### **4.5 Type-Level API Boundaries**
+1. Internal source can trust TS types
+2. External input needs runtime validation
+   - HTTP
+   - storage
+   - identity claims
+   - callbacks
+3. Best long-term pattern
+   - generated API contracts
+   - runtime validators for high-risk boundaries

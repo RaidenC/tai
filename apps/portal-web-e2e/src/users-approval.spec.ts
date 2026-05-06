@@ -61,15 +61,16 @@ test.describe('Users Approval Workflow', () => {
     await approveAction.click();
     
     // 6. Verify Modal opens
-    const dialog = page.locator('tai-confirmation-dialog');
+    const dialog = page.getByRole('dialog', { name: /Approve User Registration/i });
     await expect(dialog).toBeVisible();
-    await expect(dialog).toContainText('Approve User Registration');
+    await expect(page.getByTestId('modal-title')).toHaveText('Approve User Registration');
+    await expect(page.getByTestId('modal-message')).toContainText(testEmail);
     
     // 7. Confirm Approval
     await page.getByRole('button', { name: 'Approve User' }).click();
     
     // 8. Verify Modal closes and status updates
-    await expect(dialog).toBeHidden();
+    await expect(page.locator('tai-confirmation-dialog')).toHaveCount(0);
     
     // Status should now be 'PendingVerification' as per domain logic (Approving PendingApproval leads to PendingVerification)
     await expect(row).toContainText(/Verification/i);
