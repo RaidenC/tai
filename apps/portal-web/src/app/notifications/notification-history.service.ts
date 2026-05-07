@@ -30,6 +30,9 @@ export class NotificationHistoryService {
       map(user => user?.tenantId ?? null),
       tap(tenantId => this.handleTenantBoundary(tenantId)),
       filter((tenantId): tenantId is string => !!tenantId),
+      // Note: This filter reads from hydratedTenants which is mutated elsewhere.
+      // RxJS operators execute serially within a subscription, so this is safe:
+      // each emission is processed completely before the next one is handled.
       filter(tenantId => !this.hydratedTenants.has(tenantId)),
       switchMap(tenantId => this.hydrateTenant(tenantId))
     ).subscribe();
@@ -64,7 +67,7 @@ export class NotificationHistoryService {
     // Clear hydrated state when tenant changes (not on initial null -> valid tenant)
     if (previousTenantId !== null && previousTenantId !== tenantId) {
       this.store.clearForAuthBoundaryChange();
-      this.hydratedTenants.delete(tenantId ?? '');
+      // Only delete the previous tenant - the incoming tenant hasn't been hydrated yet
       this.hydratedTenants.delete(previousTenantId);
     }
 
@@ -117,7 +120,10 @@ export class NotificationHistoryService {
     this.store.markHydrated();
     this.store.setHydrationError(null);
     this.store.setHydrating(false);
-    this.hydratedTenants.add(expectedTenantId);
+    // Re-verify tenant is still current before marking hydrated (handles race condition)
+    if (this.currentTenantId === expectedTenantId) {
+      this.hydratedTenants.add(expectedTenantId);
+    }
   }
 
   private mapHydrationError(error: { status?: number }): string {
