@@ -11,7 +11,9 @@ describe('NotificationHistoryService', () => {
   let user$: BehaviorSubject<User | null>;
   let http: { get: ReturnType<typeof vi.fn> };
   let store: NotificationSignalStore;
-  let service: NotificationHistoryService;
+  // Service is injected to trigger constructor which sets up subscriptions
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  let _service: NotificationHistoryService;
 
   const adminUser: User = {
     id: 'user-1',
@@ -48,7 +50,7 @@ describe('NotificationHistoryService', () => {
     });
 
     store = TestBed.inject(NotificationSignalStore);
-    service = TestBed.inject(NotificationHistoryService);
+    _service = TestBed.inject(NotificationHistoryService);
   });
 
   it('hydrates recent audit rows after user tenant is available', () => {

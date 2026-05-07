@@ -1,7 +1,7 @@
 import { DestroyRef, Injectable, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, EMPTY, Subject, catchError, debounceTime, distinctUntilChanged, filter, map, switchMap, tap, timeout } from 'rxjs';
+import { EMPTY, Subject, catchError, debounceTime, filter, map, switchMap, tap, timeout } from 'rxjs';
 import { AuthService, User } from '../auth.service';
 import { AuditLogDetails } from '../models/security-event.model';
 import { NotificationSignalStore } from '../store/notification-signal.store';
