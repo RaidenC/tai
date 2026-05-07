@@ -202,7 +202,7 @@ describe('NotificationPanelComponent', () => {
 
       const emptyState = fixture.nativeElement.querySelector('.empty-state');
       expect(emptyState).toBeTruthy();
-      expect(emptyState.textContent).toContain('No notifications');
+      expect(emptyState.textContent).toContain('No recent notifications');
     });
 
     it('should not show empty state when events exist', () => {
@@ -255,6 +255,58 @@ describe('NotificationPanelComponent', () => {
     it('should have searchText as computed signal', () => {
       expect(component.searchText).toBeDefined();
       expect(isSignal(component.searchText)).toBe(true);
+    });
+  });
+
+  describe('Loading state', () => {
+    it('renders loading state with polite status live region while keeping notifications visible', () => {
+      component.isLoading = true;
+      component.notifications = mockNotifications;
+      panelService.open();
+      fixture.detectChanges();
+
+      const status = fixture.nativeElement.querySelector('[role="status"][aria-live="polite"]');
+      expect(status?.textContent).toContain('Loading recent notifications');
+      expect(fixture.nativeElement.textContent).toContain('Login Anomaly Detected');
+    });
+  });
+
+  describe('Empty state', () => {
+    it('renders empty state with polite status live region', () => {
+      component.isLoading = false;
+      component.error = null;
+      component.notifications = [];
+      panelService.open();
+      fixture.detectChanges();
+
+      const status = fixture.nativeElement.querySelector('[role="status"][aria-live="polite"]');
+      expect(status?.textContent).toContain('No recent notifications');
+    });
+  });
+
+  describe('Error state', () => {
+    it('renders error state with assertive alert and retry button', () => {
+      const retrySpy = vi.spyOn(component.retry, 'emit');
+      component.error = 'Unable to load recent notifications';
+      panelService.open();
+      fixture.detectChanges();
+
+      const alert = fixture.nativeElement.querySelector('[role="alert"][aria-live="assertive"]');
+      const button = fixture.nativeElement.querySelector('button[type="button"].retry-btn');
+
+      expect(alert?.textContent).toContain('Unable to load recent notifications');
+      button.click();
+      expect(retrySpy).toHaveBeenCalled();
+    });
+
+    it('disables retry while loading or throttled', () => {
+      component.error = 'Retry limit reached. Try again shortly.';
+      component.isLoading = true;
+      panelService.open();
+      fixture.detectChanges();
+
+      const button = fixture.nativeElement.querySelector('button[type="button"].retry-btn') as HTMLButtonElement;
+      expect(button.disabled).toBe(true);
     });
   });
 

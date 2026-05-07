@@ -145,6 +145,33 @@ export const EmptyState: Story = {
   decorators: [withPanelState()],
 };
 
+export const Loading: Story = {
+  args: {
+    notifications: [],
+    isLoading: true,
+    error: null,
+  },
+  decorators: [withPanelState()],
+};
+
+export const EmptyAfterHydration: Story = {
+  args: {
+    notifications: [],
+    isLoading: false,
+    error: null,
+  },
+  decorators: [withPanelState()],
+};
+
+export const ErrorWithRetry: Story = {
+  args: {
+    notifications: [],
+    isLoading: false,
+    error: 'Unable to load recent notifications',
+  },
+  decorators: [withPanelState()],
+};
+
 export const PanelClosed: Story = {
   args: {
     notifications: mockNotifications

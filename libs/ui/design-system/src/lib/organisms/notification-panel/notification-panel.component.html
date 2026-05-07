@@ -1,8 +1,7 @@
 @if (isOpen()()) {
-   
-   
+
   <div class="panel-overlay" (click)="close()" role="button" tabindex="0" (keydown.enter)="close()" (keydown.escape)="close()"></div>
-   
+
   <div class="notification-panel">
     <div class="panel-header">
       <h3>Notifications</h3>
@@ -41,6 +40,25 @@
       >Info</button>
     </div>
 
+    @if (isLoading) {
+      <div class="panel-status panel-status-loading" role="status" aria-live="polite">
+        Loading recent notifications...
+      </div>
+    }
+
+    @if (error) {
+      <div class="panel-status panel-status-error" role="alert" aria-live="assertive">
+        <span>{{ error }}</span>
+        <button
+          type="button"
+          class="retry-btn"
+          [disabled]="isLoading || isRetryThrottled()"
+          (click)="onRetry()">
+          Retry
+        </button>
+      </div>
+    }
+
     <div class="event-list">
       @for (notification of filteredNotifications(); track notification.id) {
         <div class="event-item" [class]="getSeverityClass(notification.severity)">
@@ -57,7 +75,9 @@
           </div>
         </div>
       } @empty {
-        <div class="empty-state">No notifications</div>
+        @if (!isLoading && !error) {
+          <div class="empty-state" role="status" aria-live="polite">No recent notifications</div>
+        }
       }
     </div>
   </div>

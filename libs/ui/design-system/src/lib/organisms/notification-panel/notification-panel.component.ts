@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NotificationPanelService, SeverityFilter } from './notification-panel.service';
@@ -10,15 +10,30 @@ import { NotificationPanelItem } from './notification-panel.types';
   imports: [CommonModule, FormsModule],
   templateUrl: './notification-panel.component.html',
   styleUrl: './notification-panel.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NotificationPanelComponent {
   private readonly panelService = inject(NotificationPanelService);
 
   @Input() notifications: NotificationPanelItem[] = [];
+  @Input() isLoading = false;
+  @Input() error: string | null = null;
+  @Output() retry = new EventEmitter<void>();
 
   readonly isOpen = this.panelService.isOpen;
   readonly severityFilter = this.panelService.severityFilter;
   readonly searchText = this.panelService.searchText;
+
+  onRetry(): void {
+    if (this.isLoading || this.isRetryThrottled()) {
+      return;
+    }
+    this.retry.emit();
+  }
+
+  isRetryThrottled(): boolean {
+    return this.error === 'Retry limit reached. Try again shortly.';
+  }
 
   // Filtered notifications based on severity and search
   readonly filteredNotifications = (): NotificationPanelItem[] => {
