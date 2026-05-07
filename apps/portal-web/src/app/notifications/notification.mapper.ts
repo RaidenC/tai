@@ -112,6 +112,19 @@ function getClassification(
 }
 
 /**
+ * Gets the string value from tenantId, handling both string and object formats.
+ */
+function getTenantIdString(tenantId: unknown): string {
+  if (typeof tenantId === 'string') {
+    return tenantId;
+  }
+  if (typeof tenantId === 'object' && tenantId !== null) {
+    return (tenantId as Record<string, unknown>)['value'] as string;
+  }
+  return '';
+}
+
+/**
  * Validates that the audit log has all required fields populated.
  */
 function isValidAuditLog(
@@ -127,13 +140,8 @@ function isValidAuditLog(
   if (!log['id'] || !(log['id'] as string).trim()) return false;
   if (!log['action'] || !(log['action'] as string).trim()) return false;
 
-  // Get tenantId string (may be string or object format)
-  const tenantIdValue = log['tenantId'];
-  const tenantIdString = typeof tenantIdValue === 'string'
-    ? tenantIdValue
-    : typeof tenantIdValue === 'object' && tenantIdValue !== null
-      ? (tenantIdValue as Record<string, unknown>)['value'] as string
-      : undefined;
+  // Get tenantId string using shared helper (may be string or object format)
+  const tenantIdString = getTenantIdString(log['tenantId']);
 
   // Validate expectedEventId if provided
   if (
@@ -152,19 +160,6 @@ function isValidAuditLog(
   }
 
   return true;
-}
-
-/**
- * Gets the string value from tenantId, handling both string and object formats.
- */
-function getTenantIdString(tenantId: unknown): string {
-  if (typeof tenantId === 'string') {
-    return tenantId;
-  }
-  if (typeof tenantId === 'object' && tenantId !== null) {
-    return (tenantId as Record<string, unknown>)['value'] as string;
-  }
-  return '';
 }
 
 /**
