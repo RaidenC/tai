@@ -7,6 +7,14 @@ import { normalizeSearchText } from '../notifications/notification-text.util';
 const MAX_BUFFER_SIZE = 50;
 const MAX_IDEMPOTENCY_CACHE = 1000;
 
+/**
+ * Generate a tenant-scoped idempotency key for a notification.
+ * Format: `${tenantId}:${id}`
+ */
+export function getNotificationIdempotencyKey(notification: Pick<NotificationItem, 'tenantId' | 'id'>): string {
+  return `${notification.tenantId}:${notification.id}`;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -14,7 +22,11 @@ export class NotificationSignalStore {
   private readonly _notifications = signal<NotificationItem[]>([]);
   private readonly _severityFilter = signal<NotificationSeverity | null>(null);
   private readonly _searchText = signal<string>('');
-  private readonly seenEventIds = new Set<string>();
+  private readonly seenNotificationKeys = new Set<string>();
+  private readonly seenNotificationKeyQueue: string[] = [];
+  private readonly _isHydrating = signal(false);
+  private readonly _hydrationError = signal<string | null>(null);
+  private readonly _hasHydrated = signal(false);
 
   // Primary accessors
   readonly notifications = this._notifications.asReadonly();
@@ -25,6 +37,17 @@ export class NotificationSignalStore {
 
   readonly severityFilter = this._severityFilter.asReadonly();
   readonly searchText = this._searchText.asReadonly();
+
+  // Hydration state signals
+  readonly isHydrating = this._isHydrating.asReadonly();
+  readonly hydrationError = this._hydrationError.asReadonly();
+  readonly hasHydrated = this._hasHydrated.asReadonly();
+  readonly isEmpty = computed(() =>
+    !this._isHydrating() &&
+    this._hasHydrated() &&
+    this._hydrationError() === null &&
+    this._notifications().length === 0
+  );
 
   // Latest notification (newest first, so first in array)
   readonly latestNotification = computed(() => {
@@ -68,24 +91,57 @@ export class NotificationSignalStore {
    * Newest notifications are added at the beginning (index 0).
    */
   addNotification(notification: NotificationItem): void {
-    if (this.seenEventIds.has(notification.id)) {
-      console.log(`NotificationSignalStore: Duplicate notification ${notification.id} skipped`);
+    this.addNotifications([notification]);
+  }
+
+  /**
+   * Add multiple notifications to the store.
+   * Newest notifications are added at the beginning (index 0).
+   * Deduplication is performed inside the batch and against existing notifications.
+   */
+  addNotifications(notifications: NotificationItem[]): void {
+    const uniqueNotifications: NotificationItem[] = [];
+
+    for (const notification of notifications) {
+      const key = getNotificationIdempotencyKey(notification);
+      if (this.seenNotificationKeys.has(key)) {
+        continue;
+      }
+
+      this.trackSeenKey(key);
+      uniqueNotifications.push(notification);
+    }
+
+    if (uniqueNotifications.length === 0) {
       return;
     }
 
-    this.seenEventIds.add(notification.id);
+    this._notifications.update(buffer =>
+      [...uniqueNotifications, ...buffer]
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .slice(0, MAX_BUFFER_SIZE)
+    );
+  }
 
-    this._notifications.update((buffer: NotificationItem[]) => {
-      // Add new notification at the beginning (newest first)
-      const newBuffer: NotificationItem[] = [notification, ...buffer];
-      if (newBuffer.length > MAX_BUFFER_SIZE) {
-        // Keep only the most recent MAX_BUFFER_SIZE items
-        return newBuffer.slice(0, MAX_BUFFER_SIZE);
-      }
-      return newBuffer;
-    });
+  /**
+   * Set hydration state to indicate loading.
+   */
+  setHydrating(isHydrating: boolean): void {
+    this._isHydrating.set(isHydrating);
+  }
 
-    this.handleIdempotencyCacheOverflow();
+  /**
+   * Set hydration error message.
+   */
+  setHydrationError(message: string | null): void {
+    this._hydrationError.set(message);
+  }
+
+  /**
+   * Mark hydration as complete.
+   */
+  markHydrated(): void {
+    this._hasHydrated.set(true);
   }
 
   /**
@@ -118,7 +174,8 @@ export class NotificationSignalStore {
    */
   clearNotifications(): void {
     this._notifications.set([]);
-    this.seenEventIds.clear();
+    this.seenNotificationKeys.clear();
+    this.seenNotificationKeyQueue.length = 0;
   }
 
   /**
@@ -127,6 +184,9 @@ export class NotificationSignalStore {
    */
   clearForAuthBoundaryChange(): void {
     this.clearNotifications();
+    this._isHydrating.set(false);
+    this._hydrationError.set(null);
+    this._hasHydrated.set(false);
   }
 
   // ========== Backward Compatibility Methods ==========
@@ -137,15 +197,14 @@ export class NotificationSignalStore {
    * @deprecated Use addNotification with NotificationItem instead
    */
   addEvent(event: AuditLogDetails): void {
-    if (this.seenEventIds.has(event.id)) {
-      console.log(`NotificationSignalStore: Duplicate event ${event.id} skipped`);
+    const key = getNotificationIdempotencyKey({ tenantId: event.tenantId, id: event.id });
+    if (this.seenNotificationKeys.has(key)) {
       return;
     }
 
     // Map AuditLogDetails to NotificationItem
     const notification = mapAuditLogToNotification(event, { source: 'signalr' });
     if (!notification) {
-      console.warn(`NotificationSignalStore: Failed to map event ${event.id}`);
       return;
     }
 
@@ -170,11 +229,15 @@ export class NotificationSignalStore {
 
   // ========== Private Methods ==========
 
-  private handleIdempotencyCacheOverflow(): void {
-    if (this.seenEventIds.size > MAX_IDEMPOTENCY_CACHE) {
-      const buffer = this._notifications();
-      this.seenEventIds.clear();
-      buffer.forEach((n: NotificationItem) => this.seenEventIds.add(n.id));
+  private trackSeenKey(key: string): void {
+    this.seenNotificationKeys.add(key);
+    this.seenNotificationKeyQueue.push(key);
+
+    while (this.seenNotificationKeyQueue.length > MAX_IDEMPOTENCY_CACHE) {
+      const evicted = this.seenNotificationKeyQueue.shift();
+      if (evicted) {
+        this.seenNotificationKeys.delete(evicted);
+      }
     }
   }
 }
