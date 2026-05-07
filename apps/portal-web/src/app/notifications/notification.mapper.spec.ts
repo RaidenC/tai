@@ -784,6 +784,49 @@ describe('NotificationMapper', () => {
     });
   });
 
+  // Test 20: Token-based classification (token/segment matching)
+  describe('token-based classification', () => {
+    const baseAudit: AuditLogDetails = {
+      id: 'evt-token-test',
+      tenantId: 'tenant-1',
+      userId: 'user-1',
+      action: 'TestAction',
+      resourceId: 'resource-1',
+      correlationId: null,
+      timestamp: '2026-05-04T10:00:00Z',
+      ipAddress: '10.0.0.1',
+      details: 'Test details'
+    };
+
+    it('matches warning token across PascalCase, hyphen, and whitespace', () => {
+      for (const action of ['SecurityWarning', 'security-warning', 'security warning']) {
+        const notification = mapAuditLogToNotification({
+          ...baseAudit,
+          id: `evt-${action}`,
+          action,
+          eventType: null,
+          details: null,
+        }, { source: 'history', expectedEventId: `evt-${action}`, expectedTenantId: 'tenant-1' });
+
+        expect(notification?.severity).toBe('warning');
+        expect(notification?.category).toBe('security');
+      }
+    });
+
+    it('does not match warning inside unrelated larger words', () => {
+      const notification = mapAuditLogToNotification({
+        ...baseAudit,
+        id: 'evt-forewarning',
+        action: 'ForewarningReportExported',
+        eventType: null,
+        details: null,
+      }, { source: 'history', expectedEventId: 'evt-forewarning', expectedTenantId: 'tenant-1' });
+
+      expect(notification?.severity).toBe('info');
+      expect(notification?.category).toBe('system');
+    });
+  });
+
   // Additional test: toPlainDisplayText utility
   describe('toPlainDisplayText utility', () => {
     it('should convert camelCase to plain text', () => {

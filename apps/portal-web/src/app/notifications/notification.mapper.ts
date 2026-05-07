@@ -6,7 +6,7 @@ import {
 } from '../models/notification-item.model';
 import { AuditLogDetails } from '../models/security-event.model';
 import { isAuditLogDetails } from './audit-log-details.guard';
-import { normalizeSearchText, toPlainDisplayText } from './notification-text.util';
+import { toPlainDisplayText } from './notification-text.util';
 
 /**
  * Options for mapping AuditLogDetails to NotificationItem.
@@ -65,23 +65,40 @@ const DEFAULT_CLASSIFICATION: {
 };
 
 /**
+ * Tokenizes audit text fields into a set of normalized tokens.
+ * Handles camelCase, PascalCase, kebab-case, snake_case, and whitespace separation.
+ */
+function tokenizeAuditText(...values: Array<string | null | undefined>): Set<string> {
+  const text = values
+    .filter((value): value is string => typeof value === 'string')
+    .join(' ')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .toLowerCase();
+
+  return new Set(
+    text
+      .split(/[\s_\-.,:;()[\]{}\\/]+/)
+      .map(token => token.trim())
+      .filter(Boolean)
+  );
+}
+
+/**
  * Gets the classification based on the audit log's event type, action, and details.
- * Uses case-insensitive matching and checks in order of priority.
+ * Uses token-based matching to avoid substring false positives.
  */
 function getClassification(
   eventType: string | null | undefined,
   action: string,
   details: string | null
 ): { severity: NotificationSeverity; category: NotificationCategory; title: string } {
-  // Combine searchable fields (case-insensitive)
-  const searchText = normalizeSearchText(
-    [eventType, action, details].filter(Boolean).join(' ')
-  );
+  // Tokenize the searchable fields
+  const tokens = tokenizeAuditText(eventType, action, details);
 
-  // Check each classification rule in priority order
+  // Check each classification rule in priority order using token membership
   for (const rule of CLASSIFICATION_RULES) {
     for (const keyword of rule.keywords) {
-      if (searchText.includes(keyword.toLowerCase())) {
+      if (tokens.has(keyword.toLowerCase())) {
         return {
           severity: rule.severity,
           category: rule.category,
