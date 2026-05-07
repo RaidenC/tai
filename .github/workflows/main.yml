@@ -80,6 +80,22 @@ jobs:
       - name: Build Affected
         run: npx nx affected -t build
 
+      - name: Install EF Tools
+        run: dotnet tool install --global dotnet-ef || true
+
+      - name: Run Database Migrations
+        env:
+          ConnectionStrings__DefaultConnection: Host=localhost;Database=portal;Username=postgres;Password=postgres
+        run: |
+          # Wait for PostgreSQL to be ready
+          until pg_isready -h localhost -U postgres; do
+            sleep 1
+          done
+          # Create database if not exists
+          PGPASSWORD=postgres psql -h localhost -U postgres -tc "SELECT 1 FROM pg_database WHERE datname = 'portal'" | grep -q 1 || PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE portal"
+          # Run migrations
+          dotnet ef database update --project libs/core/infrastructure/Tai.Portal.Core.Infrastructure.csproj --startup-project apps/portal-api/portal-api.csproj --no-build || true
+
       - name: Test Affected
         env:
           ConnectionStrings__DefaultConnection: Host=localhost;Database=portal;Username=postgres;Password=postgres
