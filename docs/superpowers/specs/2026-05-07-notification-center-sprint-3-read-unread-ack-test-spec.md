@@ -26,13 +26,14 @@ The implementation must satisfy these behavioral contracts:
 - Search and severity filtering continue to operate on notification metadata and must not hide lifecycle state.
 - Unread badge count is derived from unread notifications, not manually maintained panel service state.
 - Logout or tenant switch clears in-memory notifications and active lifecycle scope, but does not delete localStorage lifecycle records. Re-login as the same tenant/OIDC subject reapplies persisted read/ack state.
+- Existing real-time console logging that prints security payloads, audit details, event IDs, tenant IDs, OIDC subjects, or emails must be removed or sanitized before lifecycle work ships.
 
 ## Architectural Decisions Under Test
 
 The tests should encode these decisions so implementation does not drift:
 
 - User scope uses `AuthService.User.id`, which is normalized from the OIDC `sub` claim. Email is display-only and must not be used in storage keys.
-- `NotificationHistoryService` observes `AuthService.user$` and configures the notification store lifecycle scope before hydration rows are mapped or merged.
+- `NotificationHistoryService` observes `AuthService.user$`, extracts both `tenantId` and `User.id`, and calls `setLifecycleScope({ tenantId, userId: user.id })` before `hydrateTenant()` starts.
 - `NotificationSignalStore` owns lifecycle overlay and mutation. A small storage helper may be injected into the store, but components must not read localStorage directly.
 - Store API shape:
 
@@ -51,8 +52,11 @@ readonly criticalUnacknowledgedCount: Signal<number>;
 - Lifecycle writes are synchronous against the active scope at the start of the operation. If scope is missing, the in-memory update still happens, persistence is skipped, and no error is thrown.
 - `NotificationPanelItem` must be extended with `readAt` and `acknowledgedAt`. This is an intentional design-system API change and must be covered by app mapping tests.
 - `NotificationToggleComponent` remains design-system decoupled. It receives `@Input() unreadCount = 0` from the app shell/root component and must not inject `NotificationSignalStore`.
-- Existing `NotificationPanelService` remains responsible for panel visibility, severity filter, and search text. Its manual unread count methods become legacy compatibility only and must not be the source of truth for the Sprint 3 badge.
-- LocalStorage cleanup is bounded: every successful lifecycle write for the active scope prunes stored records to event IDs currently retained in the notification store. This keeps storage growth tied to the 50-item visible buffer.
+- Existing `NotificationPanelService` remains responsible for panel visibility, severity filter, and search text. Its manual unread count methods become deprecated compatibility only and must not be called by Sprint 3 code.
+- LocalStorage cleanup uses a sliding retention window, not the current 50-item visible buffer. Each scope retains lifecycle records for the most recent 1,500 event IDs seen by that tenant/OIDC subject. This is intentionally larger than the 1,000-entry idempotency cache so a read notification can be re-added after idempotency eviction and still regain its lifecycle state.
+- LocalStorage scope cleanup is bounded by an index key. Keep at most 10 tenant/OIDC-subject lifecycle scopes; prune the least-recently-used scope when adding an 11th scope.
+- `clearForAuthBoundaryChange()` must call or internally perform `setLifecycleScope(null)` so store state and active persistence scope cannot diverge.
+- `App.notificationPanelItems` should be a computed signal, not a plain getter, once lifecycle fields are included.
 
 ## LocalStorage Key Contract
 
@@ -62,7 +66,13 @@ Use a deterministic versioned key with tenant and OIDC subject scope:
 tai.portal.notifications.lifecycle.v1:${tenantId}:${oidcSubject}
 ```
 
-The value should be a JSON object keyed by event ID:
+Track recently used scopes with:
+
+```text
+tai.portal.notifications.lifecycle.scopes.v1
+```
+
+The scope index value is an array of storage keys, most recently used first. The per-scope value is a JSON object keyed by event ID:
 
 ```json
 {
@@ -73,9 +83,13 @@ The value should be a JSON object keyed by event ID:
 }
 ```
 
-Tests must treat malformed localStorage data as recoverable. Bad JSON, non-object values, invalid timestamp values, and partial records should not break notification hydration or SignalR processing. Invalid records are ignored.
+Tests must treat malformed localStorage data as recoverable. Bad JSON or a non-object root rejects that scope value and returns empty lifecycle state. Within a valid object root, invalid individual records are ignored while valid sibling records are kept.
 
 Persisted records are overlays only. A fabricated localStorage event ID must not render unless the same event exists in the hydrated or SignalR notification buffer.
+
+Key segments must be encoded before composing the key. Tests should cover tenant and subject values containing `:`, `/`, whitespace, and Unicode-like input so one user's key cannot collide with another user's key.
+
+Schema versioning is key-based. Future `v2` storage must use a new key prefix; Sprint 3 does not migrate between versions, but tests should verify `v1` readers ignore unknown fields inside valid records.
 
 ## Fixtures
 
@@ -94,6 +108,15 @@ Use compact fixtures in tests rather than broad production setup:
 Use deterministic clocks where timestamps matter. In Vitest, prefer fake timers pinned to:
 
 ```typescript
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-05-07T18:00:00.000Z'));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 new Date('2026-05-07T18:00:00.000Z')
 ```
 
@@ -113,6 +136,7 @@ Add or update tests for:
 - `addNotifications()` overlays persisted read state onto hydrated history rows.
 - `addNotifications()` overlays persisted acknowledgement state onto hydrated history rows.
 - persisted lifecycle records for unknown event IDs do not create notifications.
+- persisted lifecycle overlay applies to SignalR notifications that arrive before history hydration completes.
 - SignalR notification receives persisted lifecycle state when added after refresh.
 - History then SignalR duplicate keeps the existing read/ack state.
 - SignalR then history duplicate keeps the existing read/ack state.
@@ -132,6 +156,9 @@ Add or update tests for:
 - `clearForAuthBoundaryChange()` clears in-memory lifecycle state with notifications.
 - `clearForAuthBoundaryChange()` clears active lifecycle scope.
 - Re-adding a notification after auth boundary clear reapplies persisted lifecycle state for the active tenant/OIDC subject.
+- Re-adding a read notification after it has left the 50-item visible buffer and after its idempotency key has been FIFO-evicted still overlays persisted `readAt` while the event ID remains inside the 1,500-entry lifecycle retention window.
+- Re-adding a notification after its event ID has aged out of the 1,500-entry lifecycle retention window treats it as unread.
+- The 1,501st lifecycle event for a scope prunes only the oldest lifecycle record, not all records outside the visible buffer.
 
 Persistence tests:
 
@@ -143,9 +170,11 @@ Persistence tests:
 - changing email while `User.id` stays the same does not change the storage key.
 - missing tenant or missing user prevents persistence, still updates in-memory state, and does not throw.
 - malformed localStorage JSON is ignored and replaced only after the next write.
-- localStorage quota/security errors are caught and do not prevent in-memory updates.
+- partial corruption ignores only invalid records while preserving valid sibling records.
+- `QuotaExceededError`, `SecurityError`, and generic `DOMException` failures from localStorage are caught and do not prevent in-memory updates.
 - localStorage failures do not emit lifecycle payloads, event IDs, tenant IDs, OIDC subjects, or emails to console logs.
-- lifecycle writes prune records not present in the current retained notification IDs.
+- lifecycle writes prune records outside the 1,500-event retention window.
+- lifecycle scope index keeps at most 10 scopes and prunes the least-recently-used scope storage key when the 11th scope is written.
 - localStorage keys such as `__proto__` and `constructor` are ignored and do not mutate object prototypes.
 
 ## Lifecycle Persistence Tests
@@ -169,8 +198,12 @@ Cover:
 - ignores dangerous event ID keys such as `__proto__`, `prototype`, and `constructor`.
 - ignores records with non-string `readAt` or `acknowledgedAt`.
 - ignores records with invalid date strings.
+- preserves valid records when a sibling record is invalid.
 - preserves unrelated retained event records when updating one event.
-- prunes records to the provided retained event ID allow-list during writes.
+- prunes records to the provided 1,500-event retention allow-list during writes.
+- maintains the 10-scope least-recently-used scope index.
+- encodes tenant and subject key segments so special characters cannot collide across scopes.
+- ignores unknown fields inside otherwise valid records.
 - handles `localStorage.getItem()` and `setItem()` exceptions without throwing to callers.
 
 ## Auth/User Scope Tests
@@ -190,6 +223,25 @@ Add tests only where lifecycle scope crosses hydration:
 - re-login as the same tenant/OIDC subject reapplies persisted read/ack state to hydrated notifications.
 - re-login as the same OIDC subject with a changed email reapplies persisted read/ack state.
 - re-login as a different OIDC subject does not reuse the previous user's read/ack state.
+- tenant switch-back from `tenant-1` to `tenant-2` to `tenant-1` reapplies `tenant-1` lifecycle state.
+- auth boundary change during a pending lifecycle write cannot write to the new tenant/OIDC-subject key.
+- SignalR event before hydration still receives persisted lifecycle state once the lifecycle scope is available.
+
+## Real-Time Service Tests
+
+Target file:
+
+```text
+apps/portal-web/src/app/real-time.service.spec.ts
+```
+
+Cover:
+
+- handling `SecurityEvent` does not call `NotificationPanelService.setUnreadCount()`.
+- adding a SignalR notification relies on `NotificationSignalStore.unreadCount`, not total buffer length.
+- security event handling does not log raw payloads, audit details, event IDs, tenant IDs, OIDC subjects, emails, or notification objects through `console.log`, `console.warn`, or `console.error`.
+- connection lifecycle logs, if retained, contain only static status text and no event payload fields.
+- claim-check failure toast behavior from Sprint 1/2 remains unchanged.
 
 ## Panel Component Tests
 
@@ -210,14 +262,16 @@ Cover:
 
 - unread notifications render with a stable unread visual marker.
 - read notifications do not render the unread marker.
-- unread marker has an accessible label or text equivalent.
+- unread marker exposes `aria-label="Unread notification"` or equivalent accessible text.
+- read rows expose `aria-label="Read notification"` or equivalent accessible text.
 - clicking the mark-read control emits `markRead` with the notification ID.
 - mark-read control is not shown for already-read notifications.
 - mark-all-read control is enabled when at least one notification is unread.
 - mark-all-read control is disabled when no notifications are unread.
 - clicking mark-all-read emits `markAllRead`.
 - critical unread/unacknowledged notifications render an acknowledge control.
-- acknowledged critical notifications render acknowledged state and no active acknowledge control.
+- unacknowledged critical rows expose `aria-label="Acknowledgement required"` or equivalent accessible text.
+- acknowledged critical notifications render acknowledged state, expose `aria-label="Acknowledged notification"` or equivalent accessible text, and no active acknowledge control.
 - warning/info notifications never render acknowledge controls.
 - clicking acknowledge emits `acknowledge` with the notification ID.
 - lifecycle controls are native buttons with `type="button"`.
@@ -251,6 +305,12 @@ Cover:
 
 Do not make the toggle inject the portal-web notification store. Cover store-to-input wiring in the app shell/root component tests.
 
+NotificationPanelService compatibility tests:
+
+- `NotificationToggleComponent` no longer injects or reads `NotificationPanelService.unreadCount`.
+- `NotificationPanelService.setUnreadCount()`, `decrementUnread()`, and `markAllAsRead()` either remain as deprecated no-op/compatibility methods or are removed with corresponding test updates for every consumer.
+- no production code in `apps/portal-web` calls those unread methods after Sprint 3.
+
 ## App Integration Unit Tests
 
 Target file:
@@ -266,6 +326,8 @@ Cover:
 - root app wires panel `markAllRead` output to the notification store.
 - root app wires panel `acknowledge` output to the notification store.
 - notification toggle receives unread count from `notificationStore.unreadCount()`.
+- notification panel item mapping is a computed signal and includes lifecycle fields without dropping `readAt` or `acknowledgedAt`.
+- app tests provide a `NotificationSignalStore` mock with `notifications`, `unreadCount`, `isHydrating`, `hydrationError`, `markRead`, `markAllRead`, and `acknowledge`.
 - hydration loading/error inputs from Sprint 2 still pass through unchanged.
 
 ## E2E Test
@@ -303,6 +365,7 @@ Panel tests and e2e should assert:
 - acknowledged state is exposed to assistive technology.
 - keyboard activation works for mark-read and acknowledge controls.
 - focus is not lost when a row changes from unread to read.
+- unread/read/acknowledged state changes use stable row identity so keyboard focus remains on the row or moves to the next logical control.
 - Sprint 2 loading/error live regions remain intact.
 
 ## Regression Guardrails
@@ -316,6 +379,7 @@ Add tests to prevent regressions:
 - clearing persisted lifecycle state is not part of Sprint 3 public behavior.
 - REST/SignalR idempotency still uses `${tenantId}:${eventId}`.
 - visible buffer remains capped at 50 newest notifications.
+- lifecycle retention remains capped at 1,500 event IDs per scope and 10 scopes total.
 - localStorage lifecycle state is only applied to notifications that exist in the store.
 - `NotificationPanelService.setUnreadCount()`, `decrementUnread()`, and `markAllAsRead()` are not used as Sprint 3 source-of-truth APIs.
 
