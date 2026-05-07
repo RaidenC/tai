@@ -61,6 +61,7 @@ public class AuditLogsController : ControllerBase {
   /// NOTE: Role authorization is enforced at the controller level (Admin, SystemAdmin).
   /// </summary>
   [HttpGet("recent")]
+  [Authorize(Roles = "Admin,SystemAdmin")]
   public async Task<IActionResult> GetRecentAuditLogs([FromQuery] int? limit) {
     var currentTenantId = _tenantService.TenantId;
     if (currentTenantId.Value == Guid.Empty) {

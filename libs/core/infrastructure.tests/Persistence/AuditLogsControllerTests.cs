@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using System;
 using System.Linq;
+using System.Reflection;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using Tai.Portal.Api.Controllers;
@@ -190,5 +192,27 @@ public class AuditLogsControllerTests : IAsyncLifetime {
 
     result.Should().BeOfType<NotFoundObjectResult>(
       "browser-controlled X-Bypass-Tenant must not bypass audit tenant isolation");
+  }
+
+  [Fact]
+  public void GetRecentAuditLogs_RequiresAdminOrSystemAdminRole() {
+    var method = typeof(AuditLogsController).GetMethod(nameof(AuditLogsController.GetRecentAuditLogs));
+
+    method.Should().NotBeNull();
+    var authorize = method!.GetCustomAttribute<AuthorizeAttribute>();
+
+    authorize.Should().NotBeNull();
+    authorize!.Roles.Should().Be("Admin,SystemAdmin");
+  }
+
+  [Fact]
+  public void GetRecentAuditLogs_UsesRecentRoute() {
+    var method = typeof(AuditLogsController).GetMethod(nameof(AuditLogsController.GetRecentAuditLogs));
+
+    method.Should().NotBeNull();
+    var httpGet = method!.GetCustomAttribute<HttpGetAttribute>();
+
+    httpGet.Should().NotBeNull();
+    httpGet!.Template.Should().Be("recent");
   }
 }
