@@ -1,6 +1,11 @@
 <tai-toast></tai-toast>
 <tai-notification-toggle></tai-notification-toggle>
-<tai-notification-panel [notifications]="notificationPanelItems"></tai-notification-panel>
+<tai-notification-panel
+  [notifications]="notificationPanelItems"
+  [isLoading]="notificationStore.isHydrating()"
+  [error]="notificationStore.hydrationError()"
+  (retry)="notificationHistoryService.retry()">
+</tai-notification-panel>
 @if (isAuthenticated$ | async) {
   <tai-app-shell 
     [user]="user$ | async" 
