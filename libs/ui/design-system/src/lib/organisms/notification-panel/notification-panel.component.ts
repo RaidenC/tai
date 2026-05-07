@@ -18,6 +18,7 @@ export class NotificationPanelComponent {
   @Input() notifications: NotificationPanelItem[] = [];
   @Input() isLoading = false;
   @Input() error: string | null = null;
+  @Input() isRetryThrottled = false;
   @Output() retry = new EventEmitter<void>();
 
   readonly isOpen = this.panelService.isOpen;
@@ -25,14 +26,10 @@ export class NotificationPanelComponent {
   readonly searchText = this.panelService.searchText;
 
   onRetry(): void {
-    if (this.isLoading || this.isRetryThrottled()) {
+    if (this.isLoading || this.isRetryThrottled) {
       return;
     }
     this.retry.emit();
-  }
-
-  isRetryThrottled(): boolean {
-    return this.error === 'Retry limit reached. Try again shortly.';
   }
 
   // Filtered notifications based on severity and search
@@ -64,27 +61,6 @@ export class NotificationPanelComponent {
 
   close(): void {
     this.panelService.close();
-  }
-
-  getEventSeverity(eventOrAction: NotificationPanelItem | string): string {
-    if (typeof eventOrAction === 'string') {
-      // Legacy support for string input
-      const eventText = eventOrAction.toLowerCase();
-      if (
-        eventText.includes('critical') ||
-        eventText.includes('anomaly') ||
-        eventText.includes('privilege') ||
-        eventText.includes('security')
-      ) {
-        return 'critical';
-      }
-      if (eventText.includes('warning')) {
-        return 'warning';
-      }
-      return 'info';
-    }
-    // For NotificationPanelItem, use the severity field directly
-    return eventOrAction.severity;
   }
 
   getSeverityClass(severity: string): string {

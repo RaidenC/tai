@@ -323,31 +323,6 @@ describe('NotificationPanelComponent', () => {
       expect(component.getSeverityClass('info')).toBe('severity-info');
     });
 
-    it('should get event severity for string input', () => {
-      expect(component.getEventSeverity('LoginAnomaly')).toBe('critical');
-    });
-
-    it('should get event severity for warning string', () => {
-      expect(component.getEventSeverity('WarningRateLimit')).toBe('warning');
-    });
-
-    it('should get event severity for info string', () => {
-      expect(component.getEventSeverity('UserLogin')).toBe('info');
-    });
-
-    it('should get severity from NotificationPanelItem', () => {
-      expect(component.getEventSeverity({
-        id: '4',
-        title: 'Privilege Modified',
-        summary: 'Privilege was modified',
-        severity: 'critical',
-        category: 'privilege',
-        actor: 'user-4',
-        timestamp: new Date().toISOString(),
-        userId: 'user-4'
-      })).toBe('critical');
-    });
-
     it('should format time as Just now', () => {
       const now = new Date().toISOString();
       expect(component.formatTime(now)).toBe('Just now');
