@@ -53,6 +53,7 @@ readonly criticalUnacknowledgedCount: Signal<number>;
 - `NotificationPanelItem` must be extended with `readAt` and `acknowledgedAt`. This is an intentional design-system API change and must be covered by app mapping tests.
 - `NotificationToggleComponent` remains design-system decoupled. It receives `@Input() unreadCount = 0` from the app shell/root component and must not inject `NotificationSignalStore`.
 - Existing `NotificationPanelService` remains responsible for panel visibility, severity filter, and search text. Its manual unread count methods become deprecated compatibility only and must not be called by Sprint 3 code.
+- Tenant, OIDC subject, and event ID key segments use `encodeURIComponent(String(value))` before joining with `:`. This applies to both localStorage keys and `getNotificationIdempotencyKey()`.
 - LocalStorage cleanup uses a sliding retention window, not the current 50-item visible buffer. Each scope retains lifecycle records for the most recent 1,500 event IDs seen by that tenant/OIDC subject. This is intentionally larger than the 1,000-entry idempotency cache so a read notification can be re-added after idempotency eviction and still regain its lifecycle state.
 - LocalStorage scope cleanup is bounded by an index key. Keep at most 10 tenant/OIDC-subject lifecycle scopes; prune the least-recently-used scope when adding an 11th scope.
 - `clearForAuthBoundaryChange()` must call or internally perform `setLifecycleScope(null)` so store state and active persistence scope cannot diverge.
@@ -60,10 +61,10 @@ readonly criticalUnacknowledgedCount: Signal<number>;
 
 ## LocalStorage Key Contract
 
-Use a deterministic versioned key with tenant and OIDC subject scope:
+Use a deterministic versioned key with tenant and OIDC subject scope. Every dynamic segment must be encoded with `encodeURIComponent(String(value))` before composition:
 
 ```text
-tai.portal.notifications.lifecycle.v1:${tenantId}:${oidcSubject}
+tai.portal.notifications.lifecycle.v1:${encodeURIComponent(tenantId)}:${encodeURIComponent(oidcSubject)}
 ```
 
 Track recently used scopes with:
@@ -87,7 +88,26 @@ Tests must treat malformed localStorage data as recoverable. Bad JSON or a non-o
 
 Persisted records are overlays only. A fabricated localStorage event ID must not render unless the same event exists in the hydrated or SignalR notification buffer.
 
-Key segments must be encoded before composing the key. Tests should cover tenant and subject values containing `:`, `/`, whitespace, and Unicode-like input so one user's key cannot collide with another user's key.
+Key segments must be encoded before composing the key. Tests should cover tenant, subject, and event ID values containing `:`, `/`, whitespace, and Unicode-like input so one user's key cannot collide with another user's key.
+
+`getNotificationIdempotencyKey()` must use the same encoded-segment rule:
+
+```typescript
+export function encodeNotificationKeySegment(value: string): string {
+  return encodeURIComponent(String(value));
+}
+
+export function getNotificationIdempotencyKey(notification: Pick<NotificationItem, 'tenantId' | 'id'>): string {
+  return `${encodeNotificationKeySegment(notification.tenantId)}:${encodeNotificationKeySegment(notification.id)}`;
+}
+```
+
+This intentionally replaces the Sprint 2 raw `${tenantId}:${eventId}` key format. Tests must prove these two inputs do not collide:
+
+```text
+tenantId="tenant:1", id="evt-1"
+tenantId="tenant", id="1:evt-1"
+```
 
 Schema versioning is key-based. Future `v2` storage must use a new key prefix; Sprint 3 does not migrate between versions, but tests should verify `v1` readers ignore unknown fields inside valid records.
 
@@ -140,6 +160,9 @@ Add or update tests for:
 - SignalR notification receives persisted lifecycle state when added after refresh.
 - History then SignalR duplicate keeps the existing read/ack state.
 - SignalR then history duplicate keeps the existing read/ack state.
+- `getNotificationIdempotencyKey()` encodes tenant and event ID segments with `encodeURIComponent`.
+- idempotency keys do not collide for `tenantId="tenant:1", id="evt-1"` versus `tenantId="tenant", id="1:evt-1"`.
+- history/SignalR dedupe still recognizes the same event when both sources carry the same raw tenant ID and event ID.
 - `markRead(eventId)` sets `readAt` for one matching notification.
 - `markRead(eventId)` is idempotent and does not replace an existing `readAt`.
 - `markRead(eventId)` ignores unknown event IDs.
@@ -191,6 +214,7 @@ Cover:
 
 - builds exact storage key from tenant ID and OIDC subject.
 - uses OIDC subject, not email, for the user ID segment.
+- encodes tenant and OIDC subject with `encodeURIComponent`.
 - reads empty state when key is missing.
 - reads valid lifecycle records by event ID.
 - ignores invalid JSON.
@@ -239,8 +263,20 @@ Cover:
 
 - handling `SecurityEvent` does not call `NotificationPanelService.setUnreadCount()`.
 - adding a SignalR notification relies on `NotificationSignalStore.unreadCount`, not total buffer length.
-- security event handling does not log raw payloads, audit details, event IDs, tenant IDs, OIDC subjects, emails, or notification objects through `console.log`, `console.warn`, or `console.error`.
-- connection lifecycle logs, if retained, contain only static status text and no event payload fields.
+- security event handling does not log raw payloads, audit details, event IDs, tenant IDs, OIDC subjects, emails, IP addresses, reasons, notification objects, or caught error objects through `console.log`, `console.warn`, or `console.error`.
+- tests spy on `console.log`, `console.warn`, and `console.error` across the full `SecurityEvent` path: SignalR callback, payload parsing, missing event ID, missing tenant, claim-check fetch start, claim-check success, mapper failure, store add, and claim-check failure.
+- current payload-bearing log call sites that must be removed or sanitized include:
+  - `Received SecurityEvent` with payload object,
+  - `Full payload` with `JSON.stringify(data)`,
+  - parsed `eventId`, `eventType`, and `reason`,
+  - missing-event warning if it includes payload context,
+  - missing-tenant warning if it includes tenant/user context,
+  - audit detail fetch log with event ID,
+  - fetched `AuditLogDetails`,
+  - mapper failure if it includes audit or event context,
+  - added notification object,
+  - claim-check error object.
+- connection/auth lifecycle logs may remain only when they are static strings with no dynamic data. Existing static examples include privilege-change re-authentication and SignalR connected status. Startup failures must not concatenate or pass raw error objects.
 - claim-check failure toast behavior from Sprint 1/2 remains unchanged.
 
 ## Panel Component Tests
@@ -377,7 +413,7 @@ Add tests to prevent regressions:
 - read/ack metadata is not included in search text.
 - clearing notifications does not erase persisted lifecycle state.
 - clearing persisted lifecycle state is not part of Sprint 3 public behavior.
-- REST/SignalR idempotency still uses `${tenantId}:${eventId}`.
+- REST/SignalR idempotency uses encoded `${encodeURIComponent(tenantId)}:${encodeURIComponent(eventId)}` segments.
 - visible buffer remains capped at 50 newest notifications.
 - lifecycle retention remains capped at 1,500 event IDs per scope and 10 scopes total.
 - localStorage lifecycle state is only applied to notifications that exist in the store.
