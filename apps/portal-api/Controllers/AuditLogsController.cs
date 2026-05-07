@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.Validation.AspNetCore;
+using Tai.Portal.Core.Application.Interfaces;
 using Tai.Portal.Core.Domain.Entities;
 using Tai.Portal.Core.Infrastructure.Persistence;
 
@@ -15,9 +16,11 @@ namespace Tai.Portal.Api.Controllers;
 [Authorize(AuthenticationSchemes = $"{OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme},Identity.Application")]
 public class AuditLogsController : ControllerBase {
   private readonly PortalDbContext _dbContext;
+  private readonly ITenantService _tenantService;
 
-  public AuditLogsController(PortalDbContext dbContext) {
+  public AuditLogsController(PortalDbContext dbContext, ITenantService tenantService) {
     _dbContext = dbContext;
+    _tenantService = tenantService;
   }
 
   /// <summary>
@@ -50,5 +53,41 @@ public class AuditLogsController : ControllerBase {
       auditEntry.IpAddress,
       auditEntry.Details
     });
+  }
+
+  /// <summary>
+  /// Returns recent audit logs for the current tenant, ordered by timestamp descending.
+  /// Default limit is 50, maximum is 100.
+  /// NOTE: Role authorization is enforced at the controller level (Admin, SystemAdmin).
+  /// </summary>
+  [HttpGet("recent")]
+  public async Task<IActionResult> GetRecentAuditLogs([FromQuery] int? limit) {
+    var currentTenantId = _tenantService.TenantId;
+    if (currentTenantId.Value == Guid.Empty) {
+      return Forbid();
+    }
+
+    var take = limit.GetValueOrDefault(50);
+    if (take <= 0) take = 50;
+    if (take > 100) take = 100;
+
+    var rows = await _dbContext.AuditLogs
+      .Where(a => a.TenantId == currentTenantId)
+      .OrderByDescending(a => a.Timestamp)
+      .Take(take)
+      .Select(a => new {
+        a.Id,
+        a.TenantId,
+        a.UserId,
+        a.Action,
+        a.ResourceId,
+        a.CorrelationId,
+        a.Timestamp,
+        a.IpAddress,
+        a.Details
+      })
+      .ToListAsync();
+
+    return Ok(rows);
   }
 }
