@@ -15,11 +15,21 @@
 - Spec: `docs/superpowers/specs/2026-05-07-notification-center-sprint-3-read-unread-ack-test-spec.md`.
 - Use `encodeURIComponent(String(value))` for tenant, OIDC subject, and event ID key segments.
 - `AuthService.User.id` is the OIDC `sub`; use it for lifecycle scope. Do not use email in storage keys.
+- `AuditLogDetails.userId` is display/audit metadata only and must not be used as the lifecycle user scope.
 - Keep audit events as the durable source. Do not add backend notification tables or APIs.
 - Do not make design-system components import portal-web stores.
 - Keep existing Sprint 2 hydration tests passing.
-- Idempotency key encoding is an in-memory cache format change, not persisted data migration. Existing page sessions naturally reload on deploy; tests must update the key helper contract atomically with the implementation. Do not add a dual raw-key lookup because that preserves the collision bug.
+- Idempotency key encoding is an in-memory cache format change, not persisted data migration. Existing page sessions naturally reload on deploy; transient duplicates are acceptable only for already-open tabs across deploy. Tests must update the key helper contract atomically with the implementation. Do not add a dual raw-key lookup because that preserves the collision bug.
 - `clearNotifications()` and `clearForAuthBoundaryChange()` remain the supported in-memory idempotency cache reset paths.
+- Task dependency: Task 1 must land before Task 2 because Task 2 imports `encodeNotificationKeySegment`. Task 6 and Task 7 must land in the same PR and should be implemented back-to-back because the toggle refactor needs app wiring for the real unread count.
+- Auth boundary ownership: `NotificationSignalStore.clearForAuthBoundaryChange()` is the canonical method for clearing notifications, idempotency state, lifecycle memory, active lifecycle scope, hydration flags, and errors. `NotificationHistoryService` calls `setLifecycleScope(validScope)` only for valid authenticated users and does not call `setLifecycleScope(null)` directly.
+- `NotificationHistoryService.currentUser` intentionally duplicates the store scope because the service needs a local stale-response guard for pending hydration requests. The store remains the source of lifecycle overlay state.
+- Lifecycle storage persists tenant IDs and OIDC subjects across logout for Sprint 3 so the same user can regain read/ack state after refresh or re-login. This is acceptable for the POC/admin-workstation assumption; a shared-device clearing control belongs in a later privacy hardening sprint.
+- The 1,500-event lifecycle window and 10-scope index are POC bounds chosen to exceed the 1,000-entry idempotency cache. They are not a production retention policy.
+- Scope LRU is read/write based: reading an existing valid scope or writing lifecycle state moves that scope to the MRU position. The scope index is written before best-effort cleanup so the index does not point at deleted scope keys if cleanup fails.
+- `NotificationPanelItem` is a breaking in-repo design-system contract change. Update all portal-web, design-system tests, and stories in this PR. If this package is published to external consumers later, pair the change with package versioning and migration notes.
+- Acknowledging a critical notification also marks it read, hides the acknowledge action, and shows the acknowledged state label. Non-critical notifications ignore persisted `acknowledgedAt`.
+- Real-time logging rule: permitted logs are static connection/status strings only. Do not log event payloads, notification objects, audit details, event IDs, tenant IDs, user IDs, OIDC subjects, emails, IP addresses, `error.message`, or raw error objects.
 - Angular is `~21.1.0`; `fixture.componentRef.setInput()` is available for input tests.
 - Prefer fake timers for lifecycle timestamp tests:
 
@@ -160,6 +170,7 @@ describe('NotificationLifecycleStorageService', () => {
       JSON.stringify({
         'evt-001': { readAt: '2026-05-07T18:00:00.000Z', acknowledgedAt: null },
         'evt-002': { readAt: 123, acknowledgedAt: null },
+        'evt-003': { readAt: 'May 7, 2026', acknowledgedAt: null },
         '__proto__': { readAt: '2026-05-07T18:00:00.000Z', acknowledgedAt: null },
         constructor: { readAt: '2026-05-07T18:00:00.000Z', acknowledgedAt: null },
       })
@@ -208,6 +219,29 @@ describe('NotificationLifecycleStorageService', () => {
     expect(index[0]).toBe('tai.portal.notifications.lifecycle.v1:tenant-10:user-10');
     expect(index).not.toContain('tai.portal.notifications.lifecycle.v1:tenant-0:user-0');
     expect(localStorage.getItem('tai.portal.notifications.lifecycle.v1:tenant-0:user-0')).toBeNull();
+  });
+
+  it('keeps exactly 10 scope keys and moves existing read scopes to most recently used', () => {
+    for (let i = 0; i < 10; i += 1) {
+      service.write(
+        { tenantId: `tenant-${i}`, userId: `user-${i}` },
+        { [`evt-${i}`]: { readAt: '2026-05-07T18:00:00.000Z', acknowledgedAt: null } },
+        [`evt-${i}`]
+      );
+    }
+
+    service.read({ tenantId: 'tenant-3', userId: 'user-3' });
+    service.write(
+      { tenantId: 'tenant-new', userId: 'user-new' },
+      { 'evt-new': { readAt: '2026-05-07T18:00:00.000Z', acknowledgedAt: null } },
+      ['evt-new']
+    );
+
+    const index = JSON.parse(localStorage.getItem('tai.portal.notifications.lifecycle.scopes.v1') ?? '[]');
+    expect(index).toHaveLength(10);
+    expect(index[0]).toBe('tai.portal.notifications.lifecycle.v1:tenant-new:user-new');
+    expect(index).toContain('tai.portal.notifications.lifecycle.v1:tenant-3:user-3');
+    expect(index).not.toContain('tai.portal.notifications.lifecycle.v1:tenant-0:user-0');
   });
 
   it('does not throw when localStorage is unavailable', () => {
@@ -263,13 +297,14 @@ const MAX_SCOPE_COUNT = 10;
 export const MAX_LIFECYCLE_RECORDS_PER_SCOPE = 1500;
 
 const DANGEROUS_KEYS = new Set(['__proto__', 'prototype', 'constructor']);
+const ISO_UTC_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
 export function encodeNotificationKeySegment(value: string): string {
   return encodeURIComponent(String(value));
 }
 
 function isValidIsoDate(value: string): boolean {
-  return !Number.isNaN(Date.parse(value));
+  return ISO_UTC_TIMESTAMP.test(value) && !Number.isNaN(Date.parse(value));
 }
 
 function isValidTimestampOrNull(value: unknown): value is string | null {
@@ -316,6 +351,7 @@ export class NotificationLifecycleStorageService {
         result[eventId] = { readAt, acknowledgedAt };
       }
 
+      this.touchScopeKey(key);
       return result;
     } catch {
       return {};
@@ -356,12 +392,22 @@ export class NotificationLifecycleStorageService {
     const removed = existing.slice(MAX_SCOPE_COUNT - 1);
 
     try {
+      localStorage.setItem(SCOPE_INDEX_KEY, JSON.stringify(next));
       for (const removedKey of removed) {
         localStorage.removeItem(removedKey);
       }
-      localStorage.setItem(SCOPE_INDEX_KEY, JSON.stringify(next));
+      this.cleanupUnindexedScopeKeys(new Set(next));
     } catch {
       return;
+    }
+  }
+
+  private cleanupUnindexedScopeKeys(activeKeys: Set<string>): void {
+    for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+      const storageKey = localStorage.key(i);
+      if (storageKey?.startsWith(`${STORAGE_PREFIX}:`) && !activeKeys.has(storageKey)) {
+        localStorage.removeItem(storageKey);
+      }
     }
   }
 
@@ -402,11 +448,15 @@ git commit -m "feat(notifications): add lifecycle storage helper"
 
 ### Task 2: Notification Store Lifecycle State
 
+**Depends on:** Task 1. Do not start this task until `encodeNotificationKeySegment` exists.
+
 **Files:**
 - Modify: `apps/portal-web/src/app/store/notification-signal.store.ts`
 - Modify: `apps/portal-web/src/app/store/notification-signal.store.spec.ts`
 
 - [ ] **Step 1: Write failing store lifecycle tests**
+
+Update any existing Sprint 2 assertions that directly expect raw idempotency keys. Safe key segments should still produce `tenant-1:evt-1`; unsafe segments must be encoded. Existing assertions near the tenant-scoped idempotency tests should move to the explicit tests below.
 
 Add these imports to `apps/portal-web/src/app/store/notification-signal.store.spec.ts`:
 
@@ -871,7 +921,7 @@ it('sets lifecycle scope from tenantId and OIDC subject before hydration rows ar
     .toBeLessThan(store.addNotifications.mock.invocationCallOrder[0]);
 }));
 
-it('clears lifecycle scope on logout', fakeAsync(() => {
+it('clears auth boundary state through the store on logout', fakeAsync(() => {
   http.get.mockReturnValue(of([]));
   instantiateService();
 
@@ -881,7 +931,7 @@ it('clears lifecycle scope on logout', fakeAsync(() => {
   tick();
 
   expect(store.clearForAuthBoundaryChange).toHaveBeenCalled();
-  expect(store.setLifecycleScope).toHaveBeenCalledWith(null);
+  expect(store.setLifecycleScope).not.toHaveBeenCalledWith(null);
 }));
 
 it('switches tenant scope and rehydrates when switching back to the original tenant', fakeAsync(() => {
@@ -964,11 +1014,10 @@ private handleAuthBoundary(user: User | null): void {
     ? this.getHydrationKey({ tenantId: user.tenantId, id: user.id })
     : null;
 
-  this.currentUser = user ? { id: user.id, tenantId: user.tenantId } : null;
+  this.currentUser = nextKey ? { id: user!.id, tenantId: user!.tenantId } : null;
 
   if (previousKey !== null && previousKey !== nextKey) {
     this.store.clearForAuthBoundaryChange();
-    this.store.setLifecycleScope(null);
     this.hydratedTenants.delete(previousKey);
   }
 
@@ -977,7 +1026,9 @@ private handleAuthBoundary(user: User | null): void {
   }
 
   if (!user?.tenantId || !user.id) {
-    this.store.setLifecycleScope(null);
+    if (previousKey === null) {
+      this.store.clearForAuthBoundaryChange();
+    }
     this.store.setHydrating(false);
     this.store.setHydrationError('Unable to verify notification tenant.');
     return;
@@ -1122,8 +1173,8 @@ Expected: FAIL because current code logs payloads/details and calls `panelServic
 Update `apps/portal-web/src/app/real-time.service.ts`:
 
 - Remove `NotificationPanelService` from imports and injected fields.
-- Remove all `console.log()` calls inside `SecurityEvent` handling and `handleSecurityEvent()`.
-- Keep only static lifecycle messages if needed. Do not concatenate raw `err`.
+- Remove every `console.log()` call in `real-time.service.ts`. Current payload-bearing paths include connection setup, `SecurityEvent` raw payloads, parsed event data, claim-check audit details, mapped notification objects, and handler completion logs.
+- Keep only static lifecycle `console.warn()` / `console.error()` messages if needed. Do not concatenate raw `err`, `err.message`, event IDs, tenant IDs, user IDs, OIDC subjects, emails, IP addresses, audit payloads, notification objects, or SignalR data.
 - Remove `this.panelService.setUnreadCount(this.store.eventBuffer().length);`.
 
 The key block inside `this.ngZone.run()` should become:
@@ -1165,6 +1216,12 @@ The existing privilege-change warning may remain unchanged because it is static 
 
 ```typescript
 console.warn('RealTimeService: Privileges have changed. Triggering re-authentication.');
+```
+
+After editing, this command should return no matches:
+
+```bash
+rg "console\\.log" apps/portal-web/src/app/real-time.service.ts
 ```
 
 - [ ] **Step 4: Run real-time tests**
@@ -1262,6 +1319,19 @@ it('renders acknowledgement control only for unacknowledged critical notificatio
   expect(ackSpy).toHaveBeenCalledWith('1');
   expect(fixture.nativeElement.querySelectorAll('button[aria-label="Acknowledge critical notification"]')).toHaveLength(1);
 });
+
+it('uses list semantics and announces lifecycle state changes politely', () => {
+  component.notifications = [{ ...mockNotifications[0], readAt: null, acknowledgedAt: null }];
+  panelService.open();
+  fixture.detectChanges();
+
+  const list = fixture.nativeElement.querySelector('[data-testid="notification-list"]');
+  const item = fixture.nativeElement.querySelector('[data-testid="notification-item"]');
+
+  expect(list.getAttribute('role')).toBe('list');
+  expect(list.getAttribute('aria-live')).toBe('polite');
+  expect(item.getAttribute('role')).toBe('listitem');
+});
 ```
 
 - [ ] **Step 2: Run panel tests and verify they fail**
@@ -1326,7 +1396,7 @@ onAcknowledge(notification: NotificationPanelItem): void {
 
 - [ ] **Step 4: Update panel template**
 
-In `notification-panel.component.html`, add a mark-all button in the header actions and lifecycle controls inside each event item. Use this shape:
+In `notification-panel.component.html`, add a mark-all button in the header actions and lifecycle controls inside each event item. The list container should use `role="list"`, `aria-live="polite"`, and `data-testid="notification-list"` so read/ack state changes are announced and e2e selectors are stable. Use this shape:
 
 ```html
 <button
@@ -1339,10 +1409,25 @@ In `notification-panel.component.html`, add a mark-all button in the header acti
 </button>
 ```
 
+Wrap the repeated notification rows:
+
+```html
+<div class="event-list" data-testid="notification-list" role="list" aria-live="polite">
+  @for (notification of filteredNotifications(); track notification.id) {
+    <!-- event row below -->
+  }
+</div>
+```
+
 Inside each notification row:
 
 ```html
-<div class="event-item" [class]="getSeverityClass(notification.severity)" [attr.aria-label]="notification.readAt ? 'Read notification' : 'Unread notification'">
+<div
+  class="event-item"
+  data-testid="notification-item"
+  role="listitem"
+  [class]="getSeverityClass(notification.severity)"
+  [attr.aria-label]="notification.readAt ? 'Read notification' : 'Unread notification'">
   @if (!notification.readAt) {
     <span class="unread-marker" aria-label="Unread notification"></span>
   } @else {
@@ -1461,6 +1546,8 @@ git commit -m "feat(notification-panel): add lifecycle controls"
 
 ### Task 6: Notification Toggle Input Refactor
 
+**Must ship with:** Task 7. Do not leave a deployable branch after Task 6 alone; the component default `unreadCount = 0` is only a safe local default until the app shell passes the real store-derived count.
+
 **Files:**
 - Modify: `libs/ui/design-system/src/lib/molecules/notification-toggle/notification-toggle.component.ts`
 - Modify: `libs/ui/design-system/src/lib/molecules/notification-toggle/notification-toggle.component.html`
@@ -1566,9 +1653,9 @@ Update `notification-toggle.component.html`:
 </button>
 ```
 
-- [ ] **Step 4: Deprecate or remove unread methods from panel service**
+- [ ] **Step 4: Deprecate unread methods from panel service**
 
-In `notification-panel.service.ts`, keep panel visibility/filter/search. If keeping compatibility methods, add JSDoc deprecation and do not call them from production code:
+In `notification-panel.service.ts`, keep panel visibility/filter/search. Keep the old unread methods as one-sprint no-op compatibility stubs with JSDoc deprecation, and do not call them from production code:
 
 ```typescript
 /**
@@ -1579,7 +1666,7 @@ setUnreadCount(_count: number): void {
 }
 ```
 
-Apply equivalent deprecation to `decrementUnread()` and `markAllAsRead()`, or remove these methods and update tests/imports that referenced them.
+Apply equivalent deprecation to `decrementUnread()` and `markAllAsRead()`. Update tests so unread badge behavior is asserted through `NotificationSignalStore` and `NotificationToggleComponent.unreadCount`, not this service.
 
 - [ ] **Step 5: Update toggle stories**
 
@@ -1613,6 +1700,8 @@ git commit -m "feat(notification-toggle): use unread count input"
 ---
 
 ### Task 7: App Wiring and Computed Mapping
+
+**Must ship with:** Task 6. This task restores the real unread badge after the toggle stops injecting `NotificationPanelService`.
 
 **Files:**
 - Modify: `apps/portal-web/src/app/app.ts`
@@ -1709,6 +1798,13 @@ Update imports in `app.ts`:
 
 ```typescript
 import { Component, inject, OnInit, DestroyRef, computed } from '@angular/core';
+```
+
+Inject `NotificationHistoryService` before `RealTimeService` so the lifecycle scope subscription is registered before the SignalR service starts handling events from the same auth stream:
+
+```typescript
+protected readonly notificationHistoryService = inject(NotificationHistoryService);
+private readonly realTimeService = inject(RealTimeService);
 ```
 
 Replace the getter with:
@@ -1816,8 +1912,8 @@ test.describe('notification lifecycle', () => {
     const privilegeName = 'Portal.Users.Read';
     await page.getByPlaceholder(/search privileges/i).fill(privilegeName);
     await page.waitForResponse(res => res.url().includes('/api/privileges') && res.status() === 200);
-    await page.waitForTimeout(500);
     await expect(page.getByTestId('table-loading')).toBeHidden();
+    await expect(page.locator('[data-testid^="action-menu-"]').first()).toBeVisible();
 
     await page.locator('[data-testid^="action-menu-"]').first().click();
     const editMenuItem = page.getByRole('menuitem', { name: /edit/i });
@@ -1847,7 +1943,8 @@ test.describe('notification lifecycle', () => {
 
     const panel = page.locator('tai-notification-panel .notification-panel');
     await expect(panel).toBeVisible();
-    await expect(panel.getByText(/privilege/i)).toBeVisible();
+    const notificationItem = panel.getByTestId('notification-item').filter({ hasText: /privilege/i }).first();
+    await expect(notificationItem).toBeVisible();
     await expect(page.locator('.unread-badge')).toBeVisible();
 
     await panel.getByRole('button', { name: /mark notification as read/i }).first().click();
@@ -1859,10 +1956,10 @@ test.describe('notification lifecycle', () => {
     await page.getByRole('button', { name: /toggle notifications/i }).click();
     await expect(panel).toBeVisible();
 
-    await expect(panel.getByText(/privilege/i)).toBeVisible();
-    await expect(panel.getByLabel(/read notification/i)).toBeVisible();
-    await expect(panel.getByLabel(/acknowledged notification/i)).toBeVisible();
-    await expect(panel.getByText(/privilege/i)).toHaveCount(1);
+    const refreshedItem = panel.getByTestId('notification-item').filter({ hasText: /privilege/i });
+    await expect(refreshedItem).toHaveCount(1);
+    await expect(refreshedItem.first()).toHaveAccessibleName(/read notification/i);
+    await expect(refreshedItem.first().getByLabel(/acknowledged notification/i)).toBeVisible();
   });
 });
 ```
@@ -1978,6 +2075,6 @@ If there are no changes after verification, do not create an empty commit.
 
 ## Plan Self-Review
 
-- Spec coverage: lifecycle storage, OIDC subject scoping, encoded idempotency keys, 1,500-event retention, 10-scope LRU, store read/ack APIs, history scope setup, SignalR logging cleanup, toggle input refactor, panel lifecycle controls, app wiring, and e2e refresh persistence are covered.
+- Spec coverage: lifecycle storage, OIDC subject scoping, encoded idempotency keys, transient encoding migration tolerance, 1,500-event retention, read/write 10-scope LRU, store read/ack APIs, canonical auth-boundary clearing, history scope setup before hydration, SignalR logging cleanup, toggle input/app wiring dependency, panel lifecycle controls, ARIA/list semantics, stable e2e selectors, and e2e refresh persistence are covered.
 - Completeness scan: each task names files, tests, implementation shape, commands, and expected results.
 - Type consistency: lifecycle APIs are consistently named `setLifecycleScope`, `markRead`, `markAllRead`, `acknowledge`, `unreadCount`, `hasUnread`, and `criticalUnacknowledgedCount`.
