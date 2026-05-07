@@ -18,6 +18,9 @@
 - Keep audit events as the durable source. Do not add backend notification tables or APIs.
 - Do not make design-system components import portal-web stores.
 - Keep existing Sprint 2 hydration tests passing.
+- Idempotency key encoding is an in-memory cache format change, not persisted data migration. Existing page sessions naturally reload on deploy; tests must update the key helper contract atomically with the implementation. Do not add a dual raw-key lookup because that preserves the collision bug.
+- `clearNotifications()` and `clearForAuthBoundaryChange()` remain the supported in-memory idempotency cache reset paths.
+- Angular is `~21.1.0`; `fixture.componentRef.setInput()` is available for input tests.
 - Prefer fake timers for lifecycle timestamp tests:
 
 ```typescript
@@ -325,11 +328,11 @@ export class NotificationLifecycleStorageService {
     retainedEventIds: string[]
   ): void {
     const key = this.getScopeKey(scope);
-    const retained = new Set(retainedEventIds.slice(-MAX_LIFECYCLE_RECORDS_PER_SCOPE));
+    const retainedWindow = retainedEventIds.slice(-MAX_LIFECYCLE_RECORDS_PER_SCOPE);
     const pruned: NotificationLifecycleRecords = {};
 
-    for (const eventId of retainedEventIds) {
-      if (!retained.has(eventId) || DANGEROUS_KEYS.has(eventId)) {
+    for (const eventId of retainedWindow) {
+      if (DANGEROUS_KEYS.has(eventId)) {
         continue;
       }
 
@@ -353,10 +356,10 @@ export class NotificationLifecycleStorageService {
     const removed = existing.slice(MAX_SCOPE_COUNT - 1);
 
     try {
-      localStorage.setItem(SCOPE_INDEX_KEY, JSON.stringify(next));
       for (const removedKey of removed) {
         localStorage.removeItem(removedKey);
       }
+      localStorage.setItem(SCOPE_INDEX_KEY, JSON.stringify(next));
     } catch {
       return;
     }
@@ -448,6 +451,11 @@ describe('lifecycle state', () => {
       .toBe('tenant:1%3Aevt-1');
     expect(getNotificationIdempotencyKey({ tenantId: 'tenant:1', id: 'evt-1' }))
       .not.toBe(getNotificationIdempotencyKey({ tenantId: 'tenant', id: '1:evt-1' }));
+  });
+
+  it('keeps safe idempotency keys stable while fixing unsafe segment collisions', () => {
+    expect(getNotificationIdempotencyKey({ tenantId: 'tenant-1', id: 'evt-1' }))
+      .toBe('tenant-1:evt-1');
   });
 
   it('overlays persisted lifecycle state when adding notifications', () => {
@@ -554,6 +562,21 @@ describe('lifecycle state', () => {
     expect(store.notifications()[0].readAt).toBe('2026-05-07T18:00:00.000Z');
   });
 
+  it('keeps lifecycle event retention queue bounded to 1500 ids', () => {
+    store.setLifecycleScope({ tenantId: 'tenant-1', userId: 'user-sub-1' });
+
+    for (let i = 0; i < 1501; i += 1) {
+      const id = `evt-${i.toString().padStart(4, '0')}`;
+      store.addNotification(notification(id));
+      store.markRead(id);
+    }
+
+    const stored = storage.read({ tenantId: 'tenant-1', userId: 'user-sub-1' });
+    expect(Object.keys(stored)).toHaveLength(1500);
+    expect(stored['evt-0000']).toBeUndefined();
+    expect(stored['evt-1500']?.readAt).toBe('2026-05-07T18:00:00.000Z');
+  });
+
   it('clears active lifecycle scope on auth boundary without deleting persisted records', () => {
     store.setLifecycleScope({ tenantId: 'tenant-1', userId: 'user-sub-1' });
     store.addNotification(notification('evt-001'));
@@ -620,6 +643,12 @@ readonly hasUnread = computed(() => this.unreadCount() > 0);
 readonly criticalUnacknowledgedCount = computed(() =>
   this._notifications().filter(item => item.severity === 'critical' && item.acknowledgedAt === null).length
 );
+```
+
+Add the same retention constant used by the storage helper:
+
+```typescript
+const MAX_LIFECYCLE_EVENT_QUEUE = 1500;
 ```
 
 Add public lifecycle methods:
@@ -757,12 +786,29 @@ private trackLifecycleEventId(eventId: string): void {
     this.lifecycleEventIdQueue.splice(existingIndex, 1);
   }
   this.lifecycleEventIdQueue.push(eventId);
+
+  while (this.lifecycleEventIdQueue.length > MAX_LIFECYCLE_EVENT_QUEUE) {
+    const evicted = this.lifecycleEventIdQueue.shift();
+    if (evicted) {
+      delete this.lifecycleRecords[evicted];
+    }
+  }
 }
 ```
 
-Update `clearForAuthBoundaryChange()`:
+Update `clearForAuthBoundaryChange()` and ensure lifecycle memory is cleared when scope is cleared:
 
 ```typescript
+setLifecycleScope(scope: NotificationLifecycleScope | null): void {
+  this._lifecycleScope.set(scope);
+  this.lifecycleRecords = scope ? this.lifecycleStorage.read(scope) : {};
+  this.lifecycleEventIdQueue.length = 0;
+
+  if (scope) {
+    this.lifecycleEventIdQueue.push(...Object.keys(this.lifecycleRecords).slice(-MAX_LIFECYCLE_EVENT_QUEUE));
+  }
+}
+
 clearForAuthBoundaryChange(): void {
   this.clearNotifications();
   this.setLifecycleScope(null);
@@ -1113,6 +1159,12 @@ If retaining startup failure logging, use:
   this._connectionStatus$.next(HubConnectionState.Disconnected);
   console.error('RealTimeService: Error while starting connection');
 });
+```
+
+The existing privilege-change warning may remain unchanged because it is static and contains no event payload:
+
+```typescript
+console.warn('RealTimeService: Privileges have changed. Triggering re-authentication.');
 ```
 
 - [ ] **Step 4: Run real-time tests**
@@ -1740,28 +1792,61 @@ git commit -m "feat(notifications): wire lifecycle UI to store"
 **Files:**
 - Create: `apps/portal-web-e2e/src/notifications-lifecycle.spec.ts`
 
-- [ ] **Step 1: Add e2e flow**
+- [ ] **Step 1: Add e2e flow using existing authenticated privilege selectors**
 
-Create `apps/portal-web-e2e/src/notifications-lifecycle.spec.ts`. Adapt login and privilege modification helpers from existing privilege e2e files in the same folder. The test must follow this shape:
+Create `apps/portal-web-e2e/src/notifications-lifecycle.spec.ts`. Use the authenticated ACME admin storage state and privilege edit selectors from `apps/portal-web-e2e/src/privileges-audit.spec.ts`; do not use a fabricated login form flow. The test must follow this shape:
 
 ```typescript
 import { expect, test } from '@playwright/test';
+import { v4 as uuidv4 } from 'uuid';
+import * as path from 'path';
+import { injectAuthSession } from './test-utils';
+
+const authFile = path.join(__dirname, '../.auth/acme-admin.json');
 
 test.describe('notification lifecycle', () => {
+  test.use({ storageState: authFile });
+
   test('persists read and acknowledged state across refresh', async ({ page }) => {
-    await page.goto('/');
+    await injectAuthSession(page, 'acme-session.json');
+    await page.goto('http://acme.localhost:4200/admin/privileges');
+    await expect(page).toHaveURL(/.*\/admin\/privileges/);
+    await expect(page.locator('tai-sidebar')).toBeVisible();
 
-    await page.getByRole('button', { name: /sign in/i }).click();
-    await page.getByLabel(/email/i).fill('admin@tai.com');
-    await page.getByLabel(/password/i).fill('Password123!');
-    await page.getByRole('button', { name: /sign in/i }).click();
+    const privilegeName = 'Portal.Users.Read';
+    await page.getByPlaceholder(/search privileges/i).fill(privilegeName);
+    await page.waitForResponse(res => res.url().includes('/api/privileges') && res.status() === 200);
+    await page.waitForTimeout(500);
+    await expect(page.getByTestId('table-loading')).toBeHidden();
 
-    await page.goto('/admin/privileges');
-    await page.getByRole('link', { name: /view|edit/i }).first().click();
-    await page.getByRole('button', { name: /save|update/i }).click();
+    await page.locator('[data-testid^="action-menu-"]').first().click();
+    const editMenuItem = page.getByRole('menuitem', { name: /edit/i });
+    await expect(editMenuItem).toBeVisible({ timeout: 10000 });
+    await editMenuItem.click({ force: true });
 
-    await page.getByRole('button', { name: /toggle notifications/i }).click();
-    const panel = page.getByRole('heading', { name: /notifications/i }).locator('..');
+    await page.waitForURL(/.*\/admin\/privileges\/.*/, { timeout: 10000 });
+    await expect(page.getByTestId('edit-form')).toBeVisible();
+
+    const correlationId = uuidv4();
+    await page.getByLabel(/description/i).fill(`Notification lifecycle update ${correlationId}`);
+    await page.route('**/api/privileges/**', async (route) => {
+      await route.continue({
+        headers: {
+          ...route.request().headers(),
+          'X-Correlation-ID': correlationId,
+          'X-Step-Up-Verified': 'true',
+        },
+      });
+    });
+    await page.getByRole('button', { name: /save changes/i }).click();
+    await expect(page.getByTestId('read-only-view')).toBeVisible();
+
+    const toggle = page.getByRole('button', { name: /toggle notifications/i });
+    await expect(toggle).toBeVisible();
+    await toggle.click();
+
+    const panel = page.locator('tai-notification-panel .notification-panel');
+    await expect(panel).toBeVisible();
     await expect(panel.getByText(/privilege/i)).toBeVisible();
     await expect(page.locator('.unread-badge')).toBeVisible();
 
@@ -1770,7 +1855,9 @@ test.describe('notification lifecycle', () => {
     await expect(panel.getByLabel(/acknowledged notification/i)).toBeVisible();
 
     await page.reload();
+    await injectAuthSession(page, 'acme-session.json');
     await page.getByRole('button', { name: /toggle notifications/i }).click();
+    await expect(panel).toBeVisible();
 
     await expect(panel.getByText(/privilege/i)).toBeVisible();
     await expect(panel.getByLabel(/read notification/i)).toBeVisible();
@@ -1780,7 +1867,7 @@ test.describe('notification lifecycle', () => {
 });
 ```
 
-If the login form or privilege update flow uses different accessible names, inspect existing e2e tests and replace selectors with already-used project selectors. Do not introduce a test-only audit seeding endpoint.
+If the privilege page changes, update selectors from existing privilege e2e files only. Do not introduce a test-only audit seeding endpoint.
 
 - [ ] **Step 2: Run e2e and verify failure or selector issues**
 
@@ -1790,9 +1877,9 @@ Run:
 CI=true npx nx e2e portal-web-e2e --skip-nx-cache --grep "notification lifecycle"
 ```
 
-Expected before implementation completion: FAIL if selectors need adjustment or lifecycle UI is absent. After Tasks 1-7, expected PASS once selectors match current app.
+Expected before implementation completion: FAIL because lifecycle UI is absent. After Tasks 1-7, expected PASS if the existing privilege flow remains stable.
 
-- [ ] **Step 3: Adjust selectors to existing e2e patterns**
+- [ ] **Step 3: Verify selectors against existing e2e patterns before changing them**
 
 Open the closest existing files:
 
@@ -1801,7 +1888,7 @@ sed -n '1,240p' apps/portal-web-e2e/src/privileges-audit.spec.ts
 sed -n '1,240p' apps/portal-web-e2e/src/user-privileges.spec.ts
 ```
 
-Replace only selectors in `notifications-lifecycle.spec.ts` with working selectors from those files. Keep the lifecycle assertions unchanged.
+Only change selectors if these files prove the current privilege flow uses different stable selectors. Keep the lifecycle assertions unchanged.
 
 - [ ] **Step 4: Run e2e**
 
