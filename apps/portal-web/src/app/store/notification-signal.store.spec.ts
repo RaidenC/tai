@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { NotificationSignalStore } from './notification-signal.store';
+import { getNotificationIdempotencyKey, NotificationSignalStore } from './notification-signal.store';
 import { NotificationItem } from '../models/notification-item.model';
 
 describe('NotificationSignalStore', () => {
@@ -252,6 +252,81 @@ describe('NotificationSignalStore', () => {
       store.addNotification({ ...mockNotification, id: 'evt-002' });
       store.addNotification({ ...mockNotification, id: 'evt-003' });
       expect(store.latestNotification()?.id).toBe('evt-003');
+    });
+  });
+
+  describe('tenant-scoped idempotency', () => {
+    it('builds tenant-scoped idempotency keys in exact format', () => {
+      expect(getNotificationIdempotencyKey({ tenantId: 'tenant-1', id: 'evt-1' }))
+        .toBe('tenant-1:evt-1');
+    });
+
+    it('adds notification batches newest first and dedupes inside the batch', () => {
+      store.addNotifications([
+        { ...mockNotification, id: 'evt-1', timestamp: '2026-05-03T10:00:00.000Z', source: 'history' },
+        { ...mockNotification, id: 'evt-2', timestamp: '2026-05-03T10:02:00.000Z', source: 'history' },
+        { ...mockNotification, id: 'evt-1', timestamp: '2026-05-03T10:01:00.000Z', source: 'history' },
+      ]);
+
+      expect(store.notifications().map(n => n.id)).toEqual(['evt-2', 'evt-1']);
+    });
+
+    it('dedupes history and SignalR events by tenant-scoped key', () => {
+      store.addNotification({ ...mockNotification, id: 'evt-1', tenantId: 'tenant-1', source: 'history' });
+      store.addNotification({ ...mockNotification, id: 'evt-1', tenantId: 'tenant-1', source: 'signalr' });
+      store.addNotification({ ...mockNotification, id: 'evt-1', tenantId: 'tenant-2', source: 'history' });
+
+      expect(store.notifications()).toHaveLength(2);
+      expect(store.notifications().map(n => `${n.tenantId}:${n.id}`)).toContain('tenant-1:evt-1');
+      expect(store.notifications().map(n => `${n.tenantId}:${n.id}`)).toContain('tenant-2:evt-1');
+    });
+
+    it('evicts idempotency keys FIFO and allows evicted keys to be re-added', () => {
+      store.addNotification({ ...mockNotification, id: 'evt-0000', tenantId: 'tenant-1' });
+
+      for (let i = 1; i <= 1000; i++) {
+        store.addNotification({ ...mockNotification, id: `evt-${i.toString().padStart(4, '0')}`, tenantId: 'tenant-1' });
+      }
+
+      store.addNotification({ ...mockNotification, id: 'evt-0000', tenantId: 'tenant-1', summary: 're-added after FIFO eviction' });
+      store.addNotification({ ...mockNotification, id: 'evt-1000', tenantId: 'tenant-1', summary: 'should remain deduped' });
+
+      expect(store.notifications()[0].summary).toBe('re-added after FIFO eviction');
+      expect(store.notifications().filter(n => n.id === 'evt-1000')).toHaveLength(1);
+    });
+
+    it('tracks hydration state and empty state', () => {
+      expect(store.isHydrating()).toBe(false);
+      expect(store.hasHydrated()).toBe(false);
+      expect(store.isEmpty()).toBe(false);
+
+      store.setHydrating(true);
+      expect(store.isHydrating()).toBe(true);
+      expect(store.isEmpty()).toBe(false);
+
+      store.setHydrating(false);
+      store.markHydrated();
+      expect(store.hasHydrated()).toBe(true);
+      expect(store.isEmpty()).toBe(true);
+
+      store.setHydrationError('Unable to load recent notifications');
+      expect(store.hydrationError()).toBe('Unable to load recent notifications');
+      expect(store.isEmpty()).toBe(false);
+    });
+
+    it('clearForAuthBoundaryChange clears notifications, idempotency, and hydration state', () => {
+      store.addNotification(mockNotification);
+      store.setHydrationError('Unable to load recent notifications');
+      store.markHydrated();
+
+      store.clearForAuthBoundaryChange();
+      store.addNotification({ ...mockNotification, summary: 'allowed after clear' });
+
+      expect(store.notifications()).toHaveLength(1);
+      expect(store.notifications()[0].summary).toBe('allowed after clear');
+      expect(store.hydrationError()).toBeNull();
+      expect(store.hasHydrated()).toBe(false);
+      expect(store.isHydrating()).toBe(false);
     });
   });
 });

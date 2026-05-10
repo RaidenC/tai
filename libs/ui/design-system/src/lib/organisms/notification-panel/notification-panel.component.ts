@@ -1,4 +1,4 @@
-import { Component, Input, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NotificationPanelService, SeverityFilter } from './notification-panel.service';
@@ -10,15 +10,27 @@ import { NotificationPanelItem } from './notification-panel.types';
   imports: [CommonModule, FormsModule],
   templateUrl: './notification-panel.component.html',
   styleUrl: './notification-panel.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NotificationPanelComponent {
   private readonly panelService = inject(NotificationPanelService);
 
   @Input() notifications: NotificationPanelItem[] = [];
+  @Input() isLoading = false;
+  @Input() error: string | null = null;
+  @Input() isRetryThrottled = false;
+  @Output() retry = new EventEmitter<void>();
 
   readonly isOpen = this.panelService.isOpen;
   readonly severityFilter = this.panelService.severityFilter;
   readonly searchText = this.panelService.searchText;
+
+  onRetry(): void {
+    if (this.isLoading || this.isRetryThrottled) {
+      return;
+    }
+    this.retry.emit();
+  }
 
   // Filtered notifications based on severity and search
   readonly filteredNotifications = (): NotificationPanelItem[] => {
@@ -49,27 +61,6 @@ export class NotificationPanelComponent {
 
   close(): void {
     this.panelService.close();
-  }
-
-  getEventSeverity(eventOrAction: NotificationPanelItem | string): string {
-    if (typeof eventOrAction === 'string') {
-      // Legacy support for string input
-      const eventText = eventOrAction.toLowerCase();
-      if (
-        eventText.includes('critical') ||
-        eventText.includes('anomaly') ||
-        eventText.includes('privilege') ||
-        eventText.includes('security')
-      ) {
-        return 'critical';
-      }
-      if (eventText.includes('warning')) {
-        return 'warning';
-      }
-      return 'info';
-    }
-    // For NotificationPanelItem, use the severity field directly
-    return eventOrAction.severity;
   }
 
   getSeverityClass(severity: string): string {

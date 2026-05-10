@@ -1,8 +1,7 @@
 @if (isOpen()()) {
-   
-   
-  <div class="panel-overlay" (click)="close()" role="button" tabindex="0" (keydown.enter)="close()" (keydown.escape)="close()"></div>
-   
+
+  <div class="panel-overlay" (click)="close()" role="presentation" tabindex="0" (keydown.enter)="close()" (keydown.escape)="close()" aria-label="Close panel"></div>
+
   <div class="notification-panel">
     <div class="panel-header">
       <h3>Notifications</h3>
@@ -14,32 +13,58 @@
     </div>
 
     <div class="search-box">
+      <label for="notification-search" class="visually-hidden">Search notifications</label>
       <input
+        id="notification-search"
         type="text"
         placeholder="Search notifications..."
+        aria-label="Search notifications"
         [value]="searchText()()"
         (input)="onSearchChange($event)"
       />
     </div>
 
-    <div class="filter-buttons">
+    <div class="filter-buttons" role="group" aria-label="Filter notifications by severity">
       <button
         [class.active]="severityFilter()() === 'all'"
         (click)="setSeverity('all')"
+        aria-label="Show all notifications"
       >All</button>
       <button
         [class.active]="severityFilter()() === 'critical'"
         (click)="setSeverity('critical')"
+        aria-label="Show critical notifications only"
       >Critical</button>
       <button
         [class.active]="severityFilter()() === 'warning'"
         (click)="setSeverity('warning')"
+        aria-label="Show warning notifications only"
       >Warning</button>
       <button
         [class.active]="severityFilter()() === 'info'"
         (click)="setSeverity('info')"
+        aria-label="Show info notifications only"
       >Info</button>
     </div>
+
+    @if (isLoading) {
+      <div class="panel-status panel-status-loading" role="status" aria-live="polite">
+        Loading recent notifications...
+      </div>
+    }
+
+    @if (error) {
+      <div class="panel-status panel-status-error" role="alert" aria-live="assertive">
+        <span>{{ error }}</span>
+        <button
+          type="button"
+          class="retry-btn"
+          [disabled]="isLoading || isRetryThrottled"
+          (click)="onRetry()">
+          Retry
+        </button>
+      </div>
+    }
 
     <div class="event-list">
       @for (notification of filteredNotifications(); track notification.id) {
@@ -57,7 +82,9 @@
           </div>
         </div>
       } @empty {
-        <div class="empty-state">No notifications</div>
+        @if (!isLoading && !error) {
+          <div class="empty-state" role="status" aria-live="polite">No recent notifications</div>
+        }
       }
     </div>
   </div>

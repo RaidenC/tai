@@ -92,12 +92,24 @@ const meta: Meta<NotificationPanelComponent> = {
     notifications: {
       control: 'object',
       description: 'Array of notifications to display'
+    },
+    isLoading: {
+      control: 'boolean',
+      description: 'Whether notifications are loading'
+    },
+    error: {
+      control: 'text',
+      description: 'Error message to display'
+    },
+    isRetryThrottled: {
+      control: 'boolean',
+      description: 'Whether retry is throttled'
     }
   },
   render: (args) => ({
     props: args,
     imports: [CommonModule],
-    template: '<tai-notification-panel [notifications]="notifications"></tai-notification-panel>',
+    template: '<tai-notification-panel [notifications]="notifications" [isLoading]="isLoading" [error]="error" [isRetryThrottled]="isRetryThrottled"></tai-notification-panel>',
   }),
 };
 
@@ -141,6 +153,33 @@ export const WithSearchFilter: Story = {
 export const EmptyState: Story = {
   args: {
     notifications: []
+  },
+  decorators: [withPanelState()],
+};
+
+export const Loading: Story = {
+  args: {
+    notifications: [],
+    isLoading: true,
+    error: null,
+  },
+  decorators: [withPanelState()],
+};
+
+export const EmptyAfterHydration: Story = {
+  args: {
+    notifications: [],
+    isLoading: false,
+    error: null,
+  },
+  decorators: [withPanelState()],
+};
+
+export const ErrorWithRetry: Story = {
+  args: {
+    notifications: [],
+    isLoading: false,
+    error: 'Unable to load recent notifications',
   },
   decorators: [withPanelState()],
 };

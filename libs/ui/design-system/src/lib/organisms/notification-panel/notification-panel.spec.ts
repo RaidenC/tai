@@ -202,7 +202,7 @@ describe('NotificationPanelComponent', () => {
 
       const emptyState = fixture.nativeElement.querySelector('.empty-state');
       expect(emptyState).toBeTruthy();
-      expect(emptyState.textContent).toContain('No notifications');
+      expect(emptyState.textContent).toContain('No recent notifications');
     });
 
     it('should not show empty state when events exist', () => {
@@ -258,6 +258,58 @@ describe('NotificationPanelComponent', () => {
     });
   });
 
+  describe('Loading state', () => {
+    it('renders loading state with polite status live region while keeping notifications visible', () => {
+      component.isLoading = true;
+      component.notifications = mockNotifications;
+      panelService.open();
+      fixture.detectChanges();
+
+      const status = fixture.nativeElement.querySelector('[role="status"][aria-live="polite"]');
+      expect(status?.textContent).toContain('Loading recent notifications');
+      expect(fixture.nativeElement.textContent).toContain('Login Anomaly Detected');
+    });
+  });
+
+  describe('Empty state', () => {
+    it('renders empty state with polite status live region', () => {
+      component.isLoading = false;
+      component.error = null;
+      component.notifications = [];
+      panelService.open();
+      fixture.detectChanges();
+
+      const status = fixture.nativeElement.querySelector('[role="status"][aria-live="polite"]');
+      expect(status?.textContent).toContain('No recent notifications');
+    });
+  });
+
+  describe('Error state', () => {
+    it('renders error state with assertive alert and retry button', () => {
+      const retrySpy = vi.spyOn(component.retry, 'emit');
+      component.error = 'Unable to load recent notifications';
+      panelService.open();
+      fixture.detectChanges();
+
+      const alert = fixture.nativeElement.querySelector('[role="alert"][aria-live="assertive"]');
+      const button = fixture.nativeElement.querySelector('button[type="button"].retry-btn');
+
+      expect(alert?.textContent).toContain('Unable to load recent notifications');
+      button.click();
+      expect(retrySpy).toHaveBeenCalled();
+    });
+
+    it('disables retry while loading or throttled', () => {
+      component.error = 'Retry limit reached. Try again shortly.';
+      component.isLoading = true;
+      panelService.open();
+      fixture.detectChanges();
+
+      const button = fixture.nativeElement.querySelector('button[type="button"].retry-btn') as HTMLButtonElement;
+      expect(button.disabled).toBe(true);
+    });
+  });
+
   describe('Helper methods', () => {
     it('should get severity class for critical', () => {
       expect(component.getSeverityClass('critical')).toBe('severity-critical');
@@ -269,31 +321,6 @@ describe('NotificationPanelComponent', () => {
 
     it('should get severity class for info', () => {
       expect(component.getSeverityClass('info')).toBe('severity-info');
-    });
-
-    it('should get event severity for string input', () => {
-      expect(component.getEventSeverity('LoginAnomaly')).toBe('critical');
-    });
-
-    it('should get event severity for warning string', () => {
-      expect(component.getEventSeverity('WarningRateLimit')).toBe('warning');
-    });
-
-    it('should get event severity for info string', () => {
-      expect(component.getEventSeverity('UserLogin')).toBe('info');
-    });
-
-    it('should get severity from NotificationPanelItem', () => {
-      expect(component.getEventSeverity({
-        id: '4',
-        title: 'Privilege Modified',
-        summary: 'Privilege was modified',
-        severity: 'critical',
-        category: 'privilege',
-        actor: 'user-4',
-        timestamp: new Date().toISOString(),
-        userId: 'user-4'
-      })).toBe('critical');
     });
 
     it('should format time as Just now', () => {

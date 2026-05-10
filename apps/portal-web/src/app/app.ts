@@ -7,6 +7,7 @@ import { AppShellComponent, MenuItem, NotificationToggleComponent, NotificationP
 import { OnboardingStore } from './features/onboarding/onboarding.store';
 import { RealTimeService } from './real-time.service';
 import { NotificationSignalStore } from './store/notification-signal.store';
+import { NotificationHistoryService } from './notifications/notification-history.service';
 import { combineLatest, map, of } from 'rxjs';
 
 @Component({
@@ -22,6 +23,7 @@ export class App implements OnInit {
     public readonly router = inject(Router);
     protected readonly onboardingStore = inject(OnboardingStore);
     protected readonly notificationStore = inject(NotificationSignalStore);
+    protected readonly notificationHistoryService = inject(NotificationHistoryService);
 
     protected title = 'portal-web';
     protected user$ = this.authService.user$;
