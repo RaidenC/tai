@@ -15,6 +15,14 @@ describe('NotificationHistoryService', () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let _service: NotificationHistoryService;
 
+  // Spies on store methods for verification
+  let setLifecycleScopeSpy: ReturnType<typeof vi.spyOn>;
+  let markReadSpy: ReturnType<typeof vi.spyOn>;
+  let markAllReadSpy: ReturnType<typeof vi.spyOn>;
+  let acknowledgeSpy: ReturnType<typeof vi.spyOn>;
+  let addNotificationsSpy: ReturnType<typeof vi.spyOn>;
+  let clearForAuthBoundaryChangeSpy: ReturnType<typeof vi.spyOn>;
+
   const adminUser: User = {
     id: 'user-1',
     name: 'Admin',
@@ -50,10 +58,34 @@ describe('NotificationHistoryService', () => {
     });
 
     store = TestBed.inject(NotificationSignalStore);
-    _service = TestBed.inject(NotificationHistoryService);
+
+    // Set up spies on store methods
+    setLifecycleScopeSpy = vi.spyOn(store, 'setLifecycleScope');
+    markReadSpy = vi.spyOn(store, 'markRead');
+    markAllReadSpy = vi.spyOn(store, 'markAllRead');
+    acknowledgeSpy = vi.spyOn(store, 'acknowledge');
+    addNotificationsSpy = vi.spyOn(store, 'addNotifications');
+    // Mock clearForAuthBoundaryChange to avoid internal setLifecycleScope(null) call
+    // This allows tests to verify the service uses clearForAuthBoundaryChange as the canonical method
+    // rather than directly calling setLifecycleScope(null)
+    clearForAuthBoundaryChangeSpy = vi.spyOn(store, 'clearForAuthBoundaryChange').mockImplementation(() => {
+      // Clear notifications, idempotency cache, and hydration state
+      // but do NOT call setLifecycleScope(null) - that's handled by the service's handleAuthBoundary
+      store.clearNotifications();
+      // Directly set hydration state signals without going through setLifecycleScope
+      (store as unknown as { _isHydrating: { set: (v: boolean) => void } })._isHydrating.set(false);
+      (store as unknown as { _hydrationError: { set: (v: string | null) => void } })._hydrationError.set(null);
+      (store as unknown as { _hasHydrated: { set: (v: boolean) => void } })._hasHydrated.set(false);
+    });
   });
 
+  // Helper to instantiate service after test setup
+  function instantiateService(): NotificationHistoryService {
+    return (_service = TestBed.inject(NotificationHistoryService));
+  }
+
   it('hydrates recent audit rows after user tenant is available', () => {
+    instantiateService();
     user$.next(adminUser);
 
     expect(http.get).toHaveBeenCalledWith('/api/AuditLogs/recent?limit=50', { withCredentials: true });
@@ -64,6 +96,7 @@ describe('NotificationHistoryService', () => {
   });
 
   it('fails closed when tenant id is null', () => {
+    instantiateService();
     user$.next({ ...adminUser, tenantId: null });
 
     expect(http.get).not.toHaveBeenCalled();
@@ -74,6 +107,7 @@ describe('NotificationHistoryService', () => {
   it('keeps existing SignalR notifications when empty history returns', () => {
     store.addNotification({ ...storeNotification(), id: 'signalr-1', source: 'signalr' });
     http.get.mockReturnValue(of([]));
+    instantiateService();
 
     user$.next(adminUser);
 
@@ -83,6 +117,7 @@ describe('NotificationHistoryService', () => {
 
   it('adds valid rows and skips malformed rows in partial mapping failure', () => {
     http.get.mockReturnValue(of([auditRow, { ...auditRow, id: '', action: '' }]));
+    instantiateService();
 
     user$.next(adminUser);
 
@@ -92,6 +127,7 @@ describe('NotificationHistoryService', () => {
 
   it('sets hydration error when all rows fail mapping', () => {
     http.get.mockReturnValue(of([{ ...auditRow, id: '', action: '' }]));
+    instantiateService();
 
     user$.next(adminUser);
 
@@ -101,6 +137,7 @@ describe('NotificationHistoryService', () => {
   });
 
   it('maps 403, 404, 429, and network failures to panel errors', () => {
+    instantiateService();
     const cases = [
       [{ status: 403 }, 'You do not have access to recent notifications.'],
       [{ status: 404 }, 'Unable to load recent notifications'],
@@ -120,6 +157,7 @@ describe('NotificationHistoryService', () => {
     const firstResponse = new Subject<AuditLogDetails[]>();
     http.get.mockReturnValueOnce(firstResponse.asObservable());
     http.get.mockReturnValueOnce(of([{ ...auditRow, id: 'evt-tenant-2', tenantId: 'tenant-2' }]));
+    instantiateService();
 
     user$.next(adminUser);
     user$.next({ ...adminUser, tenantId: 'tenant-2' });
@@ -127,6 +165,41 @@ describe('NotificationHistoryService', () => {
     firstResponse.complete();
 
     expect(store.notifications().map(n => n.id)).toEqual(['evt-tenant-2']);
+  });
+
+  it('sets lifecycle scope from tenantId and OIDC subject before hydration rows are added', () => {
+    http.get.mockReturnValue(of([auditRow]));
+    instantiateService();
+
+    user$.next({ ...adminUser, id: 'user-sub-1', tenantId: 'tenant-1', email: 'changed@tai.com' });
+
+    expect(setLifecycleScopeSpy).toHaveBeenCalledWith({ tenantId: 'tenant-1', userId: 'user-sub-1' });
+    expect(setLifecycleScopeSpy.mock.invocationCallOrder[0])
+      .toBeLessThan(addNotificationsSpy.mock.invocationCallOrder[0]);
+  });
+
+  it('clears auth boundary state through the store on logout', () => {
+    http.get.mockReturnValue(of([]));
+    instantiateService();
+
+    user$.next({ ...adminUser, id: 'user-sub-1', tenantId: 'tenant-1' });
+    user$.next(null);
+
+    expect(clearForAuthBoundaryChangeSpy).toHaveBeenCalled();
+    expect(setLifecycleScopeSpy).not.toHaveBeenCalledWith(null);
+  });
+
+  it('switches tenant scope and rehydrates when switching back to the original tenant', () => {
+    http.get.mockReturnValue(of([]));
+    instantiateService();
+
+    user$.next({ ...adminUser, id: 'user-sub-1', tenantId: 'tenant-1' });
+    user$.next({ ...adminUser, id: 'user-sub-1', tenantId: 'tenant-2' });
+    user$.next({ ...adminUser, id: 'user-sub-1', tenantId: 'tenant-1' });
+
+    expect(setLifecycleScopeSpy).toHaveBeenCalledWith({ tenantId: 'tenant-1', userId: 'user-sub-1' });
+    expect(setLifecycleScopeSpy).toHaveBeenCalledWith({ tenantId: 'tenant-2', userId: 'user-sub-1' });
+    expect(http.get).toHaveBeenCalledTimes(3);
   });
 });
 

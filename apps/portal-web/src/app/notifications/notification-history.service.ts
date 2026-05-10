@@ -1,7 +1,7 @@
 import { DestroyRef, Injectable, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
-import { EMPTY, Subject, catchError, debounceTime, filter, map, switchMap, tap, timeout } from 'rxjs';
+import { EMPTY, Subject, catchError, debounceTime, filter, switchMap, tap, timeout } from 'rxjs';
 import { AuthService, User } from '../auth.service';
 import { AuditLogDetails } from '../models/security-event.model';
 import { NotificationSignalStore } from '../store/notification-signal.store';
@@ -22,36 +22,34 @@ export class NotificationHistoryService {
   private readonly retryRequests$ = new Subject<void>();
   private readonly hydratedTenants = new Set<string>();
   private readonly retryAttemptsByTenant = new Map<string, number[]>();
-  private currentTenantId: string | null = null;
+  private currentUser: Pick<User, 'id' | 'tenantId'> | null = null;
 
   constructor() {
     this.authService.user$.pipe(
       takeUntilDestroyed(this.destroyRef),
-      map(user => user?.tenantId ?? null),
-      tap(tenantId => this.handleTenantBoundary(tenantId)),
-      filter((tenantId): tenantId is string => !!tenantId),
-      // Note: This filter reads from hydratedTenants which is mutated elsewhere.
-      // RxJS operators execute serially within a subscription, so this is safe:
-      // each emission is processed completely before the next one is handled.
-      filter(tenantId => !this.hydratedTenants.has(tenantId)),
-      switchMap(tenantId => this.hydrateTenant(tenantId))
+      tap(user => this.handleAuthBoundary(user)),
+      filter((user): user is User => !!user && !!user.tenantId && !!user.id),
+      filter(user => !this.hydratedTenants.has(this.getHydrationKey(user))),
+      switchMap(user => this.hydrateTenant(user.tenantId!, user.id))
     ).subscribe();
 
     this.retryRequests$.pipe(
       takeUntilDestroyed(this.destroyRef),
       debounceTime(RETRY_DEBOUNCE_MS),
       switchMap(() => {
-        if (!this.currentTenantId) {
+        const user = this.currentUser;
+        if (!user?.tenantId || !user.id) {
           this.store.setHydrating(false);
           this.store.setHydrationError('Unable to verify notification tenant.');
           return EMPTY;
         }
-        if (!this.canRetry(this.currentTenantId)) {
+        const hydrationKey = this.getHydrationKey({ tenantId: user.tenantId, id: user.id });
+        if (!this.canRetry(hydrationKey)) {
           this.store.setHydrationError('Retry limit reached. Try again shortly.');
           return EMPTY;
         }
-        this.hydratedTenants.delete(this.currentTenantId);
-        return this.hydrateTenant(this.currentTenantId);
+        this.hydratedTenants.delete(hydrationKey);
+        return this.hydrateTenant(user.tenantId, user.id);
       })
     ).subscribe();
   }
@@ -60,35 +58,46 @@ export class NotificationHistoryService {
     this.retryRequests$.next();
   }
 
-  private handleTenantBoundary(tenantId: string | null): void {
-    const previousTenantId = this.currentTenantId;
-    this.currentTenantId = tenantId;
+  private handleAuthBoundary(user: User | null): void {
+    const previousUser = this.currentUser;
+    const previousKey = previousUser ? this.getHydrationKey(previousUser) : null;
+    const nextKey = user?.tenantId && user?.id
+      ? this.getHydrationKey({ tenantId: user.tenantId, id: user.id })
+      : null;
 
-    // Clear hydrated state when tenant changes (not on initial null -> valid tenant)
-    if (previousTenantId !== null && previousTenantId !== tenantId) {
+    this.currentUser = nextKey ? { id: user!.id, tenantId: user!.tenantId } : null;
+
+    // Clear hydrated state when tenant/user changes (not on initial null -> valid user)
+    if (previousKey !== null && previousKey !== nextKey) {
       this.store.clearForAuthBoundaryChange();
-      // Only delete the previous tenant - the incoming tenant hasn't been hydrated yet
-      this.hydratedTenants.delete(previousTenantId);
+      this.hydratedTenants.delete(previousKey);
     }
 
-    // Clear retry attempts when tenant changes
-    if (previousTenantId !== tenantId) {
+    // Clear retry attempts when auth boundary changes
+    if (previousKey !== nextKey) {
       this.retryAttemptsByTenant.clear();
     }
 
-    if (!tenantId) {
+    if (!user?.tenantId || !user.id) {
       this.store.setHydrating(false);
       this.store.setHydrationError('Unable to verify notification tenant.');
+      return;
     }
+
+    this.store.setLifecycleScope({ tenantId: user.tenantId, userId: user.id });
   }
 
-  private hydrateTenant(tenantId: string) {
+  private getHydrationKey(user: Pick<User, 'tenantId' | 'id'>): string {
+    return `${user.tenantId}:${user.id}`;
+  }
+
+  private hydrateTenant(tenantId: string, userId: string) {
     this.store.setHydrating(true);
     this.store.setHydrationError(null);
 
     return this.http.get<AuditLogDetails[]>(`/api/AuditLogs/recent?limit=${RECENT_LIMIT}`, { withCredentials: true }).pipe(
       timeout(HYDRATION_TIMEOUT_MS),
-      tap(rows => this.applyHydrationRows(rows, tenantId)),
+      tap(rows => this.applyHydrationRows(rows, tenantId, userId)),
       catchError(error => {
         this.store.setHydrationError(this.mapHydrationError(error));
         this.store.setHydrating(false);
@@ -97,8 +106,8 @@ export class NotificationHistoryService {
     );
   }
 
-  private applyHydrationRows(rows: AuditLogDetails[], expectedTenantId: string): void {
-    if (this.currentTenantId !== expectedTenantId) {
+  private applyHydrationRows(rows: AuditLogDetails[], expectedTenantId: string, expectedUserId: string): void {
+    if (this.currentUser?.tenantId !== expectedTenantId || this.currentUser.id !== expectedUserId) {
       return;
     }
 
@@ -120,9 +129,9 @@ export class NotificationHistoryService {
     this.store.markHydrated();
     this.store.setHydrationError(null);
     this.store.setHydrating(false);
-    // Re-verify tenant is still current before marking hydrated (handles race condition)
-    if (this.currentTenantId === expectedTenantId) {
-      this.hydratedTenants.add(expectedTenantId);
+
+    if (this.currentUser?.tenantId === expectedTenantId && this.currentUser.id === expectedUserId) {
+      this.hydratedTenants.add(this.getHydrationKey({ tenantId: expectedTenantId, id: expectedUserId }));
     }
   }
 
