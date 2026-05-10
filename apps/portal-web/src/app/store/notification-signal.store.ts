@@ -1,18 +1,28 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
 import { AuditLogDetails } from '../models/security-event.model';
 import { NotificationItem, NotificationSeverity } from '../models/notification-item.model';
 import { mapAuditLogToNotification } from '../notifications/notification.mapper';
 import { normalizeSearchText } from '../notifications/notification-text.util';
+import {
+  encodeNotificationKeySegment,
+  NotificationLifecycleRecords,
+  NotificationLifecycleScope,
+  NotificationLifecycleStorageService,
+} from '../notifications/notification-lifecycle-storage.service';
 
 const MAX_BUFFER_SIZE = 50;
 const MAX_IDEMPOTENCY_CACHE = 1000;
+const MAX_LIFECYCLE_EVENT_QUEUE = 1500;
+
+export { encodeNotificationKeySegment };
 
 /**
  * Generate a tenant-scoped idempotency key for a notification.
- * Format: `${tenantId}:${id}`
+ * Format: `${encodedTenantId}:${encodedId}`
+ * Uses encodeURIComponent to avoid colon collisions in tenant IDs or event IDs containing colons.
  */
 export function getNotificationIdempotencyKey(notification: Pick<NotificationItem, 'tenantId' | 'id'>): string {
-  return `${notification.tenantId}:${notification.id}`;
+  return `${encodeNotificationKeySegment(notification.tenantId)}:${encodeNotificationKeySegment(notification.id)}`;
 }
 
 @Injectable({
@@ -27,6 +37,12 @@ export class NotificationSignalStore {
   private readonly _isHydrating = signal(false);
   private readonly _hydrationError = signal<string | null>(null);
   private readonly _hasHydrated = signal(false);
+
+  // Lifecycle state for read/unread tracking
+  private readonly lifecycleStorage = inject(NotificationLifecycleStorageService);
+  private readonly _lifecycleScope = signal<NotificationLifecycleScope | null>(null);
+  private lifecycleRecords: NotificationLifecycleRecords = {};
+  private readonly lifecycleEventIdQueue: string[] = [];
 
   // Primary accessors
   readonly notifications = this._notifications.asReadonly();
@@ -47,6 +63,13 @@ export class NotificationSignalStore {
     this._hasHydrated() &&
     this._hydrationError() === null &&
     this._notifications().length === 0
+  );
+
+  // Lifecycle computed signals
+  readonly unreadCount = computed(() => this._notifications().filter(item => item.readAt === null).length);
+  readonly hasUnread = computed(() => this.unreadCount() > 0);
+  readonly criticalUnacknowledgedCount = computed(() =>
+    this._notifications().filter(item => item.severity === 'critical' && item.acknowledgedAt === null).length
   );
 
   // Latest notification (newest first, so first in array)
@@ -98,6 +121,7 @@ export class NotificationSignalStore {
    * Add multiple notifications to the store.
    * Newest notifications are added at the beginning (index 0).
    * Deduplication is performed inside the batch and against existing notifications.
+   * Lifecycle state (read/unread, acknowledged) is overlaid from persisted records.
    */
   addNotifications(notifications: NotificationItem[]): void {
     const uniqueNotifications: NotificationItem[] = [];
@@ -109,7 +133,8 @@ export class NotificationSignalStore {
       }
 
       this.trackSeenKey(key);
-      uniqueNotifications.push(notification);
+      this.trackLifecycleEventId(notification.id);
+      uniqueNotifications.push(this.applyLifecycle(notification));
     }
 
     if (uniqueNotifications.length === 0) {
@@ -160,6 +185,82 @@ export class NotificationSignalStore {
     this._searchText.set(text);
   }
 
+  // ========== Lifecycle Methods ==========
+
+  /**
+   * Set the lifecycle scope for read/unread state persistence.
+   * Reads persisted lifecycle records from storage for the given tenant/user.
+   */
+  setLifecycleScope(scope: NotificationLifecycleScope | null): void {
+    this._lifecycleScope.set(scope);
+    this.lifecycleRecords = scope ? this.lifecycleStorage.read(scope) : {};
+    this.lifecycleEventIdQueue.length = 0;
+
+    if (scope) {
+      this.lifecycleEventIdQueue.push(...Object.keys(this.lifecycleRecords).slice(-MAX_LIFECYCLE_EVENT_QUEUE));
+    }
+  }
+
+  /**
+   * Mark a notification as read.
+   * Updates both in-memory state and persisted lifecycle storage.
+   * Does nothing if the notification is already read or doesn't exist.
+   */
+  markRead(eventId: string): void {
+    const existing = this._notifications().find(item => item.id === eventId);
+    if (!existing || existing.readAt) {
+      return;
+    }
+
+    const readAt = new Date().toISOString();
+    this._notifications.update(items =>
+      items.map(item => item.id === eventId ? { ...item, readAt } : item)
+    );
+    this.updateLifecycleRecord(eventId, { readAt });
+  }
+
+  /**
+   * Mark all retained notifications as read.
+   * Updates both in-memory state and persisted lifecycle storage.
+   */
+  markAllRead(): void {
+    const readAt = new Date().toISOString();
+    const unreadIds: string[] = [];
+
+    this._notifications.update(items => items.map(item => {
+      if (item.readAt) {
+        return item;
+      }
+
+      unreadIds.push(item.id);
+      return { ...item, readAt };
+    }));
+
+    for (const id of unreadIds) {
+      this.updateLifecycleRecord(id, { readAt }, false);
+    }
+    this.persistLifecycle();
+  }
+
+  /**
+   * Acknowledge a critical notification.
+   * Also marks it as read if not already read.
+   * Does nothing for non-critical notifications or if already acknowledged.
+   */
+  acknowledge(eventId: string): void {
+    const existing = this._notifications().find(item => item.id === eventId);
+    if (!existing || existing.severity !== 'critical' || existing.acknowledgedAt) {
+      return;
+    }
+
+    const acknowledgedAt = new Date().toISOString();
+    const readAt = existing.readAt ?? acknowledgedAt;
+    this._notifications.update(items =>
+      items.map(item => item.id === eventId ? { ...item, readAt, acknowledgedAt } : item)
+    );
+    this.updateLifecycleRecord(eventId, { readAt, acknowledgedAt });
+  }
+
   /**
    * Remove a notification by ID.
    */
@@ -180,10 +281,12 @@ export class NotificationSignalStore {
 
   /**
    * Clear for authentication boundary change.
-   * Alias for clearNotifications for semantic clarity.
+   * Clears notifications, idempotency cache, lifecycle scope, and hydration state.
+   * Does not delete persisted lifecycle records from localStorage.
    */
   clearForAuthBoundaryChange(): void {
     this.clearNotifications();
+    this.setLifecycleScope(null);
     this._isHydrating.set(false);
     this._hydrationError.set(null);
     this._hasHydrated.set(false);
@@ -237,6 +340,65 @@ export class NotificationSignalStore {
       const evicted = this.seenNotificationKeyQueue.shift();
       if (evicted) {
         this.seenNotificationKeys.delete(evicted);
+      }
+    }
+  }
+
+  // ========== Lifecycle Private Methods ==========
+
+  private applyLifecycle(notification: NotificationItem): NotificationItem {
+    const record = this.lifecycleRecords[notification.id];
+    if (!record) {
+      return notification;
+    }
+
+    return {
+      ...notification,
+      readAt: record.readAt,
+      acknowledgedAt: notification.severity === 'critical' ? record.acknowledgedAt : null,
+    };
+  }
+
+  private updateLifecycleRecord(
+    eventId: string,
+    patch: Partial<{ readAt: string; acknowledgedAt: string }>,
+    persist = true
+  ): void {
+    const current = this.lifecycleRecords[eventId] ?? { readAt: null, acknowledgedAt: null };
+    this.lifecycleRecords = {
+      ...this.lifecycleRecords,
+      [eventId]: {
+        readAt: patch.readAt ?? current.readAt,
+        acknowledgedAt: patch.acknowledgedAt ?? current.acknowledgedAt,
+      },
+    };
+    this.trackLifecycleEventId(eventId);
+
+    if (persist) {
+      this.persistLifecycle();
+    }
+  }
+
+  private persistLifecycle(): void {
+    const scope = this._lifecycleScope();
+    if (!scope) {
+      return;
+    }
+
+    this.lifecycleStorage.write(scope, this.lifecycleRecords, this.lifecycleEventIdQueue);
+  }
+
+  private trackLifecycleEventId(eventId: string): void {
+    const existingIndex = this.lifecycleEventIdQueue.indexOf(eventId);
+    if (existingIndex >= 0) {
+      this.lifecycleEventIdQueue.splice(existingIndex, 1);
+    }
+    this.lifecycleEventIdQueue.push(eventId);
+
+    while (this.lifecycleEventIdQueue.length > MAX_LIFECYCLE_EVENT_QUEUE) {
+      const evicted = this.lifecycleEventIdQueue.shift();
+      if (evicted) {
+        delete this.lifecycleRecords[evicted];
       }
     }
   }
