@@ -6,7 +6,7 @@ import { AuthService } from './auth.service';
 import { BehaviorSubject, firstValueFrom, Subscription } from 'rxjs';
 import { SecurityEventPayload, AuditLogDetails } from './models/security-event.model';
 import { NotificationSignalStore } from './store/notification-signal.store';
-import { NotificationPanelService, ToastService } from '@tai/ui-design-system';
+import { ToastService } from '@tai/ui-design-system';
 import { mapAuditLogToNotification } from './notifications/notification.mapper';
 import { NOTIFICATION_TOAST_MESSAGES } from './notifications/notification-toast.constants';
 import { NotificationItem } from './models/notification-item.model';
@@ -28,7 +28,6 @@ export class RealTimeService implements OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly ngZone = inject(NgZone);
   private readonly store = inject(NotificationSignalStore);
-  private readonly panelService = inject(NotificationPanelService);
   private readonly toastService = inject(ToastService);
 
   private hubConnection: HubConnection | null = null;
@@ -101,7 +100,6 @@ export class RealTimeService implements OnDestroy {
     // Run outside Angular zone to prevent change detection thrashing
     this.hubConnection.on('SecurityEvent', (payload: SecurityEventPayload) => {
       this.ngZone.runOutsideAngular(() => {
-        console.log('RealTimeService: Received SecurityEvent', payload);
         this.handleSecurityEvent(payload);
       });
     });
@@ -109,11 +107,10 @@ export class RealTimeService implements OnDestroy {
     this.hubConnection.start()
       .then(() => {
         this._connectionStatus$.next(HubConnectionState.Connected);
-        console.log('RealTimeService: SignalR Connected');
       })
-      .catch(err => {
+      .catch(() => {
         this._connectionStatus$.next(HubConnectionState.Disconnected);
-        console.error('RealTimeService: Error while starting connection: ' + err);
+        console.error('RealTimeService: Error while starting connection');
       });
 
     this.hubConnection.onreconnecting(() => this._connectionStatus$.next(HubConnectionState.Reconnecting));
@@ -128,8 +125,6 @@ export class RealTimeService implements OnDestroy {
    * 3. Map to NotificationItem and add to store
    */
   private async handleSecurityEvent(data: any): Promise<void> {
-    console.log('RealTimeService: Full payload:', JSON.stringify(data));
-
     // Handle nested payload from SignalR - could be any case
     const eventType = data.EventType || data.eventType || data.EventType?.toString();
     const innerPayload = data.Payload || data.payload;
@@ -147,8 +142,6 @@ export class RealTimeService implements OnDestroy {
       eventId = data.eventId || data.EventId || data.id || data.Id;
       reason = data.reason || data.Reason;
     }
-
-    console.log('RealTimeService: eventId:', eventId, 'eventType:', eventType, 'reason:', reason);
 
     if (!eventId) {
       console.warn('RealTimeService: Received SecurityEvent without EventId');
@@ -175,11 +168,9 @@ export class RealTimeService implements OnDestroy {
     }
 
     // Fetch full details using Claim Check pattern
-    console.log('RealTimeService: Fetching audit log details for:', eventId);
 
     try {
       const details = await firstValueFrom(this.fetchAuditLogDetails(eventId));
-      console.log('RealTimeService: Got details:', details);
 
       // Map AuditLogDetails to NotificationItem
       const notification = mapAuditLogToNotification(details, {
@@ -198,8 +189,6 @@ export class RealTimeService implements OnDestroy {
       this.ngZone.run(() => {
         // Use addNotification instead of addEvent
         this.store.addNotification(notification);
-        this.panelService.setUnreadCount(this.store.eventBuffer().length);
-        console.log('RealTimeService: Added notification to store:', notification);
 
         // Show toast for critical notifications using the notification title
         if (notification.severity === 'critical') {
@@ -209,8 +198,7 @@ export class RealTimeService implements OnDestroy {
           );
         }
       });
-    } catch (err) {
-      console.error('RealTimeService: Failed to fetch audit log details:', err);
+    } catch {
       this.toastService.show(
         NOTIFICATION_TOAST_MESSAGES.loadFailed,
         'warning'
