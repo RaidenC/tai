@@ -18,7 +18,9 @@ describe('NotificationPanelComponent', () => {
       category: 'authentication',
       actor: 'user-1',
       timestamp: new Date().toISOString(),
-      userId: 'user-1'
+      userId: 'user-1',
+      readAt: null,
+      acknowledgedAt: null,
     },
     {
       id: '2',
@@ -28,7 +30,9 @@ describe('NotificationPanelComponent', () => {
       category: 'security',
       actor: 'user-2',
       timestamp: new Date(Date.now() - 60000).toISOString(),
-      userId: 'user-2'
+      userId: 'user-2',
+      readAt: null,
+      acknowledgedAt: null,
     },
     {
       id: '3',
@@ -38,7 +42,9 @@ describe('NotificationPanelComponent', () => {
       category: 'authentication',
       actor: 'user-3',
       timestamp: new Date(Date.now() - 3600000).toISOString(),
-      userId: 'user-3'
+      userId: 'user-3',
+      readAt: null,
+      acknowledgedAt: null,
     },
     {
       id: '4',
@@ -48,7 +54,9 @@ describe('NotificationPanelComponent', () => {
       category: 'privilege',
       actor: 'user-4',
       timestamp: new Date(Date.now() - 120000).toISOString(),
-      userId: 'user-4'
+      userId: 'user-4',
+      readAt: null,
+      acknowledgedAt: null,
     }
   ];
 
@@ -336,6 +344,132 @@ describe('NotificationPanelComponent', () => {
     it('should format time as hours ago', () => {
       const twoHoursAgo = new Date(Date.now() - 2 * 3600000).toISOString();
       expect(component.formatTime(twoHoursAgo)).toBe('2 hr ago');
+    });
+  });
+
+  describe('Lifecycle controls', () => {
+    it('renders unread marker and emits markRead for unread notifications', () => {
+      const markReadSpy = vi.spyOn(component.markRead, 'emit');
+      component.notifications = [{ ...mockNotifications[0], readAt: null, acknowledgedAt: null }];
+      panelService.open();
+      fixture.detectChanges();
+
+      const unread = fixture.nativeElement.querySelector('[aria-label="Unread notification"]');
+      const button = fixture.nativeElement.querySelector('button[type="button"][aria-label="Mark notification as read"]');
+
+      expect(unread).toBeTruthy();
+      button.click();
+      expect(markReadSpy).toHaveBeenCalledWith('1');
+    });
+
+    it('renders read state without mark-read action', () => {
+      component.notifications = [{
+        ...mockNotifications[0],
+        readAt: '2026-05-07T18:00:00.000Z',
+        acknowledgedAt: null,
+      }];
+      panelService.open();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('[aria-label="Read notification"]')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('button[aria-label="Mark notification as read"]')).toBeNull();
+    });
+
+    it('emits markAllRead only when unread notifications exist', () => {
+      const markAllSpy = vi.spyOn(component.markAllRead, 'emit');
+      component.notifications = mockNotifications.map(item => ({ ...item, readAt: null, acknowledgedAt: null }));
+      panelService.open();
+      fixture.detectChanges();
+
+      const button = fixture.nativeElement.querySelector('button[type="button"][aria-label="Mark all notifications as read"]');
+      expect(button.disabled).toBe(false);
+      button.click();
+      expect(markAllSpy).toHaveBeenCalled();
+    });
+
+    it('renders acknowledgement control only for unacknowledged critical notifications', () => {
+      const ackSpy = vi.spyOn(component.acknowledge, 'emit');
+      component.notifications = [
+        { ...mockNotifications[0], severity: 'critical', readAt: null, acknowledgedAt: null },
+        { ...mockNotifications[1], severity: 'warning', readAt: null, acknowledgedAt: null },
+      ];
+      panelService.open();
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('[aria-label="Acknowledgement required"]')).toBeTruthy();
+      const ackButton = fixture.nativeElement.querySelector('button[type="button"][aria-label="Acknowledge critical notification"]');
+      ackButton.click();
+      expect(ackSpy).toHaveBeenCalledWith('1');
+      expect(fixture.nativeElement.querySelectorAll('button[aria-label="Acknowledge critical notification"]')).toHaveLength(1);
+    });
+
+    it('uses list semantics and announces lifecycle state changes politely', () => {
+      component.notifications = [{ ...mockNotifications[0], readAt: null, acknowledgedAt: null }];
+      panelService.open();
+      fixture.detectChanges();
+
+      const list = fixture.nativeElement.querySelector('[data-testid="notification-list"]');
+      const item = fixture.nativeElement.querySelector('[data-testid="notification-item"]');
+
+      expect(list.getAttribute('role')).toBe('list');
+      expect(list.getAttribute('aria-live')).toBe('polite');
+      expect(item.getAttribute('role')).toBe('listitem');
+    });
+
+    it('disables mark all read button when all notifications are read', () => {
+      component.notifications = mockNotifications.map(item => ({
+        ...item,
+        readAt: '2026-05-07T18:00:00.000Z',
+        acknowledgedAt: null,
+      }));
+      panelService.open();
+      fixture.detectChanges();
+
+      const button = fixture.nativeElement.querySelector('button[type="button"][aria-label="Mark all notifications as read"]');
+      expect(button.disabled).toBe(true);
+    });
+
+    it('does not emit markRead for already read notifications', () => {
+      const markReadSpy = vi.spyOn(component.markRead, 'emit');
+      component.notifications = [{
+        ...mockNotifications[0],
+        readAt: '2026-05-07T18:00:00.000Z',
+        acknowledgedAt: null,
+      }];
+      panelService.open();
+      fixture.detectChanges();
+
+      // Should not have mark-read button for read notifications
+      const button = fixture.nativeElement.querySelector('button[aria-label="Mark notification as read"]');
+      expect(button).toBeNull();
+      expect(markReadSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not emit acknowledge for non-critical notifications', () => {
+      const ackSpy = vi.spyOn(component.acknowledge, 'emit');
+      component.notifications = [
+        { ...mockNotifications[1], severity: 'warning', readAt: null, acknowledgedAt: null },
+      ];
+      panelService.open();
+      fixture.detectChanges();
+
+      const ackButton = fixture.nativeElement.querySelector('button[aria-label="Acknowledge critical notification"]');
+      expect(ackButton).toBeNull();
+      expect(ackSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not emit acknowledge for already acknowledged critical notifications', () => {
+      const ackSpy = vi.spyOn(component.acknowledge, 'emit');
+      component.notifications = [
+        { ...mockNotifications[0], severity: 'critical', readAt: null, acknowledgedAt: '2026-05-07T18:01:00.000Z' },
+      ];
+      panelService.open();
+      fixture.detectChanges();
+
+      const ackButton = fixture.nativeElement.querySelector('button[aria-label="Acknowledge critical notification"]');
+      expect(ackButton).toBeNull();
+      expect(fixture.nativeElement.querySelector('[aria-label="Acknowledged notification"]')).toBeTruthy();
+      expect(ackSpy).not.toHaveBeenCalled();
     });
   });
 });

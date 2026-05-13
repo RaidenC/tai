@@ -10,6 +10,8 @@ export interface NotificationPanelItem {
   actor: string;
   timestamp: string;
   userId?: string | null;
+  readAt: string | null;
+  acknowledgedAt: string | null;
 }
 
 /**

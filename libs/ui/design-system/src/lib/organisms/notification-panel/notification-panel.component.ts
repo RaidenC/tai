@@ -20,6 +20,9 @@ export class NotificationPanelComponent {
   @Input() error: string | null = null;
   @Input() isRetryThrottled = false;
   @Output() retry = new EventEmitter<void>();
+  @Output() markRead = new EventEmitter<string>();
+  @Output() markAllRead = new EventEmitter<void>();
+  @Output() acknowledge = new EventEmitter<string>();
 
   readonly isOpen = this.panelService.isOpen;
   readonly severityFilter = this.panelService.severityFilter;
@@ -30,6 +33,29 @@ export class NotificationPanelComponent {
       return;
     }
     this.retry.emit();
+  }
+
+  readonly hasUnread = (): boolean => this.notifications.some(notification => notification.readAt === null);
+
+  onMarkRead(notification: NotificationPanelItem): void {
+    if (notification.readAt) {
+      return;
+    }
+    this.markRead.emit(notification.id);
+  }
+
+  onMarkAllRead(): void {
+    if (!this.hasUnread()) {
+      return;
+    }
+    this.markAllRead.emit();
+  }
+
+  onAcknowledge(notification: NotificationPanelItem): void {
+    if (notification.severity !== 'critical' || notification.acknowledgedAt) {
+      return;
+    }
+    this.acknowledge.emit(notification.id);
   }
 
   // Filtered notifications based on severity and search
