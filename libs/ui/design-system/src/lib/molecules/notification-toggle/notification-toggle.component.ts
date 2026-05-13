@@ -1,12 +1,16 @@
-import { Component, inject } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NotificationPanelService } from '../../organisms/notification-panel/notification-panel.service';
 
 /**
  * NotificationToggleComponent
  *
  * Floating button at bottom-right corner with unread badge.
  * Similar to iOS app notification icons.
+ *
+ * Uses input/output pattern for maximum reusability:
+ * - `unreadCount` input drives badge display
+ * - `toggled` output emits when button is clicked
+ * - Parent component wires to NotificationSignalStore
  */
 @Component({
   selector: 'tai-notification-toggle',
@@ -16,26 +20,18 @@ import { NotificationPanelService } from '../../organisms/notification-panel/not
   styleUrl: './notification-toggle.component.scss',
 })
 export class NotificationToggleComponent {
-  private readonly panelService = inject(NotificationPanelService);
-
-  readonly unreadCount = this.panelService.unreadCount;
+  @Input() unreadCount = 0;
+  @Output() toggled = new EventEmitter<void>();
 
   toggle(): void {
-    this.panelService.toggle();
+    this.toggled.emit();
   }
 
-  /** Returns the capped display value (capped at 9) */
-  get displayCount(): number {
-    const count = this.unreadCount()();
-    return count > 9 ? 9 : count;
-  }
-
-  /** Returns the raw unread count, evaluated once */
-  get unreadCountValue(): number {
-    return this.unreadCount()();
+  get displayCount(): string {
+    return this.unreadCount > 9 ? '9+' : String(this.unreadCount);
   }
 
   get showBadge(): boolean {
-    return this.unreadCountValue > 0;
+    return this.unreadCount > 0;
   }
 }
