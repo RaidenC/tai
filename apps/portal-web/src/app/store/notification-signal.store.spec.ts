@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { getNotificationIdempotencyKey, NotificationSignalStore } from './notification-signal.store';
 import { NotificationItem } from '../models/notification-item.model';
+import { NotificationLifecycleStorageService } from '../notifications/notification-lifecycle-storage.service';
 
 describe('NotificationSignalStore', () => {
   let store: NotificationSignalStore;
@@ -26,7 +27,7 @@ describe('NotificationSignalStore', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [NotificationSignalStore]
+      providers: [NotificationSignalStore, NotificationLifecycleStorageService]
     });
     store = TestBed.inject(NotificationSignalStore);
   });
@@ -327,6 +328,184 @@ describe('NotificationSignalStore', () => {
       expect(store.hydrationError()).toBeNull();
       expect(store.hasHydrated()).toBe(false);
       expect(store.isHydrating()).toBe(false);
+    });
+  });
+
+  describe('lifecycle state', () => {
+    let storage: NotificationLifecycleStorageService;
+
+    beforeEach(() => {
+      storage = TestBed.inject(NotificationLifecycleStorageService);
+      localStorage.clear();
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-05-07T18:00:00.000Z'));
+    });
+
+    afterEach(() => {
+      localStorage.clear();
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+
+    function notification(id: string, severity: 'critical' | 'warning' | 'info' = 'critical'): NotificationItem {
+      return {
+        ...mockNotification,
+        id,
+        tenantId: 'tenant-1',
+        severity,
+        readAt: null,
+        acknowledgedAt: null,
+      };
+    }
+
+    it('encodes idempotency key segments and avoids colon collisions', () => {
+      expect(getNotificationIdempotencyKey({ tenantId: 'tenant:1', id: 'evt-1' }))
+        .toBe('tenant%3A1:evt-1');
+      expect(getNotificationIdempotencyKey({ tenantId: 'tenant', id: '1:evt-1' }))
+        .toBe('tenant:1%3Aevt-1');
+      expect(getNotificationIdempotencyKey({ tenantId: 'tenant:1', id: 'evt-1' }))
+        .not.toBe(getNotificationIdempotencyKey({ tenantId: 'tenant', id: '1:evt-1' }));
+    });
+
+    it('keeps safe idempotency keys stable while fixing unsafe segment collisions', () => {
+      expect(getNotificationIdempotencyKey({ tenantId: 'tenant-1', id: 'evt-1' }))
+        .toBe('tenant-1:evt-1');
+    });
+
+    it('overlays persisted lifecycle state when adding notifications', () => {
+      storage.write(
+        { tenantId: 'tenant-1', userId: 'user-sub-1' },
+        { 'evt-001': { readAt: '2026-05-07T17:00:00.000Z', acknowledgedAt: '2026-05-07T17:05:00.000Z' } },
+        ['evt-001']
+      );
+
+      store.setLifecycleScope({ tenantId: 'tenant-1', userId: 'user-sub-1' });
+      store.addNotification(notification('evt-001'));
+
+      expect(store.notifications()[0].readAt).toBe('2026-05-07T17:00:00.000Z');
+      expect(store.notifications()[0].acknowledgedAt).toBe('2026-05-07T17:05:00.000Z');
+    });
+
+    it('does not create notifications from fabricated lifecycle records', () => {
+      storage.write(
+        { tenantId: 'tenant-1', userId: 'user-sub-1' },
+        { 'evt-fake': { readAt: '2026-05-07T17:00:00.000Z', acknowledgedAt: null } },
+        ['evt-fake']
+      );
+
+      store.setLifecycleScope({ tenantId: 'tenant-1', userId: 'user-sub-1' });
+
+      expect(store.notifications()).toEqual([]);
+    });
+
+    it('marks one notification read without replacing existing readAt', () => {
+      store.setLifecycleScope({ tenantId: 'tenant-1', userId: 'user-sub-1' });
+      store.addNotification(notification('evt-001'));
+
+      store.markRead('evt-001');
+      store.markRead('evt-001');
+
+      expect(store.notifications()[0].readAt).toBe('2026-05-07T18:00:00.000Z');
+      expect(store.unreadCount()).toBe(0);
+      expect(store.hasUnread()).toBe(false);
+    });
+
+    it('marks all retained notifications read', () => {
+      store.setLifecycleScope({ tenantId: 'tenant-1', userId: 'user-sub-1' });
+      store.addNotifications([notification('evt-001'), notification('evt-002', 'warning')]);
+
+      store.markAllRead();
+
+      expect(store.notifications().every(item => item.readAt === '2026-05-07T18:00:00.000Z')).toBe(true);
+      expect(store.unreadCount()).toBe(0);
+    });
+
+    it('acknowledges critical notifications and marks them read', () => {
+      store.setLifecycleScope({ tenantId: 'tenant-1', userId: 'user-sub-1' });
+      store.addNotification(notification('evt-001', 'critical'));
+
+      store.acknowledge('evt-001');
+
+      expect(store.notifications()[0].acknowledgedAt).toBe('2026-05-07T18:00:00.000Z');
+      expect(store.notifications()[0].readAt).toBe('2026-05-07T18:00:00.000Z');
+      expect(store.criticalUnacknowledgedCount()).toBe(0);
+    });
+
+    it('does not acknowledge warning or info notifications', () => {
+      store.setLifecycleScope({ tenantId: 'tenant-1', userId: 'user-sub-1' });
+      store.addNotifications([notification('evt-warning', 'warning'), notification('evt-info', 'info')]);
+
+      store.acknowledge('evt-warning');
+      store.acknowledge('evt-info');
+
+      expect(store.notifications().every(item => item.acknowledgedAt === null)).toBe(true);
+    });
+
+    it('updates memory even when lifecycle scope is missing', () => {
+      store.addNotification(notification('evt-001'));
+
+      store.markRead('evt-001');
+
+      expect(store.notifications()[0].readAt).toBe('2026-05-07T18:00:00.000Z');
+      expect(localStorage.length).toBe(0);
+    });
+
+    it('preserves lifecycle state through duplicate history and SignalR arrivals', () => {
+      store.setLifecycleScope({ tenantId: 'tenant-1', userId: 'user-sub-1' });
+      store.addNotification(notification('evt-001'));
+      store.markRead('evt-001');
+
+      store.addNotification({ ...notification('evt-001'), source: 'history' });
+
+      expect(store.notifications()).toHaveLength(1);
+      expect(store.notifications()[0].readAt).toBe('2026-05-07T18:00:00.000Z');
+    });
+
+    it('reapplies lifecycle state after idempotency eviction while within lifecycle retention', () => {
+      store.setLifecycleScope({ tenantId: 'tenant-1', userId: 'user-sub-1' });
+      store.addNotification(notification('evt-0000'));
+      store.markRead('evt-0000');
+
+      for (let i = 1; i <= 1000; i += 1) {
+        store.addNotification(notification(`evt-${i.toString().padStart(4, '0')}`));
+      }
+
+      store.addNotification(notification('evt-0000'));
+
+      expect(store.notifications()[0].id).toBe('evt-0000');
+      expect(store.notifications()[0].readAt).toBe('2026-05-07T18:00:00.000Z');
+    });
+
+    it('keeps lifecycle event retention queue bounded to 1500 ids', () => {
+      store.setLifecycleScope({ tenantId: 'tenant-1', userId: 'user-sub-1' });
+
+      for (let i = 0; i < 1501; i += 1) {
+        const id = `evt-${i.toString().padStart(4, '0')}`;
+        store.addNotification(notification(id));
+        store.markRead(id);
+      }
+
+      const stored = storage.read({ tenantId: 'tenant-1', userId: 'user-sub-1' });
+      expect(Object.keys(stored)).toHaveLength(1500);
+      expect(stored['evt-0000']).toBeUndefined();
+      expect(stored['evt-1500']?.readAt).toBe('2026-05-07T18:00:00.000Z');
+    });
+
+    it('clears active lifecycle scope on auth boundary without deleting persisted records', () => {
+      store.setLifecycleScope({ tenantId: 'tenant-1', userId: 'user-sub-1' });
+      store.addNotification(notification('evt-001'));
+      store.markRead('evt-001');
+
+      store.clearForAuthBoundaryChange();
+      store.addNotification(notification('evt-001'));
+
+      expect(store.notifications()[0].readAt).toBeNull();
+
+      store.setLifecycleScope({ tenantId: 'tenant-1', userId: 'user-sub-1' });
+      store.clearNotifications();
+      store.addNotification(notification('evt-001'));
+
+      expect(store.notifications()[0].readAt).toBe('2026-05-07T18:00:00.000Z');
     });
   });
 });

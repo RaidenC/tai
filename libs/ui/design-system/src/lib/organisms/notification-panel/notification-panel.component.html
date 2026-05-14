@@ -5,11 +5,21 @@
   <div class="notification-panel">
     <div class="panel-header">
       <h3>Notifications</h3>
-      <button class="close-btn" (click)="close()" aria-label="Close">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-        </svg>
-      </button>
+      <div class="header-actions">
+        <button
+          type="button"
+          class="mark-all-btn"
+          aria-label="Mark all notifications as read"
+          [disabled]="!hasUnread()"
+          (click)="onMarkAllRead()">
+          Mark all read
+        </button>
+        <button class="close-btn" (click)="close()" aria-label="Close">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <div class="search-box">
@@ -66,9 +76,20 @@
       </div>
     }
 
-    <div class="event-list">
+    <div class="event-list" data-testid="notification-list" role="list" aria-live="polite">
       @for (notification of filteredNotifications(); track notification.id) {
-        <div class="event-item" [class]="getSeverityClass(notification.severity)">
+        <div
+          class="event-item"
+          data-testid="notification-item"
+          role="listitem"
+          [class]="getSeverityClass(notification.severity)"
+          [attr.aria-label]="notification.readAt ? 'Read notification' : 'Unread notification'">
+          @if (!notification.readAt) {
+            <span class="unread-marker"></span>
+          } @else {
+            <span class="read-marker"></span>
+          }
+
           <div class="event-severity-bar"></div>
           <div class="event-content">
             <div class="event-action">{{ notification.title }}</div>
@@ -77,6 +98,20 @@
               <span class="event-time">{{ formatTime(notification.timestamp) }}</span>
               @if (notification.actor) {
                 <span class="event-user">{{ notification.actor }}</span>
+              }
+              @if (notification.severity === 'critical' && !notification.acknowledgedAt) {
+                <span class="ack-required" aria-label="Acknowledgement required">Acknowledgement required</span>
+              }
+              @if (notification.severity === 'critical' && notification.acknowledgedAt) {
+                <span class="acknowledged" aria-label="Acknowledged notification">Acknowledged</span>
+              }
+            </div>
+            <div class="event-actions">
+              @if (!notification.readAt) {
+                <button type="button" aria-label="Mark notification as read" (click)="onMarkRead(notification)">Mark read</button>
+              }
+              @if (notification.severity === 'critical' && !notification.acknowledgedAt) {
+                <button type="button" aria-label="Acknowledge critical notification" (click)="onAcknowledge(notification)">Acknowledge</button>
               }
             </div>
           </div>

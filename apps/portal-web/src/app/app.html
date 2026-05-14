@@ -1,10 +1,16 @@
 <tai-toast></tai-toast>
-<tai-notification-toggle></tai-notification-toggle>
+<tai-notification-toggle
+  [unreadCount]="notificationStore.unreadCount()"
+  (toggled)="notificationPanelService.toggle()">
+</tai-notification-toggle>
 <tai-notification-panel
-  [notifications]="notificationPanelItems"
+  [notifications]="notificationPanelItems()"
   [isLoading]="notificationStore.isHydrating()"
   [error]="notificationStore.hydrationError()"
-  (retry)="notificationHistoryService.retry()">
+  (retry)="notificationHistoryService.retry()"
+  (markRead)="markNotificationRead($event)"
+  (markAllRead)="markAllNotificationsRead()"
+  (acknowledge)="acknowledgeNotification($event)">
 </tai-notification-panel>
 @if (isAuthenticated$ | async) {
   <tai-app-shell 

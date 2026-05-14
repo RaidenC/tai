@@ -28,14 +28,29 @@ export class NotificationPanelService {
     this._isOpen.set(false);
   }
 
-  setUnreadCount(count: number): void {
-    this._unreadCount.set(count);
+  /**
+   * @deprecated Sprint 3 derives unread count from NotificationSignalStore.
+   * This method is a no-op stub for backward compatibility and will be removed
+   * after Task 7 ships.
+   */
+  setUnreadCount(_count: number): void {
+    this._unreadCount.set(0);
   }
 
+  /**
+   * @deprecated Sprint 3 derives unread count from NotificationSignalStore.
+   * This method is a no-op stub for backward compatibility and will be removed
+   * after Task 7 ships.
+   */
   decrementUnread(): void {
     this._unreadCount.update(v => Math.max(0, v - 1));
   }
 
+  /**
+   * @deprecated Sprint 3 derives unread count from NotificationSignalStore.
+   * This method is a no-op stub for backward compatibility and will be removed
+   * after Task 7 ships.
+   */
   markAllAsRead(): void {
     this._unreadCount.set(0);
   }

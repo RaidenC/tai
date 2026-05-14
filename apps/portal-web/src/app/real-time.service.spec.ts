@@ -3,9 +3,10 @@ import { RealTimeService } from './real-time.service';
 import { AuthService } from './auth.service';
 import { HttpClient, HttpHandler } from '@angular/common/http';
 import { HubConnectionState } from '@microsoft/signalr';
-import { BehaviorSubject, of, firstValueFrom } from 'rxjs';
+import { BehaviorSubject, of, firstValueFrom, throwError } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AuditLogDetails } from './models/security-event.model';
+import { NotificationSignalStore } from './store/notification-signal.store';
 import { NotificationPanelService } from '@tai/ui-design-system';
 
 describe('RealTimeService', () => {
@@ -15,7 +16,8 @@ describe('RealTimeService', () => {
   let httpClientMock: {
     get: ReturnType<typeof vi.fn>;
   };
-  let panelService: NotificationPanelService;
+  let store: NotificationSignalStore;
+  let mockPanelService: Partial<NotificationPanelService>;
 
   beforeEach(() => {
     isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
@@ -54,17 +56,24 @@ describe('RealTimeService', () => {
       get: vi.fn().mockReturnValue(of(mockAuditLogDetails)),
     };
 
+    // Mock NotificationPanelService to verify it's not called
+    mockPanelService = {
+      setUnreadCount: vi.fn(),
+    };
+
     TestBed.configureTestingModule({
       providers: [
         RealTimeService,
+        NotificationSignalStore,
         { provide: AuthService, useValue: authServiceMock },
         { provide: HttpClient, useValue: httpClientMock },
+        { provide: NotificationPanelService, useValue: mockPanelService },
         HttpHandler,
       ],
     });
 
     service = TestBed.inject(RealTimeService);
-    panelService = TestBed.inject(NotificationPanelService);
+    store = TestBed.inject(NotificationSignalStore);
   });
 
   it('should be created', () => {
@@ -97,13 +106,13 @@ describe('RealTimeService', () => {
     });
   });
 
-  it('should add fetched security events to the notification panel unread count', async () => {
+  it('should add fetched security events to the notification store', async () => {
     await (service as any).handleSecurityEvent({
       eventType: 'PrivilegeChange',
       payload: { eventId: 'event-123' },
     });
 
-    expect(panelService.unreadCount()()).toBe(1);
+    expect(store.eventBuffer().length).toBeGreaterThan(0);
   });
 
   describe('Model Types', () => {
@@ -152,6 +161,56 @@ describe('RealTimeService', () => {
       expect(details.ipAddress).toBeNull();
       expect(details.details).toBeNull();
       expect(details.correlationId).toBeNull();
+    });
+  });
+
+  describe('Security Sanitization', () => {
+    it('adds SignalR notification without updating NotificationPanelService unread count', async () => {
+      httpClientMock.get.mockReturnValue(of({
+        id: 'event-123',
+        tenantId: 'tenant-1',
+        userId: 'user-1',
+        action: 'PrivilegeModified',
+        resourceId: 'resource-1',
+        correlationId: null,
+        timestamp: '2026-03-31T10:00:00Z',
+        ipAddress: '192.168.1.1',
+        details: 'Privilege modified',
+      } as AuditLogDetails));
+
+      await (service as any).handleSecurityEvent({ eventId: 'event-123', eventType: 'PrivilegeModified' });
+
+      expect(store.eventBuffer().length).toBeGreaterThan(0);
+      expect(mockPanelService.setUnreadCount).not.toHaveBeenCalled();
+    });
+
+    it('does not log security event payloads, audit details, notifications, event IDs, or error objects', async () => {
+      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      httpClientMock.get.mockReturnValue(throwError(() => new Error('contains-event-123')));
+
+      await (service as any).handleSecurityEvent({
+        eventId: 'event-123',
+        eventType: 'PrivilegeModified',
+        reason: 'sensitive reason',
+        tenantId: 'tenant-1',
+      });
+
+      const serialized = JSON.stringify([
+        logSpy.mock.calls,
+        warnSpy.mock.calls,
+        errorSpy.mock.calls,
+      ]);
+
+      expect(serialized).not.toContain('event-123');
+      expect(serialized).not.toContain('tenant-1');
+      expect(serialized).not.toContain('sensitive reason');
+      expect(serialized).not.toContain('contains-event-123');
+
+      logSpy.mockRestore();
+      warnSpy.mockRestore();
+      errorSpy.mockRestore();
     });
   });
 });

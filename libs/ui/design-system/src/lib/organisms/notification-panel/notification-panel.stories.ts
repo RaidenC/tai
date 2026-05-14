@@ -14,7 +14,9 @@ const mockNotifications: NotificationPanelItem[] = [
     category: 'authentication',
     actor: 'user-1',
     timestamp: new Date().toISOString(),
-    userId: 'user-1'
+    userId: 'user-1',
+    readAt: null,
+    acknowledgedAt: null,
   },
   {
     id: '2',
@@ -24,7 +26,9 @@ const mockNotifications: NotificationPanelItem[] = [
     category: 'security',
     actor: 'user-2',
     timestamp: new Date(Date.now() - 60000).toISOString(),
-    userId: 'user-2'
+    userId: 'user-2',
+    readAt: null,
+    acknowledgedAt: null,
   },
   {
     id: '3',
@@ -34,7 +38,9 @@ const mockNotifications: NotificationPanelItem[] = [
     category: 'privilege',
     actor: 'user-3',
     timestamp: new Date(Date.now() - 3600000).toISOString(),
-    userId: 'user-3'
+    userId: 'user-3',
+    readAt: null,
+    acknowledgedAt: null,
   },
   {
     id: '4',
@@ -44,7 +50,9 @@ const mockNotifications: NotificationPanelItem[] = [
     category: 'security',
     actor: 'user-4',
     timestamp: new Date(Date.now() - 7200000).toISOString(),
-    userId: 'user-4'
+    userId: 'user-4',
+    readAt: null,
+    acknowledgedAt: null,
   }
 ];
 
@@ -189,4 +197,48 @@ export const PanelClosed: Story = {
     notifications: mockNotifications
   },
   decorators: [withPanelState({ open: false })],
+};
+
+export const LifecycleStates: Story = {
+  args: {
+    notifications: [
+      {
+        id: 'evt-read',
+        title: 'Privilege modified',
+        summary: 'Trade approver privilege changed',
+        severity: 'critical',
+        category: 'privilege',
+        actor: 'admin@tai.com',
+        timestamp: new Date().toISOString(),
+        userId: 'admin@tai.com',
+        readAt: '2026-05-07T18:00:00.000Z',
+        acknowledgedAt: '2026-05-07T18:01:00.000Z',
+      },
+      {
+        id: 'evt-unread',
+        title: 'Login Anomaly Detected',
+        summary: 'Suspicious login detected from unknown location',
+        severity: 'critical',
+        category: 'authentication',
+        actor: 'user-1',
+        timestamp: new Date(Date.now() - 60000).toISOString(),
+        userId: 'user-1',
+        readAt: null,
+        acknowledgedAt: null,
+      },
+      {
+        id: 'evt-warning',
+        title: 'Rate Limit Warning',
+        summary: 'Rate limit approaching threshold',
+        severity: 'warning',
+        category: 'security',
+        actor: 'user-4',
+        timestamp: new Date(Date.now() - 3600000).toISOString(),
+        userId: 'user-4',
+        readAt: '2026-05-07T17:30:00.000Z',
+        acknowledgedAt: null,
+      },
+    ],
+  },
+  decorators: [withPanelState()],
 };
