@@ -162,7 +162,7 @@ describe('App', () => {
             fixture.detectChanges();
             const toggle = fixture.debugElement.query(By.directive(NotificationToggleComponent)).componentInstance as NotificationToggleComponent;
 
-            expect(toggle.unreadCount).toBe(3);
+            expect(toggle.unreadCount()).toBe(3);
         });
     });
 });
