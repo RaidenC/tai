@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, NgZone } from '@angular/core';
 import { AuditLogDetails } from '../models/security-event.model';
 import { NotificationItem, NotificationSeverity } from '../models/notification-item.model';
 import { mapAuditLogToNotification } from '../notifications/notification.mapper';
@@ -29,6 +29,7 @@ export function getNotificationIdempotencyKey(notification: Pick<NotificationIte
   providedIn: 'root'
 })
 export class NotificationSignalStore {
+  private readonly ngZone = inject(NgZone);
   private readonly _notifications = signal<NotificationItem[]>([]);
   private readonly _severityFilter = signal<NotificationSeverity | null>(null);
   private readonly _searchText = signal<string>('');
@@ -213,9 +214,12 @@ export class NotificationSignalStore {
     }
 
     const readAt = new Date().toISOString();
-    this._notifications.update(items =>
-      items.map(item => item.id === eventId ? { ...item, readAt } : item)
-    );
+    // Run signal update inside NgZone to ensure change detection runs
+    this.ngZone.run(() => {
+      this._notifications.update(items =>
+        items.map(item => item.id === eventId ? { ...item, readAt } : item)
+      );
+    });
     this.updateLifecycleRecord(eventId, { readAt });
   }
 
@@ -227,14 +231,17 @@ export class NotificationSignalStore {
     const readAt = new Date().toISOString();
     const unreadIds: string[] = [];
 
-    this._notifications.update(items => items.map(item => {
-      if (item.readAt) {
-        return item;
-      }
+    // Run signal update inside NgZone to ensure change detection runs
+    this.ngZone.run(() => {
+      this._notifications.update(items => items.map(item => {
+        if (item.readAt) {
+          return item;
+        }
 
-      unreadIds.push(item.id);
-      return { ...item, readAt };
-    }));
+        unreadIds.push(item.id);
+        return { ...item, readAt };
+      }));
+    });
 
     for (const id of unreadIds) {
       this.updateLifecycleRecord(id, { readAt }, false);
@@ -255,9 +262,12 @@ export class NotificationSignalStore {
 
     const acknowledgedAt = new Date().toISOString();
     const readAt = existing.readAt ?? acknowledgedAt;
-    this._notifications.update(items =>
-      items.map(item => item.id === eventId ? { ...item, readAt, acknowledgedAt } : item)
-    );
+    // Run signal update inside NgZone to ensure change detection runs
+    this.ngZone.run(() => {
+      this._notifications.update(items =>
+        items.map(item => item.id === eventId ? { ...item, readAt, acknowledgedAt } : item)
+      );
+    });
     this.updateLifecycleRecord(eventId, { readAt, acknowledgedAt });
   }
 
