@@ -54,17 +54,35 @@ Use **App subscription approach** to avoid circular dependencies:
 // In App component
 private readonly connectionStatus$ = this.realTimeService.connectionStatus$;
 private readonly connectionState = toSignal(this.connectionStatus$, { initialValue: HubConnectionState.Disconnected });
+private previousConnectionState: HubConnectionState = HubConnectionState.Disconnected;
+private reconnectDebounceTimestamp = 0;
+private readonly RECONNECT_DEBOUNCE_MS = 500;
 
-// Effect to trigger rehydration on reconnect
 constructor() {
+  // Effect to trigger rehydration on reconnect (with debouncing for rapid oscillation)
   effect(() => {
     const prevStatus = this.previousConnectionState;
     const currentStatus = this.connectionState();
+    const now = Date.now();
+
     if (prevStatus === HubConnectionState.Reconnecting && currentStatus === HubConnectionState.Connected) {
-      this.notificationHistoryService.retry();
+      // Debounce: skip if reconnect happened within 500ms of previous
+      if (now - this.reconnectDebounceTimestamp >= this.RECONNECT_DEBOUNCE_MS) {
+        this.notificationHistoryService.forceRetry();
+        this.reconnectDebounceTimestamp = now;
+      }
     }
     this.previousConnectionState = currentStatus;
   });
+}
+
+// Test-only hook for E2E (build-gated)
+// @ts-ignore - environment check
+if (typeof window !== 'undefined' && (window as any).__TEST_ENV__) {
+  (window as any).__testConnectionStateOverride__ = (state: HubConnectionState) => {
+    // This hook is only available in test builds, never production
+    // E2E sets __TEST_ENV__ via page.evaluate() before using
+  };
 }
 ```
 
@@ -78,10 +96,14 @@ constructor() {
 - Skeleton animation wrapped in `@media (prefers-reduced-motion: no-preference)` (Critical Finding for vestibular accessibility)
 
 **Rehydration on Reconnect:**
-- App calls `NotificationHistoryService.retry()` on reconnect (see architecture above)
-- `retry()` currently has rate limiting (1s debounce, 3 retries/30s)
-- Add `forceRetry()` method that bypasses rate limiting for reconnect scenarios (Significant Finding)
+- App calls `NotificationHistoryService.forceRetry()` on reconnect (see architecture above)
+- `forceRetry()` behavior (Significant Finding):
+  - Bypasses rate limit counter entirely (no counting, no blocking)
+  - If hydration already in-flight: skips (does not cancel/restart, avoids request flood)
+  - Uses `isHydrating` signal to check in-flight state before making request
+  - Internal-only visibility (not exposed via public API surface)
 - Retry rate limit counter resets on successful hydrate (Minor Finding)
+- `isRetryThrottled` state: `NotificationHistoryService` exposes `isRetryThrottled` signal for UI wiring (Significant Finding). Used by panel retry button when normal `retry()` is called, not `forceRetry()`.
 - `/api/AuditLogs/recent` lookback: 50 count-based, no time filter. Max recoverable disconnect duration is however long it takes for 50 new events to accumulate (Clarifying Question #3)
 - Rehydration keeps cached content during fetch, no skeleton loader (Clarifying Question #7)
 - If rehydration fails: keep cached content, show error banner in panel (not modal error) (Clarifying Question #6)
@@ -94,12 +116,13 @@ constructor() {
 - Edge case: if 1000+ events during disconnect, reconnect could show duplicates (idempotency cache eviction). Accept as documented limitation for POC.
 
 **Files to Modify:**
-- `apps/portal-web/src/app/app.ts` — add connection state signal adapter, effect for rehydration trigger
-- `apps/portal-web/src/app/app.html` — pass `connectionState` to panel
-- `apps/portal-web/src/app/notifications/notification-history.service.ts` — add `forceRetry()` method
-- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.ts` — add `connectionState` input (optional, default 'connected' for Storybook)
-- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.html` — add connection banner
-- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.scss` — banner styling with reduced-motion support
+- `apps/portal-web/src/app/app.ts` — add connection state signal adapter, effect for rehydration trigger, test hook (build-gated)
+- `apps/portal-web/src/app/app.html` — pass `connectionState` to panel, pass `isRetryThrottled` from history service
+- `apps/portal-web/src/app/notifications/notification-history.service.ts` — add `forceRetry()` method, add `isRetryThrottled` signal
+- `apps/portal-web/webpack.config.js` (or project config) — add `environment.test` DefinePlugin
+- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.ts` — add `connectionState` input (optional, default 'connected' for Storybook), implement roving tabindex, keyboard handlers, import CDK FocusTrap, clamp focusedItemIndex on mutation
+- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.html` — wrap in container with cdkTrapFocus, add role="dialog", aria-modal, aria-labelledby, single Escape handler, connection banner, close button accessible label
+- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.scss` — banner styling, focus-visible styles, skeleton styles, **audit selectors for DOM restructuring** (Significant Finding), reduced-motion media queries for fade-in and fade-out
 
 ---
 
@@ -137,8 +160,9 @@ Refactor DOM to wrap overlay + panel in single container:
 
 Clarify navigation hierarchy:
 - **Arrow Up/Down** — moves focus between `.event-item` list item containers (roving tabindex)
+  - Wrapping: Down on last → first, Up on first → last (Minor Finding)
 - **Tab/Shift+Tab** — moves focus between buttons inside focused item (mark read, acknowledge) then to next item
-- **Home/End** — moves focus to first/last item
+- **Home/End** — moves focus to first/last item. Works from any focus location (item container or button inside) (Clarifying Question #8)
 - **Enter/Space on list item** — does nothing (items are containers, not actionable)
 - **Enter/Space on buttons** — triggers button action (mark read, acknowledge)
 
@@ -147,10 +171,15 @@ Implementation:
 - `focusedItemIndex` signal in component tracks which item is focusable
 - Arrow key handlers update `focusedItemIndex` and update tabindexes
 - Buttons inside items are always focusable via Tab from focused item
+- **Clamp on mutation:** When notifications arrive/disappear, clamp `focusedItemIndex` to valid range (0 to length-1). If item removed while focused, focus moves to adjacent item or first item. (Significant Finding)
+- **Focus after action:** When "Mark Read" clicked, focus stays on same item (item doesn't disappear immediately, only becomes "read"). If acknowledge removes item (not current behavior), focus moves to next item. (Significant Finding)
 
 **Empty Panel Focus Destination (Significant Finding):**
-- If list empty, focus goes to close button (always available)
+- If list empty, focus goes to close button (always available, has accessible label "Close")
 - Mark all read button is disabled but still focusable (has `tabindex`)
+
+**Error State Focus Destination (Significant Finding):**
+- Panel opens with error visible → focus goes to search input (first focusable), can Tab to retry button
 
 **Files to Modify:**
 - `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.ts` — implement roving tabindex, keyboard handlers, import CDK FocusTrap
@@ -166,53 +195,58 @@ Implementation:
 **Critical Finding #5 — WebSocket Mock Strategy:**
 
 Cannot mock WebSocket directly with Playwright route interception. Use **mock connection status observable** approach:
-- Add test-only getter in App component: `window.__testConnectionState__`
-- Playwright uses `page.evaluate()` to set connection state signal directly
+- Test hook: `window.__testConnectionStateOverride__(state)` — gated by `environment.test` (dev/test builds only, never production)
+- Build gating: Angular `environment.test` is injected via webpack DefinePlugin in test builds. Production builds exclude this code entirely.
+- Playwright uses `page.evaluate()` to set `window.__TEST_ENV__ = true` then call the hook
 - This tests rehydration UX without needing true WebSocket drops
 
 **Connection Resilience Test (Corrected from Critical Finding #4):**
 
-Correct test flow order:
-1. Setup: Mock connection state to `Disconnected`
-2. Trigger event during disconnect: Use backend API to create notification (bypass SignalR)
-3. Open panel: Verify disconnected banner shows, cached notifications visible
-4. Mock reconnect: Set connection state to `Connected`
-5. Verify: Rehydration triggered, new notification appears
+**Primary approach** (no test-only backend endpoint):
+- Use existing privilege edit flow to create notification
+- Test order: disconnect → create event → reconnect → verify rehydration
 
 ```typescript
 // E2E test outline
 test('reconnect rehydration recovers missed events', async ({ page }) => {
   // 1. Navigate and login
-  await page.goto('/admin/privileges');
-  
-  // 2. Inject test hook to control connection state
+  await injectAuthSession(page, 'acme-session.json');
+  await page.goto('http://acme.localhost:4200/admin/privileges');
+
+  // 2. Enable test hook (build-gated, only works in test env)
   await page.evaluate(() => {
-    (window as any).__testConnectionStateOverride__ = 'Disconnected';
+    (window as any).__TEST_ENV__ = true;
   });
+
+  // 3. Open panel and verify initial connected state
   await page.getByRole('button', { name: /toggle notifications/i }).click();
-  
-  // 3. Verify disconnected banner
-  await expect(page.locator('[aria-label="Connection status"]')).toContainText('Offline');
-  
-  // 4. Create notification via API during disconnect
-  const response = await page.request.post('/api/test/create-notification', { ... });
-  
-  // 5. Simulate reconnect
+  const panel = page.locator('.notification-panel');
+  await expect(panel).toBeVisible();
+
+  // 4. Mock connection to Disconnected state
   await page.evaluate(() => {
-    (window as any).__testConnectionStateOverride__ = 'Connected';
+    (window as any).__testConnectionStateOverride__('Disconnected');
   });
-  
-  // 6. Verify new notification appears (rehydration worked)
-  await expect(page.locator('[data-testid="notification-item"]')).toContainText('...');
+  await expect(panel.locator('[aria-label="Connection status"]')).toContainText('Offline');
+
+  // 5. Close panel, create notification via privilege edit (during disconnect)
+  await page.getByRole('button', { name: /close/i }).click();
+  // ... privilege edit flow to create notification ...
+
+  // 6. Reopen panel (still disconnected, cached content visible)
+  await page.getByRole('button', { name: /toggle notifications/i }).click();
+
+  // 7. Simulate reconnect
+  await page.evaluate(() => {
+    (window as any).__testConnectionStateOverride__('Connected');
+  });
+
+  // 8. Verify new notification appears via rehydration
+  await expect(panel.locator('[data-testid="notification-item"]').first()).toContainText(/privilege/i, { timeout: 10000 });
 });
 ```
 
-**Alternative Approach (no backend manipulation):**
-- Use existing privilege edit flow
-- Set connection state to Disconnected BEFORE editing
-- Edit privilege (notification created)
-- Reconnect
-- Verify notification appears via rehydration
+**Note:** This approach avoids creating `/api/test/create-notification` endpoint. The privilege edit flow is production code, making the test more realistic. (Clarifying Question #3, #4)
 
 **Edge States Test:**
 - Loading skeleton: intercept `/api/AuditLogs/recent` with delay, verify skeleton shows
@@ -243,8 +277,8 @@ test('reconnect rehydration recovers missed events', async ({ page }) => {
 - Reconnecting: #D97706 dark amber, white text (WCAG AA compliant), spinner SVG with `@media (prefers-reduced-motion: no-preference)` animation
 - Disconnected: #EF4444 red, white text, X SVG
 - Banner inside `.panel-header`, above `.search-box`
-- Auto-dismiss: 5s for Connected (screen reader needs announcement time)
-- Dismiss animation: fade out 300ms ease-out (with reduced-motion check)
+- Auto-dismiss: 5s for Connected (screen reader needs announcement time). Timer cancelled on state change (Minor Finding).
+- Animation: fade-in on appear, fade-out on dismiss (both with `@media (prefers-reduced-motion: no-preference)`)
 
 **Loading State:**
 - Skeleton loader with 3 placeholder items
@@ -280,66 +314,85 @@ test('reconnect rehydration recovers missed events', async ({ page }) => {
 
 **Task 1: Connection State Signal Adapter + Rehydration Trigger** (App wiring)
 - Add `toSignal()` adapter for `connectionStatus$`
-- Add effect to trigger `forceRetry()` on reconnect
-- Add test-only getter for E2E
+- Add effect to trigger `forceRetry()` on reconnect (with 500ms debounce)
+- Add test hook `window.__testConnectionStateOverride__` (build-gated)
+- Initialize `previousConnectionState` field
 
 **Task 2: NotificationHistoryService.forceRetry()** (Backend integration)
 - Add `forceRetry()` method bypassing rate limit
+- Check `isHydrating` signal before making request (skip if in-flight)
+- Add `isRetryThrottled` signal for UI wiring
 - Reset retry counter on successful hydrate
+- Internal-only visibility (not exposed in public API)
 
-**Task 3: Connection Banner UI** (Panel component)
+**Task 3: Test Infrastructure Build Gate** (Dev tooling)
+- Add `environment.test` webpack DefinePlugin configuration
+- Gate test hook with `environment.test` check in App
+- E2E setup: inject `window.__TEST_ENV__ = true` before using hook
+
+**Task 4: Connection Banner UI** (Panel component)
 - Add banner HTML with three states
-- Add styling (WCAG-compliant colors, reduced-motion)
+- Add styling (WCAG-compliant colors, reduced-motion for fade-in/out)
 - Add ARIA live region
+- Auto-dismiss timer (cancelled on state change)
 
-**Task 4: Focus Trap Wrapper** (Panel component)
+**Task 5: Focus Trap Wrapper** (Panel component)
 - Refactor DOM: wrap overlay + panel in container
 - Add `cdkTrapFocus` directive
 - Add `role="dialog"`, `aria-modal="true"`, `aria-labelledby`
 - Remove overlay Escape handler, single handler on container
+- Close button with accessible label "Close notifications panel"
+- Audit CSS selectors for DOM restructuring impact
 
-**Task 5: Keyboard Navigation** (Panel component)
+**Task 6: Keyboard Navigation** (Panel component)
 - Roving tabindex on `.event-item` containers
-- Arrow Up/Down, Home/End handlers
-- `focusedItemIndex` signal
+- Arrow Up/Down, Home/End handlers (with wrapping)
+- `focusedItemIndex` signal with clamp on mutation
+- Focus restoration after actions (stay on item)
 - Focus visible styles
 
-**Task 6: Toggle ARIA Completeness** (Toggle component)
+**Task 7: Toggle ARIA Completeness** (Toggle component)
 - `aria-expanded` computed from `NotificationPanelService.isOpen`
 - `aria-controls="notification-panel"` (hardcoded ID)
 
-**Task 7: Visual Polish** (Panel styles)
-- Connection banner styling
+**Task 8: Visual Polish** (Panel styles)
+- Connection banner styling (fade-in/out animations with reduced-motion)
 - Skeleton loader (reduced-motion)
 - Enhanced empty/error states
 - Focus visible styles (reduced-motion)
+- CSS audit: update selectors targeting old DOM structure
 
-**Task 8: E2E Connection Resilience** (New test)
+**Task 9: App Wiring** (App.html)
+- Pass `connectionState` to panel
+- Pass `isRetryThrottled` from history service to panel
+
+**Task 10: E2E Connection Resilience** (New test)
 - Mock connection state via `page.evaluate()`
 - Correct test flow: disconnect → event → reconnect → verify
+- Verify rehydration error handling
 
-**Task 9: E2E Edge States** (New test)
+**Task 11: E2E Edge States** (New test)
 - Loading skeleton
 - Empty state
 - Error state + retry
 - Rehydration error during reconnect
 
-**Task 10: E2E Accessibility** (New test)
+**Task 12: E2E Accessibility** (New test)
 - Keyboard open/close
 - Focus trap verification
-- Arrow navigation
+- Arrow navigation (with wrapping)
 - Screen reader announcement content
 
-**Task 11: Unit Tests**
-- App: test reconnect → `forceRetry()` called
-- Panel: test focus trap initialization, keyboard handlers
-- History: test `forceRetry()` bypasses rate limit
+**Task 13: Unit Tests**
+- App: test reconnect → `forceRetry()` called, debounce works, test hook gated
+- Panel: test focus trap initialization, keyboard handlers, focusedItemIndex clamp
+- History: test `forceRetry()` bypasses rate limit, skips when in-flight, `isRetryThrottled` signal
 
-**Task 12: Full Verification**
+**Task 14: Full Verification**
 - All unit tests pass
 - All e2e tests pass
 - Lint passes
-- Build passes
+- Build passes (verify test hook excluded from production)
 - Storybook builds (update stories with connectionState default)
 
 ---
