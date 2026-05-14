@@ -2,9 +2,9 @@
 
 > **Goal:** Make the notification center senior-level — resilient real-time UI, fully accessible, comprehensive e2e coverage.
 
-**Architecture:** Extend existing sprint 3 foundation without architectural changes. Connection state flows from `RealTimeService.connectionStatus$` to panel via signal adapter in App. Rehydration uses existing `NotificationHistoryService.retry()`. Accessibility adds focus management service, keyboard navigation, and ARIA completeness. E2E extends existing lifecycle test with connection resilience and edge state coverage.
+**Architecture:** Extend existing sprint 3 foundation. Connection state flows from `RealTimeService.connectionStatus$` to App via `toSignal()`. App subscribes to status changes and triggers rehydration on reconnect (decoupled approach). Focus trap uses `@angular/cdk/a11y` FocusTrap directive on wrapper container. Keyboard navigation uses roving tabindex on list items.
 
-**Tech Stack:** Angular standalone components, Angular signals, RxJS, Vitest, Nx, Playwright e2e.
+**Tech Stack:** Angular standalone components, Angular signals, RxJS, `@angular/cdk/a11y`, Vitest, Nx, Playwright e2e.
 
 ---
 
@@ -18,10 +18,10 @@
 - Real-time privilege edit notifications working
 
 **Sprint 2 (PR #90):**
-- `GET /api/AuditLogs/recent` endpoint with Admin/SystemAdmin role restriction
+- `GET /api/AuditLogs/recent?limit=50` endpoint (count-based, no time filter)
 - Tenant-scoped idempotency keys with FIFO eviction (1000 entry cache)
 - Hydration state signals: `isHydrating`, `hydrationError`, `hasHydrated`
-- `NotificationHistoryService` with auth-ready hydration, retry, debouncing, rate limiting
+- `NotificationHistoryService` with auth-ready hydration, retry (1s debounce, 3 retries/30s)
 - Loading/empty/error states in panel with ARIA live regions
 
 **Sprint 3 (PR #91):**
@@ -42,116 +42,195 @@
 
 ### 1. Connection State UI
 
-**SignalR State Tracking:**
-- `RealTimeService.connectionStatus$` already emits `HubConnectionState` (Connected, Reconnecting, Disconnected)
-- Create signal adapter in `App` component: convert observable to signal using `toSignal()`
-- Pass connection state to `NotificationPanelComponent` via new `connectionState` input
+**Rehydration Trigger Architecture (Critical Finding #1):**
+
+Use **App subscription approach** to avoid circular dependencies:
+- `RealTimeService` does NOT inject `NotificationHistoryService`
+- `App` component subscribes to `connectionStatus$` observable
+- When status transitions from `Reconnecting` to `Connected`, App calls `notificationHistoryService.retry()`
+- This keeps `RealTimeService` as pure SignalR management, unaware of hydration logic
+
+```typescript
+// In App component
+private readonly connectionStatus$ = this.realTimeService.connectionStatus$;
+private readonly connectionState = toSignal(this.connectionStatus$, { initialValue: HubConnectionState.Disconnected });
+
+// Effect to trigger rehydration on reconnect
+constructor() {
+  effect(() => {
+    const prevStatus = this.previousConnectionState;
+    const currentStatus = this.connectionState();
+    if (prevStatus === HubConnectionState.Reconnecting && currentStatus === HubConnectionState.Connected) {
+      this.notificationHistoryService.retry();
+    }
+    this.previousConnectionState = currentStatus;
+  });
+}
+```
 
 **Connection Banner:**
-- Display inside panel header, above search/filter controls
-- Three states:
-  - **Connected:** Green checkmark icon, text "Connected", auto-dismiss after 3s (fade animation)
-  - **Reconnecting:** Yellow spinner icon, text "Reconnecting...", persistent
-  - **Disconnected:** Red X icon, text "Offline — will retry automatically", persistent
-- Uses `role="status"` and `aria-live="polite"` for reconnect announcements
-- Dismissible via close button for non-connected states (optional)
+- Display inside panel header (between title row and search box)
+- Three states with WCAG-compliant contrast:
+  - **Connected:** Green background (#10B981), white text, checkmark SVG. Auto-dismiss after 5s (screen reader needs time)
+  - **Reconnecting:** Dark amber background (#D97706), white text (4.5:1 contrast), animated spinner SVG. Persistent.
+  - **Disconnected:** Red background (#EF4444), white text, X SVG. Persistent.
+- Uses `role="status"` and `aria-live="polite"` for state announcements
+- Skeleton animation wrapped in `@media (prefers-reduced-motion: no-preference)` (Critical Finding for vestibular accessibility)
 
 **Rehydration on Reconnect:**
-- When SignalR `onreconnected()` fires, call `NotificationHistoryService.retry()`
-- This fetches `/api/AuditLogs/recent` again, which:
-  - Re-hydrates the store with events that arrived during disconnect
-  - Deduplicates via existing idempotency cache in `NotificationSignalStore`
-  - Overlays lifecycle state via `applyLifecycle()`
-- No new queue needed — SignalR buffers during reconnect attempt, delivers on reconnect
-- Events that were pushed during full disconnect (not buffered) are covered by recent endpoint re-fetch
+- App calls `NotificationHistoryService.retry()` on reconnect (see architecture above)
+- `retry()` currently has rate limiting (1s debounce, 3 retries/30s)
+- Add `forceRetry()` method that bypasses rate limiting for reconnect scenarios (Significant Finding)
+- Retry rate limit counter resets on successful hydrate (Minor Finding)
+- `/api/AuditLogs/recent` lookback: 50 count-based, no time filter. Max recoverable disconnect duration is however long it takes for 50 new events to accumulate (Clarifying Question #3)
+- Rehydration keeps cached content during fetch, no skeleton loader (Clarifying Question #7)
+- If rehydration fails: keep cached content, show error banner in panel (not modal error) (Clarifying Question #6)
+
+**Idempotency and Lifecycle Conflict Resolution (Significant Findings):**
+- Server data is source of truth for notification content
+- `localStorage` overlays lifecycle state (`readAt`, `acknowledgedAt`)
+- Re-fetch returns same notifications with same IDs → idempotency prevents duplicates
+- Lifecycle state persists in localStorage and re-applies via `applyLifecycle()`
+- Edge case: if 1000+ events during disconnect, reconnect could show duplicates (idempotency cache eviction). Accept as documented limitation for POC.
 
 **Files to Modify:**
-- `apps/portal-web/src/app/app.ts` — add connection state signal adapter
+- `apps/portal-web/src/app/app.ts` — add connection state signal adapter, effect for rehydration trigger
 - `apps/portal-web/src/app/app.html` — pass `connectionState` to panel
-- `apps/portal-web/src/app/real-time.service.ts` — wire `onreconnected` to trigger rehydration
-- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.ts` — add `connectionState` input
+- `apps/portal-web/src/app/notifications/notification-history.service.ts` — add `forceRetry()` method
+- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.ts` — add `connectionState` input (optional, default 'connected' for Storybook)
 - `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.html` — add connection banner
-- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.scss` — banner styling
+- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.scss` — banner styling with reduced-motion support
 
 ---
 
 ### 2. Accessibility — Focus Management
 
-**Focus Trap on Panel Open:**
-- When panel opens, focus moves to first interactive element (search input)
-- Focus trap keeps focus within panel while open
-- Tab cycles through: search → filter buttons → notification items → mark all read → close
-- Shift+Tab reverses direction
-- Focus trap released when panel closes
+**Focus Trap Architecture (Critical Finding #2):**
+
+Refactor DOM to wrap overlay + panel in single container:
+```html
+<!-- New wrapper with focus trap -->
+<div class="notification-panel-container" cdkTrapFocus cdkTrapFocusAutoCapture>
+  <div class="panel-overlay" (click)="close()" role="presentation"></div>
+  <div class="notification-panel" role="dialog" aria-modal="true" aria-labelledby="notifications-heading">
+    <!-- panel content -->
+  </div>
+</div>
+```
+
+- Use `@angular/cdk/a11y` FocusTrap directive (`cdkTrapFocus`)
+- `cdkTrapFocusAutoCapture` moves focus to first focusable element on open
+- Focus trap released when panel closes (CDK handles this automatically)
+- Single Escape handler on panel container (remove overlay handler to avoid double-fire) (Significant Finding)
 
 **Focus Restoration on Panel Close:**
-- When panel closes (via close button, Escape, or overlay click), focus returns to toggle button
-- Toggle button receives focus so user can continue keyboard navigation
+- CDK FocusTrap automatically restores focus to element that triggered open
+- Ensure toggle button has focus before panel opens (click/Enter already does this)
+- No additional focus restoration code needed — CDK handles it
 
-**Escape Key Handler:**
-- Panel already has Escape handler on overlay: `(keydown.escape)="close()"`
-- Extend to also work when focus is inside panel content (not just overlay)
-- Add Escape handler on panel container element
+**Role Decision (CONFLICT Resolution):**
+- Use **`role="dialog"` + `aria-modal="true"`**
+- Rationale: Focus trap makes it modal behavior (can't interact with main content). Escape-to-close matches dialog pattern. Screen reader users expect "dismiss to return" behavior.
+- Add `aria-labelledby="notifications-heading"` pointing to panel title
 
-**Keyboard Navigation in List:**
-- Arrow Down / Arrow Up moves focus between notification items
-- Home moves focus to first item
-- End moves focus to last item
-- Enter / Space activates focused item's primary action (mark read, then acknowledge if critical)
-- Focus visible style on items (distinct from hover)
+**Keyboard Navigation Model (Significant Findings):**
 
-**Toggle ARIA Completeness:**
-- Add `aria-expanded="true|false"` reflecting panel open state
-- Add `aria-controls="notification-panel-id"` pointing to panel
-- Add `aria-describedby` pointing to connection status when offline
+Clarify navigation hierarchy:
+- **Arrow Up/Down** — moves focus between `.event-item` list item containers (roving tabindex)
+- **Tab/Shift+Tab** — moves focus between buttons inside focused item (mark read, acknowledge) then to next item
+- **Home/End** — moves focus to first/last item
+- **Enter/Space on list item** — does nothing (items are containers, not actionable)
+- **Enter/Space on buttons** — triggers button action (mark read, acknowledge)
 
-**Panel ARIA Completeness:**
-- Add `aria-modal="true"` on panel container (it's a modal dialog pattern)
-- Add `role="dialog"` on panel container
-- Add `aria-labelledby` pointing to "Notifications" heading
-- Ensure list items have focusable buttons (already have buttons, need to verify tab order)
+Implementation:
+- Roving tabindex: only one `.event-item` has `tabindex="0"` at a time
+- `focusedItemIndex` signal in component tracks which item is focusable
+- Arrow key handlers update `focusedItemIndex` and update tabindexes
+- Buttons inside items are always focusable via Tab from focused item
+
+**Empty Panel Focus Destination (Significant Finding):**
+- If list empty, focus goes to close button (always available)
+- Mark all read button is disabled but still focusable (has `tabindex`)
 
 **Files to Modify:**
-- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.service.ts` — track focus state, emit focus events
-- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.ts` — implement focus trap, keyboard nav
-- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.html` — add role="dialog", aria-modal, aria-labelledby, Escape handler
-- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.scss` — focus-visible styles
-- `libs/ui/design-system/src/lib/molecules/notification-toggle/notification-toggle.component.html` — add aria-expanded, aria-controls
-- `libs/ui/design-system/src/lib/molecules/notification-toggle/notification-toggle.component.ts` — add panelOpen input, compute aria-expanded
+- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.ts` — implement roving tabindex, keyboard handlers, import CDK FocusTrap
+- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.html` — wrap in container with cdkTrapFocus, add role="dialog", aria-modal, aria-labelledby, single Escape handler
+- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.scss` — focus-visible styles with reduced-motion support
+- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.types.ts` — add ConnectionState type
+- `libs/ui/design-system/src/lib/molecules/notification-toggle/notification-toggle.component.html` — add aria-expanded (computed from service), aria-controls (hardcoded panel ID)
 
 ---
 
 ### 3. E2E Coverage
 
-**Existing Test (notifications-lifecycle.spec.ts):**
-- modify privilege → toast → panel item → mark read → refresh → item still appears
-- Already covers lifecycle persistence across refresh
+**Critical Finding #5 — WebSocket Mock Strategy:**
 
-**New Test: Connection Resilience Flow**
-- Modify privilege → disconnect SignalR (simulate network failure) → reconnect → verify missed event appears
-- Test setup:
-  1. Navigate to privileges page, make an edit
-  2. Use Playwright route interception to simulate SignalR disconnect (block `/hubs/notifications`)
-  3. Verify offline banner appears in panel
-  4. Unblock SignalR route
-  5. Verify reconnect banner appears, then disappears
-  6. Verify missed notification (from step 1) appears after rehydration
-- This demonstrates resilience and rehydration working
+Cannot mock WebSocket directly with Playwright route interception. Use **mock connection status observable** approach:
+- Add test-only getter in App component: `window.__testConnectionState__`
+- Playwright uses `page.evaluate()` to set connection state signal directly
+- This tests rehydration UX without needing true WebSocket drops
 
-**New Test: Edge States**
-- Loading skeleton: intercept `/api/AuditLogs/recent` with delay, verify loading state shows before data
-- Empty state: intercept with empty array `[]`, verify "No recent notifications" message
-- Error state: intercept with 500 error, verify error message and retry button
-- Retry flow: click retry button, intercept with success, verify notifications load
+**Connection Resilience Test (Corrected from Critical Finding #4):**
 
-**New Test: Accessibility**
-- Keyboard open panel: focus toggle → press Enter → verify panel opens and focus moves to search
-- Keyboard close panel: press Escape → verify panel closes and focus returns to toggle
-- Keyboard navigation: Tab through all elements, verify focus trap
-- Arrow key navigation: Arrow Down through items, verify focus moves
+Correct test flow order:
+1. Setup: Mock connection state to `Disconnected`
+2. Trigger event during disconnect: Use backend API to create notification (bypass SignalR)
+3. Open panel: Verify disconnected banner shows, cached notifications visible
+4. Mock reconnect: Set connection state to `Connected`
+5. Verify: Rehydration triggered, new notification appears
+
+```typescript
+// E2E test outline
+test('reconnect rehydration recovers missed events', async ({ page }) => {
+  // 1. Navigate and login
+  await page.goto('/admin/privileges');
+  
+  // 2. Inject test hook to control connection state
+  await page.evaluate(() => {
+    (window as any).__testConnectionStateOverride__ = 'Disconnected';
+  });
+  await page.getByRole('button', { name: /toggle notifications/i }).click();
+  
+  // 3. Verify disconnected banner
+  await expect(page.locator('[aria-label="Connection status"]')).toContainText('Offline');
+  
+  // 4. Create notification via API during disconnect
+  const response = await page.request.post('/api/test/create-notification', { ... });
+  
+  // 5. Simulate reconnect
+  await page.evaluate(() => {
+    (window as any).__testConnectionStateOverride__ = 'Connected';
+  });
+  
+  // 6. Verify new notification appears (rehydration worked)
+  await expect(page.locator('[data-testid="notification-item"]')).toContainText('...');
+});
+```
+
+**Alternative Approach (no backend manipulation):**
+- Use existing privilege edit flow
+- Set connection state to Disconnected BEFORE editing
+- Edit privilege (notification created)
+- Reconnect
+- Verify notification appears via rehydration
+
+**Edge States Test:**
+- Loading skeleton: intercept `/api/AuditLogs/recent` with delay, verify skeleton shows
+- Empty state: intercept with `[]`, verify "No recent notifications" with decorative illustration
+- Error state: intercept with 500, verify error message + retry button
+- Retry flow: click retry, intercept with success, verify notifications load
+- Rehydration error during reconnect: intercept `/api/AuditLogs/recent` with 500 after reconnect mock, verify error banner (not modal)
+
+**Accessibility Test:**
+- Keyboard open panel: focus toggle → Enter → verify panel opens, focus on search input
+- Keyboard close panel: Escape → verify panel closes, focus returns to toggle
+- Focus trap: Tab cycle, verify focus stays in panel, verify focusable elements in order
+- Arrow navigation: Arrow Down through items, verify focus moves, verify buttons Tab-navigable
+- Screen reader announcement: verify aria-live content updates (not just element existence)
 
 **Files to Modify:**
-- `apps/portal-web-e2e/src/notifications-lifecycle.spec.ts` — add connection resilience test
+- `apps/portal-web/src/app/app.ts` — add test-only getter `window.__testConnectionStateOverride__`
+- `apps/portal-web-e2e/src/notifications-resilience.spec.ts` — new file for connection resilience tests
 - `apps/portal-web-e2e/src/notifications-edge-states.spec.ts` — new file for edge state tests
 - `apps/portal-web-e2e/src/notifications-accessibility.spec.ts` — new file for accessibility tests
 
@@ -160,97 +239,108 @@
 ### 4. Visual Polish
 
 **Connection Banner Styling:**
-- Connected: green background (#10B981), white text, checkmark SVG
-- Reconnecting: yellow background (#F59E0B), white text, animated spinner SVG
-- Disconnected: red background (#EF4444), white text, X SVG
-- Auto-dismiss animation: fade out after 3s for Connected state
-- Transition: 300ms ease-in-out
+- Connected: #10B981 green, white text, checkmark SVG
+- Reconnecting: #D97706 dark amber, white text (WCAG AA compliant), spinner SVG with `@media (prefers-reduced-motion: no-preference)` animation
+- Disconnected: #EF4444 red, white text, X SVG
+- Banner inside `.panel-header`, above `.search-box`
+- Auto-dismiss: 5s for Connected (screen reader needs announcement time)
+- Dismiss animation: fade out 300ms ease-out (with reduced-motion check)
 
 **Loading State:**
-- Replace text "Loading recent notifications..." with skeleton loader
-- 3 skeleton items: animated pulse, gray background (#E5E7EB)
-- Each skeleton shows severity bar placeholder, title placeholder, summary placeholder
-- Uses existing `aria-live="polite"` and `role="status"`
+- Skeleton loader with 3 placeholder items
+- Gray background (#E5E7EB), animated pulse (with reduced-motion check)
+- Each skeleton: severity bar (colored strip), title bar (gray), summary bar (gray)
+- `aria-live="polite"` and `role="status"` on skeleton container
+- `aria-busy="true"` on skeleton items
 
 **Empty State:**
-- Current: "No recent notifications" text
-- Enhanced: illustration (bell icon with slash), text, "All caught up!" message
-- Keep existing `role="status"` and `aria-live="polite"`
+- Decorative bell-with-slash SVG (`aria-hidden="true"`) (Minor Finding)
+- Text: "All caught up! No recent notifications"
+- Keep `role="status"` and `aria-live="polite"`
 
 **Error State:**
-- Keep existing error message and retry button
-- Enhance: add warning icon, clearer error message styling
-- Retry button with hover state
+- Warning icon (triangle SVG)
+- Error message in red text
+- Retry button with hover/focus states
+- `role="alert"` and `aria-live="assertive"`
 
 **Focus Visible Styles:**
-- When item has focus (via keyboard nav): 2px solid blue ring (#3B82F6)
-- Distinct from hover state (which uses background color change)
-- Use `:focus-visible` pseudo-class to show only for keyboard focus
+- Roving tabindex items: `:focus-visible { outline: 2px solid #3B82F6; outline-offset: 2px; }`
+- Buttons: existing focus styles, verify `:focus-visible` used
+- Animation: `@media (prefers-reduced-motion: no-preference)` for any transitions
 
 **Files to Modify:**
-- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.html` — skeleton loader, enhanced empty/error states
-- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.scss` — connection banner, skeleton, focus-visible styles
-- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.ts` — skeleton logic (show 3 skeletons when loading)
+- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.html` — skeleton loader, enhanced empty/error states, connection banner
+- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.scss` — banner colors, skeleton styles, focus-visible, reduced-motion
+- `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.ts` — skeleton item count, connection state handling
 
 ---
 
 ## Implementation Order
 
-**Task 1: Connection State Signal Adapter** (App wiring)
-- Add `toSignal()` adapter for `connectionStatus$` in App
-- Pass to panel via new input
-- Wire `onreconnected` to trigger rehydration
+**Task 1: Connection State Signal Adapter + Rehydration Trigger** (App wiring)
+- Add `toSignal()` adapter for `connectionStatus$`
+- Add effect to trigger `forceRetry()` on reconnect
+- Add test-only getter for E2E
 
-**Task 2: Connection Banner UI** (Panel component)
+**Task 2: NotificationHistoryService.forceRetry()** (Backend integration)
+- Add `forceRetry()` method bypassing rate limit
+- Reset retry counter on successful hydrate
+
+**Task 3: Connection Banner UI** (Panel component)
 - Add banner HTML with three states
-- Add styling (colors, icons, animations)
+- Add styling (WCAG-compliant colors, reduced-motion)
 - Add ARIA live region
 
-**Task 3: Focus Management Service** (Panel service + component)
-- Implement focus trap
-- Implement focus restoration to toggle
-- Add Escape handler on panel container
+**Task 4: Focus Trap Wrapper** (Panel component)
+- Refactor DOM: wrap overlay + panel in container
+- Add `cdkTrapFocus` directive
+- Add `role="dialog"`, `aria-modal="true"`, `aria-labelledby`
+- Remove overlay Escape handler, single handler on container
 
-**Task 4: Keyboard Navigation** (Panel component)
-- Arrow Up/Down navigation
-- Home/End navigation
-- Enter/Space action activation
+**Task 5: Keyboard Navigation** (Panel component)
+- Roving tabindex on `.event-item` containers
+- Arrow Up/Down, Home/End handlers
+- `focusedItemIndex` signal
 - Focus visible styles
 
-**Task 5: Toggle ARIA Completeness** (Toggle component)
-- aria-expanded, aria-controls, aria-describedby
-- Pass panelOpen state from parent
-
-**Task 6: Panel ARIA Completeness** (Panel component)
-- role="dialog", aria-modal, aria-labelledby
-- Verify tab order
+**Task 6: Toggle ARIA Completeness** (Toggle component)
+- `aria-expanded` computed from `NotificationPanelService.isOpen`
+- `aria-controls="notification-panel"` (hardcoded ID)
 
 **Task 7: Visual Polish** (Panel styles)
 - Connection banner styling
-- Skeleton loader
+- Skeleton loader (reduced-motion)
 - Enhanced empty/error states
-- Focus visible styles
+- Focus visible styles (reduced-motion)
 
 **Task 8: E2E Connection Resilience** (New test)
-- Disconnect/reconnect flow
-- Verify missed event appears
+- Mock connection state via `page.evaluate()`
+- Correct test flow: disconnect → event → reconnect → verify
 
 **Task 9: E2E Edge States** (New test)
 - Loading skeleton
 - Empty state
 - Error state + retry
+- Rehydration error during reconnect
 
 **Task 10: E2E Accessibility** (New test)
 - Keyboard open/close
-- Focus trap
+- Focus trap verification
 - Arrow navigation
+- Screen reader announcement content
 
-**Task 11: Full Verification**
+**Task 11: Unit Tests**
+- App: test reconnect → `forceRetry()` called
+- Panel: test focus trap initialization, keyboard handlers
+- History: test `forceRetry()` bypasses rate limit
+
+**Task 12: Full Verification**
 - All unit tests pass
 - All e2e tests pass
 - Lint passes
 - Build passes
-- Storybook builds
+- Storybook builds (update stories with connectionState default)
 
 ---
 
@@ -262,13 +352,14 @@
 **Demo-ready Features:**
 1. Connection state visible — user knows when offline, sees reconnect attempt, sees recovery
 2. Full keyboard accessible — can open panel, navigate items, mark read, close panel without mouse
-3. Visual polish — loading skeleton, enhanced empty/error states, connection banner
-4. E2E coverage — connection resilience test demonstrates recovery works
-5. Accessibility test coverage — automated verification of keyboard navigation
+3. WCAG AA compliant — contrast ratios met, reduced-motion respected
+4. Focus trap works — focus stays in panel, returns to toggle on close
+5. E2E coverage — connection resilience, edge states, accessibility
 
 **Technical Quality:**
-- Focus trap implemented correctly (focus stays in panel while open)
-- Focus restoration works (focus returns to toggle on close)
-- Connection state announced via aria-live (screen reader knows state changes)
-- Keyboard navigation follows standard patterns (arrow keys, home/end)
-- No new architectural complexity — extends sprint 3 foundation cleanly
+- Decoupled architecture: `RealTimeService` unaware of `NotificationHistoryService`
+- CDK FocusTrap for robust focus management
+- Roving tabindex for standard keyboard navigation pattern
+- WCAG AA contrast (4.5:1 minimum)
+- Reduced-motion media queries for vestibular accessibility
+- Testable design: mock connection state for E2E, observable mocking for unit tests
