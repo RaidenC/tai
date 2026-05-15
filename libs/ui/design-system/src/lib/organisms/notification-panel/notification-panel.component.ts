@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, inject
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NotificationPanelService, SeverityFilter } from './notification-panel.service';
-import { NotificationPanelItem } from './notification-panel.types';
+import { NotificationPanelItem, NotificationPanelConnectionState } from './notification-panel.types';
 
 @Component({
   selector: 'tai-notification-panel',
@@ -17,8 +17,11 @@ export class NotificationPanelComponent {
 
   @Input() notifications: NotificationPanelItem[] = [];
   @Input() isLoading = false;
+  @Input() hasHydrated = false;
   @Input() error: string | null = null;
+  @Input() connectionState: NotificationPanelConnectionState = 'connected';
   @Input() isRetryThrottled = false;
+  @Input() recoveryNotice: string | null = null;
   @Output() retry = new EventEmitter<void>();
   @Output() markRead = new EventEmitter<string>();
   @Output() markAllRead = new EventEmitter<void>();
