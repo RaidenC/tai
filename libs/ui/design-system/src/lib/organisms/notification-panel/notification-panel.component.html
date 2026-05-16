@@ -68,6 +68,9 @@
         @if (connectionState === 'disconnected') {
           <span>Notification updates are offline. Recent items may be stale.</span>
           <button type="button" class="retry-btn" [disabled]="isLoading" [attr.aria-disabled]="isRetryThrottled" (click)="onRetry()">Retry</button>
+          @if (isRetryThrottled) {
+            <span class="retry-helper">Try again shortly.</span>
+          }
         }
       </div>
     }
