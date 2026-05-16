@@ -33,6 +33,7 @@
   display: flex;
   flex-direction: column;
   animation: slideIn 0.3s ease-out;
+  max-height: 100vh;
 }
 
 @keyframes slideIn {
@@ -137,9 +138,36 @@
   }
 }
 
-.event-list {
+// Connection banner styles
+.connection-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  margin: 8px 0 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.connection-connected { background: #047857; }
+.connection-reconnecting { background: #B45309; }
+.connection-disconnected { background: #B91C1C; }
+
+// Scroll region for notification content
+.notification-scroll-region {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+}
+
+// Sticky status area for error/recovery notices
+.sticky-status-area {
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 .panel-status {
@@ -163,6 +191,20 @@
   color: #991b1b;
 }
 
+.panel-status-recovery {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.retry-helper {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
 .retry-btn {
   border: 1px solid currentColor;
   border-radius: 0.25rem;
@@ -175,6 +217,32 @@
     cursor: not-allowed;
     opacity: 0.5;
   }
+}
+
+// Skeleton loading styles
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem;
+}
+
+.skeleton-item {
+  height: 60px;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 0.375rem;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.event-list {
+  flex: 1;
+  overflow-y: auto;
 }
 
 .event-item {
@@ -280,4 +348,18 @@
   padding: 40px;
   text-align: center;
   color: #6b7280;
+}
+
+.empty-caption {
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  opacity: 0.8;
+}
+
+// Accessibility: reduced motion support
+@media (prefers-reduced-motion: no-preference) {
+  .connection-banner,
+  .skeleton-item {
+    transition: opacity 160ms ease;
+  }
 }

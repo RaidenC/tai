@@ -105,6 +105,10 @@ const meta: Meta<NotificationPanelComponent> = {
       control: 'boolean',
       description: 'Whether notifications are loading'
     },
+    hasHydrated: {
+      control: 'boolean',
+      description: 'Whether initial hydration has completed'
+    },
     error: {
       control: 'text',
       description: 'Error message to display'
@@ -112,12 +116,21 @@ const meta: Meta<NotificationPanelComponent> = {
     isRetryThrottled: {
       control: 'boolean',
       description: 'Whether retry is throttled'
+    },
+    connectionState: {
+      control: 'select',
+      options: ['connected', 'reconnecting', 'disconnected'],
+      description: 'Connection state for banner display'
+    },
+    recoveryNotice: {
+      control: 'text',
+      description: 'Recovery notice message to display'
     }
   },
   render: (args) => ({
     props: args,
     imports: [CommonModule],
-    template: '<tai-notification-panel [notifications]="notifications" [isLoading]="isLoading" [error]="error" [isRetryThrottled]="isRetryThrottled"></tai-notification-panel>',
+    template: '<tai-notification-panel [notifications]="notifications" [isLoading]="isLoading" [hasHydrated]="hasHydrated" [error]="error" [isRetryThrottled]="isRetryThrottled" [connectionState]="connectionState" [recoveryNotice]="recoveryNotice"></tai-notification-panel>',
   }),
 };
 
@@ -239,6 +252,34 @@ export const LifecycleStates: Story = {
         acknowledgedAt: null,
       },
     ],
+  },
+  decorators: [withPanelState()],
+};
+
+export const Connected: Story = {
+  args: {
+    notifications: mockNotifications,
+    connectionState: 'connected',
+    hasHydrated: true,
+  },
+  decorators: [withPanelState()],
+};
+
+export const Reconnecting: Story = {
+  args: {
+    notifications: mockNotifications,
+    connectionState: 'reconnecting',
+    hasHydrated: true,
+    isLoading: true,
+  },
+  decorators: [withPanelState()],
+};
+
+export const Disconnected: Story = {
+  args: {
+    notifications: mockNotifications,
+    connectionState: 'disconnected',
+    hasHydrated: true,
   },
   decorators: [withPanelState()],
 };

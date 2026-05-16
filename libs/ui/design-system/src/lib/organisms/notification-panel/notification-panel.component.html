@@ -57,70 +57,105 @@
       >Info</button>
     </div>
 
-    @if (isLoading) {
-      <div class="panel-status panel-status-loading" role="status" aria-live="polite">
-        Loading recent notifications...
+    @if (showConnectionBanner()) {
+      <div class="connection-banner" [class]="'connection-' + connectionState" role="status" aria-live="polite" aria-label="Connection status">
+        @if (connectionState === 'connected') {
+          <span>Notifications are live.</span>
+        }
+        @if (connectionState === 'reconnecting') {
+          <span>Reconnecting to notification updates.</span>
+        }
+        @if (connectionState === 'disconnected') {
+          <span>Notification updates are offline. Recent items may be stale.</span>
+          <button type="button" class="retry-btn" [disabled]="isLoading" [attr.aria-disabled]="isRetryThrottled" (click)="onRetry()">Retry</button>
+        }
       </div>
     }
 
-    @if (error) {
-      <div class="panel-status panel-status-error" role="alert" aria-live="assertive">
-        <span>{{ error }}</span>
-        <button
-          type="button"
-          class="retry-btn"
-          [disabled]="isLoading || isRetryThrottled"
-          (click)="onRetry()">
-          Retry
-        </button>
+    <div class="notification-scroll-region">
+      <div class="sticky-status-area">
+        @if (error) {
+          <div class="panel-status panel-status-error" role="alert" aria-live="assertive">
+            <span>{{ error }}</span>
+            <button type="button" class="retry-btn" [disabled]="isLoading" [attr.aria-disabled]="isRetryThrottled" (click)="onRetry()">Retry</button>
+            @if (isRetryThrottled) {
+              <span class="retry-helper">Try again shortly.</span>
+            }
+          </div>
+        } @else if (recoveryNotice) {
+          <div class="panel-status panel-status-recovery" role="status" aria-live="polite">
+            <span>{{ recoveryNotice }}</span>
+            <button type="button" class="retry-btn" [disabled]="isLoading" [attr.aria-disabled]="isRetryThrottled" (click)="onRetry()">Retry</button>
+            @if (isRetryThrottled) {
+              <span class="retry-helper">Try again shortly.</span>
+            }
+          </div>
+        } @else if (isReconnectSyncing()) {
+          <div class="panel-status panel-status-loading" role="status" aria-live="polite">Syncing notifications...</div>
+        }
       </div>
-    }
 
-    <div class="event-list" data-testid="notification-list" role="list" aria-live="polite">
-      @for (notification of filteredNotifications(); track notification.id) {
-        <div
-          class="event-item"
-          data-testid="notification-item"
-          role="listitem"
-          [class]="getSeverityClass(notification.severity)"
-          [attr.aria-label]="notification.readAt ? 'Read notification' : 'Unread notification'">
-          @if (!notification.readAt) {
-            <span class="unread-marker"></span>
-          } @else {
-            <span class="read-marker"></span>
-          }
+      @if (showInitialSkeleton()) {
+        <div class="skeleton-list" role="status" aria-live="polite">
+          <div class="skeleton-item" aria-busy="true"></div>
+          <div class="skeleton-item" aria-busy="true"></div>
+          <div class="skeleton-item" aria-busy="true"></div>
+        </div>
+      }
 
-          <div class="event-severity-bar"></div>
-          <div class="event-content">
-            <div class="event-action">{{ notification.title }}</div>
-            <div class="event-summary">{{ notification.summary }}</div>
-            <div class="event-meta">
-              <span class="event-time">{{ formatTime(notification.timestamp) }}</span>
-              @if (notification.actor) {
-                <span class="event-user">{{ notification.actor }}</span>
-              }
-              @if (notification.severity === 'critical' && !notification.acknowledgedAt) {
-                <span class="ack-required" aria-label="Acknowledgement required">Acknowledgement required</span>
-              }
-              @if (notification.severity === 'critical' && notification.acknowledgedAt) {
-                <span class="acknowledged" aria-label="Acknowledged notification">Acknowledged</span>
-              }
-            </div>
-            <div class="event-actions">
-              @if (!notification.readAt) {
-                <button type="button" aria-label="Mark notification as read" (click)="onMarkRead(notification)">Mark read</button>
-              }
-              @if (notification.severity === 'critical' && !notification.acknowledgedAt) {
-                <button type="button" aria-label="Acknowledge critical notification" (click)="onAcknowledge(notification)">Acknowledge</button>
-              }
+      <div class="event-list" data-testid="notification-list" role="list" aria-live="polite">
+        @for (notification of filteredNotifications(); track notification.id) {
+          <div
+            class="event-item"
+            data-testid="notification-item"
+            role="listitem"
+            [class]="getSeverityClass(notification.severity)"
+            [attr.data-notification-id]="notification.id"
+            [attr.aria-label]="notification.readAt ? 'Read notification' : 'Unread notification'">
+            @if (!notification.readAt) {
+              <span class="unread-marker"></span>
+            } @else {
+              <span class="read-marker"></span>
+            }
+            <div class="event-severity-bar"></div>
+            <div class="event-content">
+              <div class="event-action">{{ notification.title }}</div>
+              <div class="event-summary">{{ notification.summary }}</div>
+              <div class="event-meta">
+                <span class="event-time">{{ formatTime(notification.timestamp) }}</span>
+                @if (notification.actor) {
+                  <span class="event-user">{{ notification.actor }}</span>
+                }
+                @if (notification.severity === 'critical' && !notification.acknowledgedAt) {
+                  <span class="ack-required" aria-label="Acknowledgement required">Acknowledgement required</span>
+                }
+                @if (notification.severity === 'critical' && notification.acknowledgedAt) {
+                  <span class="acknowledged" aria-label="Acknowledged notification">Acknowledged</span>
+                }
+              </div>
+              <div class="event-actions">
+                @if (!notification.readAt) {
+                  <button type="button" aria-label="Mark notification as read" (click)="onMarkRead(notification)">Mark read</button>
+                }
+                @if (notification.severity === 'critical' && !notification.acknowledgedAt) {
+                  <button type="button" aria-label="Acknowledge critical notification" (click)="onAcknowledge(notification)">Acknowledge</button>
+                }
+              </div>
             </div>
           </div>
-        </div>
-      } @empty {
-        @if (!isLoading && !error) {
-          <div class="empty-state" role="status" aria-live="polite">No recent notifications</div>
+        } @empty {
+          @if (!showInitialSkeleton() && !error) {
+            @if (showSearchToEmpty()) {
+              <div class="empty-state" role="status" aria-live="polite">No results for "{{ searchText()() }}" among recent notifications.</div>
+            } @else {
+              <div class="empty-state" role="status" aria-live="polite">
+                <div>All caught up! No recent notifications</div>
+                <div class="empty-caption">Privilege, approval, and security events will appear here.</div>
+              </div>
+            }
+          }
         }
-      }
+      </div>
     </div>
   </div>
 }
