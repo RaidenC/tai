@@ -182,9 +182,9 @@ export class NotificationPanelComponent implements OnChanges, OnDestroy {
 
   getSeverityClass(severity: string): string {
     switch (severity) {
-      case 'critical': return 'severity-critical';
-      case 'warning': return 'severity-warning';
-      default: return 'severity-info';
+      case 'critical': return 'bg-red-600';
+      case 'warning': return 'bg-amber-500';
+      default: return 'bg-blue-500';
     }
   }
 

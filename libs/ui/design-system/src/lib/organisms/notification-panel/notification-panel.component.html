@@ -1,20 +1,20 @@
 @if (isOpen()()) {
 
-  <div class="panel-overlay" (click)="close()" role="presentation" tabindex="0" (keydown.enter)="close()" (keydown.escape)="close()" aria-label="Close panel"></div>
+  <div class="fixed inset-0 bg-gray-950/45 z-[99] panel-overlay" (click)="close()" role="presentation" tabindex="0" (keydown.enter)="close()" (keydown.escape)="close()" aria-label="Close panel"></div>
 
-  <div class="notification-panel">
-    <div class="panel-header">
-      <h3>Notifications</h3>
-      <div class="header-actions">
+  <div class="notification-panel fixed top-0 right-0 w-[400px] h-screen bg-white shadow-xl z-[100] flex flex-col max-h-screen" style="animation: slideIn 0.3s ease-out;">
+    <div class="panel-header p-4 border-b border-gray-200 flex justify-between items-center">
+      <h3 class="m-0 text-lg font-semibold">Notifications</h3>
+      <div class="flex items-center gap-3">
         <button
           type="button"
-          class="mark-all-btn"
+          class="bg-transparent border border-gray-300 rounded-md px-3 py-1.5 text-[0.8125rem] text-gray-700 cursor-pointer transition-all duration-200 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2 mark-all-btn"
           aria-label="Mark all notifications as read"
           [disabled]="!hasUnread()"
           (click)="onMarkAllRead()">
           Mark all read
         </button>
-        <button class="close-btn" (click)="close()" aria-label="Close">
+        <button class="bg-transparent border-none cursor-pointer p-1 text-gray-500 hover:text-gray-900 focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2 close-btn" (click)="close()" aria-label="Close">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
           </svg>
@@ -22,43 +22,44 @@
       </div>
     </div>
 
-    <div class="search-box">
+    <div class="search-box p-4 border-b border-gray-200">
       <label for="notification-search" class="visually-hidden">Search notifications</label>
       <input
         id="notification-search"
         type="text"
         placeholder="Search notifications..."
         aria-label="Search notifications"
+        class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-600/20"
         [value]="searchText()()"
         (input)="onSearchChange($event)"
       />
     </div>
 
-    <div class="filter-buttons" role="group" aria-label="Filter notifications by severity">
+    <div class="filter-buttons p-4 flex gap-2 border-b border-gray-200" role="group" aria-label="Filter notifications by severity">
       <button
-        [class.active]="severityFilter()() === 'all'"
+        [class]="severityFilter()() === 'all' ? 'bg-blue-500 text-white border-blue-500' : 'bg-transparent border border-gray-300 rounded-full px-3 py-1.5 text-[0.8125rem] text-gray-700 cursor-pointer transition-all duration-200 hover:bg-gray-50'"
         (click)="setSeverity('all')"
         aria-label="Show all notifications"
       >All</button>
       <button
-        [class.active]="severityFilter()() === 'critical'"
+        [class]="severityFilter()() === 'critical' ? 'bg-blue-500 text-white border-blue-500' : 'bg-transparent border border-gray-300 rounded-full px-3 py-1.5 text-[0.8125rem] text-gray-700 cursor-pointer transition-all duration-200 hover:bg-gray-50'"
         (click)="setSeverity('critical')"
         aria-label="Show critical notifications only"
       >Critical</button>
       <button
-        [class.active]="severityFilter()() === 'warning'"
+        [class]="severityFilter()() === 'warning' ? 'bg-blue-500 text-white border-blue-500' : 'bg-transparent border border-gray-300 rounded-full px-3 py-1.5 text-[0.8125rem] text-gray-700 cursor-pointer transition-all duration-200 hover:bg-gray-50'"
         (click)="setSeverity('warning')"
         aria-label="Show warning notifications only"
       >Warning</button>
       <button
-        [class.active]="severityFilter()() === 'info'"
+        [class]="severityFilter()() === 'info' ? 'bg-blue-500 text-white border-blue-500' : 'bg-transparent border border-gray-300 rounded-full px-3 py-1.5 text-[0.8125rem] text-gray-700 cursor-pointer transition-all duration-200 hover:bg-gray-50'"
         (click)="setSeverity('info')"
         aria-label="Show info notifications only"
       >Info</button>
     </div>
 
     @if (showConnectionBanner()) {
-      <div class="connection-banner" [class]="'connection-' + connectionState" role="status" aria-live="polite" aria-label="Connection status">
+      <div class="flex items-start gap-2 w-full mt-2 mx-0 mb-0 px-3 py-2 rounded-md text-white text-sm leading-5 motion-safe:transition-opacity" [class]="connectionState === 'connected' ? 'bg-emerald-700' : connectionState === 'reconnecting' ? 'bg-amber-700' : 'bg-red-700'" role="status" aria-live="polite" aria-label="Connection status">
         @if (connectionState === 'connected') {
           <span>Notifications are live.</span>
         }
@@ -67,81 +68,80 @@
         }
         @if (connectionState === 'disconnected') {
           <span>Notification updates are offline. Recent items may be stale.</span>
-          <button type="button" class="retry-btn" [disabled]="isLoading" [attr.aria-disabled]="isRetryThrottled" (click)="onRetry()">Retry</button>
+          <button type="button" class="border border-current rounded bg-transparent text-inherit cursor-pointer px-2 py-1 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2 retry-btn" [disabled]="isLoading" [attr.aria-disabled]="isRetryThrottled" (click)="onRetry()">Retry</button>
           @if (isRetryThrottled) {
-            <span class="retry-helper">Try again shortly.</span>
+            <span class="text-xs opacity-80 retry-helper">Try again shortly.</span>
           }
         }
       </div>
     }
 
-    <div class="notification-scroll-region">
-      <div class="sticky-status-area">
+    <div class="notification-scroll-region flex-1 min-h-0 overflow-y-auto">
+      <div class="sticky-status-area sticky top-0 z-10">
         @if (error) {
-          <div class="panel-status panel-status-error" role="alert" aria-live="assertive">
+          <div class="flex items-center justify-between gap-3 m-3 px-3 py-2.5 rounded-md text-sm bg-red-50 text-red-700 panel-status panel-status-error" role="alert" aria-live="assertive">
             <span>{{ error }}</span>
-            <button type="button" class="retry-btn" [disabled]="isLoading" [attr.aria-disabled]="isRetryThrottled" (click)="onRetry()">Retry</button>
+            <button type="button" class="border border-current rounded bg-transparent text-inherit cursor-pointer px-2 py-1 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2 retry-btn" [disabled]="isLoading" [attr.aria-disabled]="isRetryThrottled" (click)="onRetry()">Retry</button>
             @if (isRetryThrottled) {
-              <span class="retry-helper">Try again shortly.</span>
+              <span class="text-xs opacity-80 retry-helper">Try again shortly.</span>
             }
           </div>
         } @else if (recoveryNotice) {
-          <div class="panel-status panel-status-recovery" role="status" aria-live="polite">
+          <div class="flex items-center justify-between gap-3 m-3 px-3 py-2.5 rounded-md text-sm bg-amber-50 text-amber-700 panel-status panel-status-recovery" role="status" aria-live="polite">
             <span>{{ recoveryNotice }}</span>
-            <button type="button" class="retry-btn" [disabled]="isLoading" [attr.aria-disabled]="isRetryThrottled" (click)="onRetry()">Retry</button>
+            <button type="button" class="border border-current rounded bg-transparent text-inherit cursor-pointer px-2 py-1 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2 retry-btn" [disabled]="isLoading" [attr.aria-disabled]="isRetryThrottled" (click)="onRetry()">Retry</button>
             @if (isRetryThrottled) {
-              <span class="retry-helper">Try again shortly.</span>
+              <span class="text-xs opacity-80 retry-helper">Try again shortly.</span>
             }
           </div>
         } @else if (isReconnectSyncing()) {
-          <div class="panel-status panel-status-loading" role="status" aria-live="polite">Syncing notifications...</div>
+          <div class="m-3 px-3 py-2.5 rounded-md text-sm bg-indigo-50 text-indigo-700 panel-status panel-status-loading" role="status" aria-live="polite">Syncing notifications...</div>
         }
       </div>
 
       @if (showInitialSkeleton()) {
-        <div class="skeleton-list" role="status" aria-live="polite">
-          <div class="skeleton-item" aria-busy="true"></div>
-          <div class="skeleton-item" aria-busy="true"></div>
-          <div class="skeleton-item" aria-busy="true"></div>
+        <div class="flex flex-col p-3 skeleton-list" role="status" aria-live="polite">
+          <div class="h-[60px] mb-2 rounded-md skeleton-item" aria-busy="true"></div>
+          <div class="h-[60px] mb-2 rounded-md skeleton-item" aria-busy="true"></div>
+          <div class="h-[60px] mb-2 rounded-md skeleton-item" aria-busy="true"></div>
         </div>
       }
 
-      <div class="event-list" data-testid="notification-list" role="list" aria-live="polite">
+      <div class="event-list flex-1 overflow-y-auto" data-testid="notification-list" role="list" aria-live="polite">
         @for (notification of filteredNotifications(); track notification.id) {
           <div
-            class="event-item"
+            class="flex px-4 py-3 border-b border-gray-100 transition-colors duration-200 hover:bg-gray-50 event-item focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2"
             data-testid="notification-item"
             role="listitem"
-            [class]="getSeverityClass(notification.severity)"
             [attr.data-notification-id]="notification.id"
             [attr.aria-label]="notification.readAt ? 'Read notification' : 'Unread notification'">
             @if (!notification.readAt) {
-              <span class="unread-marker"></span>
+              <span class="w-2 h-2 rounded-full flex-shrink-0 mr-2 mt-1.5 bg-blue-600 unread-marker"></span>
             } @else {
-              <span class="read-marker"></span>
+              <span class="w-2 h-2 rounded-full flex-shrink-0 mr-2 mt-1.5 bg-transparent border border-gray-400 read-marker"></span>
             }
-            <div class="event-severity-bar"></div>
-            <div class="event-content">
-              <div class="event-action">{{ notification.title }}</div>
+            <div class="w-1 rounded mr-3 flex-shrink-0 event-severity-bar" [class]="getSeverityClass(notification.severity)"></div>
+            <div class="flex-1 min-w-0 event-content">
+              <div class="text-sm font-medium text-gray-900 event-action">{{ notification.title }}</div>
               <div class="event-summary">{{ notification.summary }}</div>
-              <div class="event-meta">
+              <div class="text-xs text-gray-500 mt-1 flex gap-2 flex-wrap event-meta">
                 <span class="event-time">{{ formatTime(notification.timestamp) }}</span>
                 @if (notification.actor) {
                   <span class="event-user">{{ notification.actor }}</span>
                 }
                 @if (notification.severity === 'critical' && !notification.acknowledgedAt) {
-                  <span class="ack-required" aria-label="Acknowledgement required">Acknowledgement required</span>
+                  <span class="text-red-700 font-semibold ack-required" aria-label="Acknowledgement required">Acknowledgement required</span>
                 }
                 @if (notification.severity === 'critical' && notification.acknowledgedAt) {
-                  <span class="acknowledged" aria-label="Acknowledged notification">Acknowledged</span>
+                  <span class="text-emerald-700 font-semibold acknowledged" aria-label="Acknowledged notification">Acknowledged</span>
                 }
               </div>
-              <div class="event-actions">
+              <div class="flex gap-2 mt-2 event-actions">
                 @if (!notification.readAt) {
-                  <button type="button" aria-label="Mark notification as read" (click)="onMarkRead(notification)">Mark read</button>
+                  <button type="button" class="px-2 py-1 text-xs border border-gray-300 rounded bg-white cursor-pointer transition-all duration-200 hover:bg-gray-50" aria-label="Mark notification as read" (click)="onMarkRead(notification)">Mark read</button>
                 }
                 @if (notification.severity === 'critical' && !notification.acknowledgedAt) {
-                  <button type="button" aria-label="Acknowledge critical notification" (click)="onAcknowledge(notification)">Acknowledge</button>
+                  <button type="button" class="px-2 py-1 text-xs border border-gray-300 rounded bg-white cursor-pointer transition-all duration-200 hover:bg-gray-50" aria-label="Acknowledge critical notification" (click)="onAcknowledge(notification)">Acknowledge</button>
                 }
               </div>
             </div>
@@ -149,11 +149,11 @@
         } @empty {
           @if (!showInitialSkeleton() && !error) {
             @if (showSearchToEmpty()) {
-              <div class="empty-state" role="status" aria-live="polite">No results for "{{ searchText()() }}" among recent notifications.</div>
+              <div class="p-10 text-center text-gray-500 empty-state" role="status" aria-live="polite">No results for "{{ searchText()() }}" among recent notifications.</div>
             } @else {
-              <div class="empty-state" role="status" aria-live="polite">
+              <div class="p-10 text-center text-gray-500 empty-state" role="status" aria-live="polite">
                 <div>All caught up! No recent notifications</div>
-                <div class="empty-caption">Privilege, approval, and security events will appear here.</div>
+                <div class="text-sm mt-2 opacity-80 empty-caption">Privilege, approval, and security events will appear here.</div>
               </div>
             }
           }

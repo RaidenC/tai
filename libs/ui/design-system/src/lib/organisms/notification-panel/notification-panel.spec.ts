@@ -323,15 +323,15 @@ describe('NotificationPanelComponent', () => {
 
   describe('Helper methods', () => {
     it('should get severity class for critical', () => {
-      expect(component.getSeverityClass('critical')).toBe('severity-critical');
+      expect(component.getSeverityClass('critical')).toBe('bg-red-600');
     });
 
     it('should get severity class for warning', () => {
-      expect(component.getSeverityClass('warning')).toBe('severity-warning');
+      expect(component.getSeverityClass('warning')).toBe('bg-amber-500');
     });
 
     it('should get severity class for info', () => {
-      expect(component.getSeverityClass('info')).toBe('severity-info');
+      expect(component.getSeverityClass('info')).toBe('bg-blue-500');
     });
 
     it('should format time as Just now', () => {
