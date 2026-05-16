@@ -48,4 +48,26 @@ describe('NotificationToggleComponent', () => {
 
     expect(spy).toHaveBeenCalled();
   });
+
+  it('sets aria-expanded and aria-controls', () => {
+    fixture.componentRef.setInput('isOpen', true);
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('button');
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(button.getAttribute('aria-controls')).toBe('notification-panel');
+  });
+
+  it('shows reconnecting status in accessible label', () => {
+    fixture.componentRef.setInput('connectionState', 'reconnecting');
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('button');
+    expect(button.getAttribute('aria-label')).toBe('Toggle notifications, updates reconnecting');
+  });
+
+  it('shows disconnected status in accessible label', () => {
+    fixture.componentRef.setInput('connectionState', 'disconnected');
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('button');
+    expect(button.getAttribute('aria-label')).toBe('Toggle notifications, updates offline');
+  });
 });

@@ -1,5 +1,6 @@
 import { Component, input, output, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { NotificationPanelConnectionState } from '../../organisms/notification-panel/notification-panel.types';
 
 /**
  * NotificationToggleComponent
@@ -21,6 +22,8 @@ import { CommonModule } from '@angular/common';
 })
 export class NotificationToggleComponent {
   unreadCount = input(0);
+  isOpen = input(false);
+  connectionState = input<NotificationPanelConnectionState>('connected');
   toggled = output<void>();
 
   readonly displayCount = computed(() => {
@@ -29,6 +32,19 @@ export class NotificationToggleComponent {
   });
 
   readonly showBadge = computed(() => this.unreadCount() > 0);
+
+  readonly accessibleLabel = computed(() => {
+    switch (this.connectionState()) {
+      case 'reconnecting':
+        return 'Toggle notifications, updates reconnecting';
+      case 'disconnected':
+        return 'Toggle notifications, updates offline';
+      default:
+        return 'Toggle notifications';
+    }
+  });
+
+  readonly showConnectionIndicator = computed(() => this.connectionState() !== 'connected');
 
   toggle(): void {
     this.toggled.emit();
