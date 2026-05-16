@@ -2,7 +2,7 @@
 
   <div class="fixed inset-0 bg-gray-950/45 z-[99] panel-overlay" (click)="close()" role="presentation" tabindex="0" (keydown.enter)="close()" (keydown.escape)="close()" aria-label="Close panel"></div>
 
-  <div class="notification-panel fixed top-0 right-0 w-[400px] h-screen bg-white shadow-xl z-[100] flex flex-col max-h-screen" style="animation: slideIn 0.3s ease-out;">
+  <div class="notification-panel fixed top-0 right-0 w-[400px] h-screen bg-white shadow-xl z-[100] flex flex-col max-h-screen" style="animation: slideIn 0.3s ease-out;" cdkTrapFocus cdkTrapFocusAutoCapture (keydown.escape)="close()">
     <div class="panel-header p-4 border-b border-gray-200 flex justify-between items-center">
       <h3 class="m-0 text-lg font-semibold">Notifications</h3>
       <div class="flex items-center gap-3">
@@ -31,29 +31,35 @@
         aria-label="Search notifications"
         class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-600/20"
         [value]="searchText()()"
+        [attr.cdkFocusInitial]="filteredNotifications().length > 0 ? '' : null"
         (input)="onSearchChange($event)"
+        (keydown)="onSearchKeydown($event)"
       />
     </div>
 
     <div class="filter-buttons p-4 flex gap-2 border-b border-gray-200" role="group" aria-label="Filter notifications by severity">
       <button
         [class]="severityFilter()() === 'all' ? 'bg-blue-500 text-white border-blue-500' : 'bg-transparent border border-gray-300 rounded-full px-3 py-1.5 text-[0.8125rem] text-gray-700 cursor-pointer transition-all duration-200 hover:bg-gray-50'"
-        (click)="setSeverity('all')"
+        (click)="onFilterClick('all')"
+        data-testid="filter-all"
         aria-label="Show all notifications"
       >All</button>
       <button
         [class]="severityFilter()() === 'critical' ? 'bg-blue-500 text-white border-blue-500' : 'bg-transparent border border-gray-300 rounded-full px-3 py-1.5 text-[0.8125rem] text-gray-700 cursor-pointer transition-all duration-200 hover:bg-gray-50'"
-        (click)="setSeverity('critical')"
+        (click)="onFilterClick('critical')"
+        data-testid="filter-critical"
         aria-label="Show critical notifications only"
       >Critical</button>
       <button
         [class]="severityFilter()() === 'warning' ? 'bg-blue-500 text-white border-blue-500' : 'bg-transparent border border-gray-300 rounded-full px-3 py-1.5 text-[0.8125rem] text-gray-700 cursor-pointer transition-all duration-200 hover:bg-gray-50'"
-        (click)="setSeverity('warning')"
+        (click)="onFilterClick('warning')"
+        data-testid="filter-warning"
         aria-label="Show warning notifications only"
       >Warning</button>
       <button
         [class]="severityFilter()() === 'info' ? 'bg-blue-500 text-white border-blue-500' : 'bg-transparent border border-gray-300 rounded-full px-3 py-1.5 text-[0.8125rem] text-gray-700 cursor-pointer transition-all duration-200 hover:bg-gray-50'"
-        (click)="setSeverity('info')"
+        (click)="onFilterClick('info')"
+        data-testid="filter-info"
         aria-label="Show info notifications only"
       >Info</button>
     </div>
@@ -76,7 +82,7 @@
       </div>
     }
 
-    <div class="notification-scroll-region flex-1 min-h-0 overflow-y-auto">
+    <div class="notification-scroll-region flex-1 min-h-0 overflow-y-auto" (keydown)="onListKeydown($event)">
       <div class="sticky-status-area sticky top-0 z-10">
         @if (error) {
           <div class="flex items-center justify-between gap-3 m-3 px-3 py-2.5 rounded-md text-sm bg-red-50 text-red-700 panel-status panel-status-error" role="alert" aria-live="assertive">
@@ -114,6 +120,7 @@
             data-testid="notification-item"
             role="listitem"
             [attr.data-notification-id]="notification.id"
+            [attr.tabindex]="rovingNotificationId() === notification.id ? 0 : -1"
             [attr.aria-label]="notification.readAt ? 'Read notification' : 'Unread notification'">
             @if (!notification.readAt) {
               <span class="w-2 h-2 rounded-full flex-shrink-0 mr-2 mt-1.5 bg-blue-600 unread-marker"></span>

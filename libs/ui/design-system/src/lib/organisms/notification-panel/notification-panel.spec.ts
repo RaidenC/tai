@@ -591,4 +591,135 @@ describe('NotificationPanelComponent', () => {
       expect(fixture.nativeElement.textContent).toContain('No results for "privilege" among recent notifications.');
     });
   });
+
+  describe('Focus management and keyboard', () => {
+    const criticalNotification: NotificationPanelItem = {
+      id: 'crit-1',
+      title: 'Critical Event',
+      summary: 'Critical event summary',
+      severity: 'critical',
+      category: 'security',
+      actor: 'admin',
+      timestamp: new Date().toISOString(),
+      readAt: null,
+      acknowledgedAt: null,
+    };
+
+    const warningNotification: NotificationPanelItem = {
+      id: 'warn-1',
+      title: 'Warning Event',
+      summary: 'Warning event summary',
+      severity: 'warning',
+      category: 'security',
+      actor: 'user',
+      timestamp: new Date().toISOString(),
+      readAt: null,
+      acknowledgedAt: null,
+    };
+
+    const newerNotification: NotificationPanelItem = {
+      id: 'new-1',
+      title: 'Newer Event',
+      summary: 'Newer event summary',
+      severity: 'info',
+      category: 'security',
+      actor: 'user',
+      timestamp: new Date().toISOString(),
+      readAt: null,
+      acknowledgedAt: null,
+    };
+
+    beforeEach(() => {
+      panelService.open();
+      panelService.setSearchText('');
+      panelService.setSeverityFilter('all');
+    });
+
+    it('uses search as initial focus target when notifications exist', () => {
+      fixture.componentRef.setInput('notifications', [criticalNotification]);
+      fixture.detectChanges();
+      const search = fixture.nativeElement.querySelector('#notification-search');
+      expect(search.hasAttribute('cdkFocusInitial')).toBe(true);
+    });
+
+    it('makes the first visible notification tabbable by default', () => {
+      fixture.componentRef.setInput('notifications', [criticalNotification, warningNotification]);
+      fixture.detectChanges();
+
+      const items = fixture.nativeElement.querySelectorAll('[data-testid="notification-item"]');
+      expect(items[0].getAttribute('tabindex')).toBe('0');
+      expect(items[1].getAttribute('tabindex')).toBe('-1');
+    });
+
+    it('keeps filter focus after filter removes previously focused item', () => {
+      fixture.componentRef.setInput('notifications', [criticalNotification, warningNotification]);
+      fixture.detectChanges();
+      component.focusNotificationForTest(criticalNotification.id);
+
+      const warningButton = fixture.nativeElement.querySelector('[data-testid="filter-warning"]') as HTMLButtonElement;
+      warningButton.focus();
+      warningButton.click();
+      fixture.detectChanges();
+
+      expect(document.activeElement).toBe(warningButton);
+      expect(component.focusedNotificationIdForTest()).toBe(warningNotification.id);
+    });
+
+    it('clears non-empty search on Escape before closing panel', () => {
+      panelService.setSearchText('privilege');
+      fixture.componentRef.setInput('notifications', [criticalNotification]);
+      fixture.detectChanges();
+
+      const search = fixture.nativeElement.querySelector('#notification-search') as HTMLInputElement;
+      search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+      expect(panelService.searchText()()).toBe('');
+      expect(fixture.nativeElement.querySelector('.notification-panel')).toBeTruthy();
+    });
+
+    it('moves focus after Mark All Read disables the native button', async () => {
+      fixture.componentRef.setInput('notifications', [criticalNotification]);
+      fixture.detectChanges();
+
+      const markAllButton = fixture.nativeElement.querySelector('.mark-all-btn') as HTMLButtonElement;
+      markAllButton.focus();
+      markAllButton.click();
+
+      fixture.componentRef.setInput('notifications', [{ ...criticalNotification, readAt: '2026-05-15T12:00:00.000Z' }]);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(document.activeElement).toBe(fixture.nativeElement.querySelector('[data-testid="notification-item"]'));
+    });
+
+    it('moves focus to close button when mutation leaves no visible notifications', async () => {
+      fixture.componentRef.setInput('notifications', [criticalNotification]);
+      fixture.detectChanges();
+      component.focusNotificationForTest(criticalNotification.id);
+
+      fixture.componentRef.setInput('notifications', []);
+      fixture.detectChanges();
+      component.applyFocusAfterMutationForTest(criticalNotification.id, 0);
+      await fixture.whenStable();
+
+      expect(document.activeElement).toBe(fixture.nativeElement.querySelector('.close-btn'));
+    });
+
+    it('preserves scroll position relative to focused notification when hydrated items prepend', async () => {
+      fixture.componentRef.setInput('notifications', [criticalNotification, warningNotification]);
+      fixture.detectChanges();
+
+      const list = fixture.nativeElement.querySelector('.notification-scroll-region') as HTMLElement;
+      const focusedId = criticalNotification.id;
+      list.scrollTop = 400;
+
+      component.preserveScrollDuringPrependForTest(list, focusedId, () => {
+        fixture.componentRef.setInput('notifications', [newerNotification, criticalNotification, warningNotification]);
+        fixture.detectChanges();
+      });
+      await fixture.whenStable();
+
+      expect(list.scrollTop).toBeGreaterThanOrEqual(400);
+    });
+  });
 });
