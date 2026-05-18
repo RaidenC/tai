@@ -98,9 +98,12 @@ describe('DropdownMenuComponent', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
-  it('moves focus with arrow keys and Home/End', () => {
+  it('moves focus with arrow keys and Home/End', async () => {
     component.open();
     fixture.detectChanges();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    fixture.detectChanges();
+
     const menu = fixture.nativeElement.querySelector('[role="menu"]') as HTMLElement;
     const enabledItems = () =>
       Array.from(fixture.nativeElement.querySelectorAll('[role="menuitem"]:not([disabled])')) as HTMLButtonElement[];
