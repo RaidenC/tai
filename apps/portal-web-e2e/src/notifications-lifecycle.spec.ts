@@ -28,7 +28,7 @@ test.describe('notification lifecycle', () => {
     await page.locator('[data-testid^="action-menu-"]').first().click();
     const editMenuItem = page.getByRole('menuitem', { name: /edit/i });
     await expect(editMenuItem).toBeVisible({ timeout: 10000 });
-    await editMenuItem.click({ force: true });
+    await editMenuItem.click();
 
     // 5. Wait for navigation to detail page
     await page.waitForURL(/.*\/admin\/privileges\/.*/, { timeout: 10000 });
@@ -71,8 +71,9 @@ test.describe('notification lifecycle', () => {
     // Wait for the notification to appear with a longer timeout
     // SignalR notifications may take a few seconds to propagate
     await expect(notificationItem).toBeVisible({ timeout: 30000 });
+    await expect(notificationItem).toHaveAttribute('data-notification-id', /.+/);
+    // Store notification ID for lookup after page reload
     const notificationId = await notificationItem.getAttribute('data-notification-id');
-    expect(notificationId).toBeTruthy();
 
     // 11. Verify the unread badge is present on the toggle (indicates unread notifications exist)
     await expect(page.locator('.unread-badge')).toBeVisible();
