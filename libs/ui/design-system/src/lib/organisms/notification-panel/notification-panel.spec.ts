@@ -673,7 +673,7 @@ describe('NotificationPanelComponent', () => {
       const search = fixture.nativeElement.querySelector('#notification-search') as HTMLInputElement;
       search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 
-      expect(panelService.searchText()()).toBe('');
+      expect(panelService.searchText()).toBe('');
       expect(fixture.nativeElement.querySelector('.notification-panel')).toBeTruthy();
     });
 

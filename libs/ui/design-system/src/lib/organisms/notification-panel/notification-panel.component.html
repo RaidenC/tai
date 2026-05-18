@@ -1,4 +1,4 @@
-@if (isOpen()()) {
+@if (isOpen()) {
 
   <div class="notification-panel-container fixed inset-0 z-[99]" tabindex="-1" cdkTrapFocus cdkTrapFocusAutoCapture (keydown.escape)="close()">
     <div class="panel-overlay fixed inset-0 bg-gray-950/45 z-0" (click)="close()" role="presentation" aria-hidden="true"></div>
@@ -31,7 +31,7 @@
         placeholder="Search notifications..."
         aria-label="Search notifications"
         class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-600/20"
-        [value]="searchText()()"
+        [value]="searchText()"
         cdkFocusInitial
         (input)="onSearchChange($event)"
         (keydown)="onSearchKeydown($event)"
@@ -41,34 +41,34 @@
     <div class="filter-buttons p-4 flex gap-2 border-b border-gray-200" role="group" aria-label="Filter notifications by severity">
       <button
         class="px-3 py-1.5 border rounded-full text-[0.8125rem] cursor-pointer transition-all duration-200"
-        [class]="severityFilter()() === 'all' ? 'bg-blue-500 text-white border-blue-500' : 'bg-transparent border-gray-300 text-gray-700 hover:bg-gray-50'"
+        [class]="severityFilter() === 'all' ? 'bg-blue-500 text-white border-blue-500' : 'bg-transparent border-gray-300 text-gray-700 hover:bg-gray-50'"
         (click)="onFilterClick('all')"
         data-testid="filter-all"
-        [attr.aria-pressed]="severityFilter()() === 'all'"
+        [attr.aria-pressed]="severityFilter() === 'all'"
         aria-label="Show all notifications"
       >All</button>
       <button
         class="px-3 py-1.5 border rounded-full text-[0.8125rem] cursor-pointer transition-all duration-200"
-        [class]="severityFilter()() === 'critical' ? 'bg-red-600 text-white border-red-600' : 'bg-transparent border-gray-300 text-gray-700 hover:bg-gray-50'"
+        [class]="severityFilter() === 'critical' ? 'bg-red-600 text-white border-red-600' : 'bg-transparent border-gray-300 text-gray-700 hover:bg-gray-50'"
         (click)="onFilterClick('critical')"
         data-testid="filter-critical"
-        [attr.aria-pressed]="severityFilter()() === 'critical'"
+        [attr.aria-pressed]="severityFilter() === 'critical'"
         aria-label="Show critical notifications only"
       >Critical</button>
       <button
         class="px-3 py-1.5 border rounded-full text-[0.8125rem] cursor-pointer transition-all duration-200"
-        [class]="severityFilter()() === 'warning' ? 'bg-amber-500 text-white border-amber-500' : 'bg-transparent border-gray-300 text-gray-700 hover:bg-gray-50'"
+        [class]="severityFilter() === 'warning' ? 'bg-amber-500 text-white border-amber-500' : 'bg-transparent border-gray-300 text-gray-700 hover:bg-gray-50'"
         (click)="onFilterClick('warning')"
         data-testid="filter-warning"
-        [attr.aria-pressed]="severityFilter()() === 'warning'"
+        [attr.aria-pressed]="severityFilter() === 'warning'"
         aria-label="Show warning notifications only"
       >Warning</button>
       <button
         class="px-3 py-1.5 border rounded-full text-[0.8125rem] cursor-pointer transition-all duration-200"
-        [class]="severityFilter()() === 'info' ? 'bg-blue-500 text-white border-blue-500' : 'bg-transparent border-gray-300 text-gray-700 hover:bg-gray-50'"
+        [class]="severityFilter() === 'info' ? 'bg-blue-500 text-white border-blue-500' : 'bg-transparent border-gray-300 text-gray-700 hover:bg-gray-50'"
         (click)="onFilterClick('info')"
         data-testid="filter-info"
-        [attr.aria-pressed]="severityFilter()() === 'info'"
+        [attr.aria-pressed]="severityFilter() === 'info'"
         aria-label="Show info notifications only"
       >Info</button>
     </div>
@@ -165,7 +165,7 @@
         } @empty {
           @if (!showInitialSkeleton() && !error) {
             @if (showSearchToEmpty()) {
-              <div class="p-10 text-center text-gray-500 empty-state" role="status" aria-live="polite">No results for "{{ searchText()() }}" among recent notifications.</div>
+              <div class="p-10 text-center text-gray-500 empty-state" role="status" aria-live="polite">No results for "{{ searchText() }}" among recent notifications.</div>
             } @else {
               <div class="p-10 text-center text-gray-500 empty-state" role="status" aria-live="polite">
                 <div>All caught up! No recent notifications</div>

@@ -76,9 +76,9 @@ export class NotificationPanelComponent implements OnChanges, OnDestroy {
     (this.connectionState !== 'connected' || this.hasVisibleNotifications());
   readonly showSearchToEmpty = (): boolean =>
     !this.isLoading &&
-    !!this.searchText()() &&
+    !!this.searchText() &&
     this.wasSearchMatchBeforeHydrate &&
-    this.hydrateSearchText === this.searchText()() &&
+    this.hydrateSearchText === this.searchText() &&
     this.filteredNotifications().length === 0;
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -97,7 +97,7 @@ export class NotificationPanelComponent implements OnChanges, OnDestroy {
   }
 
   private captureSearchStateBeforeHydrate(): void {
-    const search = this.searchText()();
+    const search = this.searchText();
     this.hydrateSearchText = search || null;
     this.wasSearchMatchBeforeHydrate = !!search && this.filteredNotifications().length > 0;
   }
@@ -185,8 +185,8 @@ export class NotificationPanelComponent implements OnChanges, OnDestroy {
   // Filtered notifications based on severity and search
   readonly filteredNotifications = (): NotificationPanelItem[] => {
     const allNotifications = this.notifications || [];
-    const filter = this.severityFilter()();
-    const search = this.searchText()().toLowerCase();
+    const filter = this.severityFilter();
+    const search = this.searchText().toLowerCase();
 
     return allNotifications
       .filter(notification => {
@@ -218,7 +218,7 @@ export class NotificationPanelComponent implements OnChanges, OnDestroy {
       return;
     }
 
-    if (this.searchText()()) {
+    if (this.searchText()) {
       event.stopPropagation();
       this.panelService.setSearchText('');
       return;

@@ -122,16 +122,16 @@ export class PrivilegesStore {
         next: (response: any) => {
           this._selectedPrivilege.set(response.body);
           this._status.set('Success');
-          // Refresh catalog in background
-          this.loadPrivileges();
+          // Refresh catalog in background without changing status
+          this.loadPrivilegesSilently();
         },
         error: (err: HttpErrorResponse) => {
           console.error('[PrivilegesStore] Update failed:', err);
-          
+
           // Case-insensitive header check
           const stepUpHeader = err.headers.get('X-Step-Up-Required') || err.headers.get('x-step-up-required');
           console.log('[PrivilegesStore] Step-Up Header Value:', stepUpHeader);
-          
+
           if (err.status === 403 && stepUpHeader === 'true') {
             this._status.set('StepUpRequired');
           } else {
@@ -140,6 +140,31 @@ export class PrivilegesStore {
             const message = err.error?.detail || (typeof err.error === 'string' ? err.error : null) || 'Failed to update privilege.';
             this._errorMessage.set(message);
           }
+        }
+      });
+  }
+
+  /**
+   * Loads privileges without changing status (for background refresh after update).
+   */
+  private loadPrivilegesSilently(): void {
+    const modules = this._licensedModules();
+
+    this.privilegesService.getPrivileges(
+      this._pageIndex(),
+      this._pageSize(),
+      this._search() || undefined,
+      modules,
+      this._sortColumn() || undefined,
+      this._sortDirection() || undefined
+    )
+      .subscribe({
+        next: (response: PaginatedList<Privilege>) => {
+          this._privileges.set(response.items);
+          this._totalCount.set(response.totalCount);
+        },
+        error: () => {
+          // Silently ignore - catalog refresh failure shouldn't affect update success
         }
       });
   }

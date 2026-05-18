@@ -1,7 +1,7 @@
 <tai-toast></tai-toast>
 <tai-notification-toggle
   [unreadCount]="notificationStore.unreadCount()"
-  [isOpen]="notificationPanelService.isOpen()()"
+  [isOpen]="notificationPanelService.isOpen()"
   [connectionState]="notificationPanelConnectionState()"
   (toggled)="notificationPanelService.toggle()">
 </tai-notification-toggle>
