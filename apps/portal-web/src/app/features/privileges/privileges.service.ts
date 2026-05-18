@@ -58,11 +58,11 @@ export class PrivilegesService {
     }
 
     if (sortColumn) {
-      params = params.set('sortBy', sortColumn);
+      params = params.set('sort', sortColumn);
     }
 
     if (sortDirection) {
-      params = params.set('sortOrder', sortDirection);
+      params = params.set('dir', sortDirection);
     }
 
     return this.http.get<PaginatedList<Privilege>>(this.apiUrl, { params });

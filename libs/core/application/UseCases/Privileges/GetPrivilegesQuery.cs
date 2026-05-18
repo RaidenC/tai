@@ -11,7 +11,9 @@ public record GetPrivilegesQuery(
     int PageNumber = 1,
     int PageSize = 10,
     string? Search = null,
-    string[]? Modules = null) : IRequest<PaginatedList<PrivilegeDto>>;
+    string[]? Modules = null,
+    string? Sort = null,
+    string? Dir = null) : IRequest<PaginatedList<PrivilegeDto>>;
 
 public class GetPrivilegesQueryHandler : IRequestHandler<GetPrivilegesQuery, PaginatedList<PrivilegeDto>> {
   private readonly IPrivilegeService _privilegeService;
@@ -28,6 +30,8 @@ public class GetPrivilegesQueryHandler : IRequestHandler<GetPrivilegesQuery, Pag
       request.PageSize,
       request.Search,
       request.Modules,
+      request.Sort,
+      request.Dir,
       cancellationToken);
 
     var totalCount = await _privilegeService.CountPrivilegesAsync(request.Search, request.Modules, cancellationToken);

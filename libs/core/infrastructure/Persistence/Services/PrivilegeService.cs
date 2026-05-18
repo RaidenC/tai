@@ -24,19 +24,21 @@ public class PrivilegeService : IPrivilegeService {
       int take,
       string? search,
       string[]? modules,
+      string? sortColumn,
+      string? sortDirection,
       CancellationToken cancellationToken) {
 
-    if (skip == 0 && take == 10 && string.IsNullOrWhiteSpace(search) && (modules == null || modules.Length == 0)) {
+    if (skip == 0 && take == 10 && string.IsNullOrWhiteSpace(search) && (modules == null || modules.Length == 0) && string.IsNullOrWhiteSpace(sortColumn)) {
       return await _cache.GetOrCreateAsync(PrivilegesCacheKey, async entry => {
         entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
-        return await FetchPrivilegesFromDb(0, 10, null, null, cancellationToken);
+        return await FetchPrivilegesFromDb(0, 10, null, null, null, null, cancellationToken);
       }) ?? Enumerable.Empty<PrivilegeDto>();
     }
 
-    return await FetchPrivilegesFromDb(skip, take, search, modules, cancellationToken);
+    return await FetchPrivilegesFromDb(skip, take, search, modules, sortColumn, sortDirection, cancellationToken);
   }
 
-  private async Task<IEnumerable<PrivilegeDto>> FetchPrivilegesFromDb(int skip, int take, string? search, string[]? modules, CancellationToken cancellationToken) {
+  private async Task<IEnumerable<PrivilegeDto>> FetchPrivilegesFromDb(int skip, int take, string? search, string[]? modules, string? sortColumn, string? sortDirection, CancellationToken cancellationToken) {
     var query = _context.Privileges.AsNoTracking();
 
     if (!string.IsNullOrWhiteSpace(search)) {
@@ -47,8 +49,10 @@ public class PrivilegeService : IPrivilegeService {
       query = query.Where(p => modules.Contains(p.Module));
     }
 
+    // Apply sorting
+    query = ApplySorting(query, sortColumn, sortDirection);
+
     return await query
-        .OrderBy(p => p.Name)
         .Skip(skip)
         .Take(take)
         .Select(p => new PrivilegeDto(
@@ -61,6 +65,22 @@ public class PrivilegeService : IPrivilegeService {
             p.RowVersion,
             p.JitSettings))
         .ToListAsync(cancellationToken);
+  }
+
+  private IQueryable<Privilege> ApplySorting(IQueryable<Privilege> query, string? sortColumn, string? sortDirection) {
+    if (string.IsNullOrWhiteSpace(sortColumn)) {
+      return query.OrderBy(p => p.Name);
+    }
+
+    var isDescending = sortDirection?.ToLower() == "desc";
+
+    return sortColumn.ToLower() switch {
+      "name" => isDescending ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name),
+      "module" => isDescending ? query.OrderByDescending(p => p.Module) : query.OrderBy(p => p.Module),
+      "risk" => isDescending ? query.OrderByDescending(p => p.RiskLevel) : query.OrderBy(p => p.RiskLevel),
+      "status" => isDescending ? query.OrderByDescending(p => p.IsActive) : query.OrderBy(p => p.IsActive),
+      _ => query.OrderBy(p => p.Name)
+    };
   }
 
   public async Task<int> CountPrivilegesAsync(string? search, string[]? modules, CancellationToken cancellationToken) {

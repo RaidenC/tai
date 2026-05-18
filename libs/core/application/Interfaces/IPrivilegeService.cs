@@ -10,6 +10,8 @@ public interface IPrivilegeService {
       int take,
       string? search,
       string[]? modules,
+      string? sortColumn,
+      string? sortDirection,
       CancellationToken cancellationToken);
 
   Task<int> CountPrivilegesAsync(

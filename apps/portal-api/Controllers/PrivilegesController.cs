@@ -23,8 +23,10 @@ public class PrivilegesController : ControllerBase {
       [FromQuery] int pageNumber = 1,
       [FromQuery] int pageSize = 10,
       [FromQuery] string? search = null,
-      [FromQuery] string[]? modules = null) {
-    var query = new GetPrivilegesQuery(pageNumber, pageSize, search, modules);
+      [FromQuery] string[]? modules = null,
+      [FromQuery] string? sort = null,
+      [FromQuery] string? dir = null) {
+    var query = new GetPrivilegesQuery(pageNumber, pageSize, search, modules, sort, dir);
     return await _mediator.Send(query);
   }
 
