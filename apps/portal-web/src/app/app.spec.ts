@@ -223,6 +223,7 @@ describe('App', () => {
         });
 
         it('wires notification panel lifecycle outputs to the store', () => {
+            authServiceMock.isAuthenticated$ = of(true);
             const fixture = TestBed.createComponent(App);
             fixture.detectChanges();
             const panel = fixture.debugElement.query(By.directive(NotificationPanelComponent)).componentInstance as NotificationPanelComponent;
@@ -237,6 +238,7 @@ describe('App', () => {
         });
 
         it('passes unread count to notification toggle', () => {
+            authServiceMock.isAuthenticated$ = of(true);
             const fixture = TestBed.createComponent(App);
             fixture.detectChanges();
             const toggle = fixture.debugElement.query(By.directive(NotificationToggleComponent)).componentInstance as NotificationToggleComponent;
@@ -245,6 +247,7 @@ describe('App', () => {
         });
 
         it('updates toggle unread count after markRead', async () => {
+            authServiceMock.isAuthenticated$ = of(true);
             const fixture = TestBed.createComponent(App);
             fixture.detectChanges();
 
