@@ -86,6 +86,9 @@ test.describe('notification lifecycle', () => {
     const isCritical = await acknowledgeButton.isVisible();
     if (isCritical) {
       await acknowledgeButton.click();
+      // Wait for acknowledge button to disappear (confirms state change)
+      await expect(acknowledgeButton).toBeHidden({ timeout: 5000 });
+      // Now verify acknowledged label appears
       await expect(notificationItem.getByLabel(/acknowledged notification/i)).toBeVisible({ timeout: 5000 });
     }
 
