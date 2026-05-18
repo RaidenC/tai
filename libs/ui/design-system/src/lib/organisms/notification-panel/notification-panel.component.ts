@@ -67,7 +67,7 @@ export class NotificationPanelComponent implements OnChanges, OnDestroy {
   // Computed display helpers
   readonly showInitialSkeleton = (): boolean => this.showInitialSkeletonState;
   readonly isReconnectSyncing = (): boolean =>
-    this.isLoading && this.hasHydrated && this.connectionState === 'reconnecting';
+    this.isLoading && this.hasHydrated && this.connectionState !== 'disconnected';
   readonly hasVisibleNotifications = (): boolean => this.filteredNotifications().length > 0;
   readonly showConnectionBanner = (): boolean =>
     !this.error &&
