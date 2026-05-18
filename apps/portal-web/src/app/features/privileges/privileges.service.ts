@@ -42,7 +42,7 @@ export class PrivilegesService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/privileges';
 
-  getPrivileges(page: number, size: number, search?: string, modules?: string[]): Observable<PaginatedList<Privilege>> {
+  getPrivileges(page: number, size: number, search?: string, modules?: string[], sortColumn?: string, sortDirection?: 'asc' | 'desc'): Observable<PaginatedList<Privilege>> {
     let params = new HttpParams()
       .set('pageNumber', page.toString())
       .set('pageSize', size.toString());
@@ -52,10 +52,17 @@ export class PrivilegesService {
     }
 
     if (modules && modules.length > 0) {
-      // HttpParams with multiple values for the same key sends 'modules=A&modules=B'
       modules.forEach(m => {
         params = params.append('modules', m);
       });
+    }
+
+    if (sortColumn) {
+      params = params.set('sortBy', sortColumn);
+    }
+
+    if (sortDirection) {
+      params = params.set('sortOrder', sortDirection);
     }
 
     return this.http.get<PaginatedList<Privilege>>(this.apiUrl, { params });
