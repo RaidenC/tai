@@ -55,7 +55,14 @@ describe('PrivilegesStore', () => {
     store.loadPrivileges();
 
     // The store should request privileges and pass its licensed modules to the backend
-    expect(serviceMock.getPrivileges).toHaveBeenCalledWith(1, 10, undefined, ['Portal', 'LoanOrigination', 'Wires', 'System']);
+    expect(serviceMock.getPrivileges).toHaveBeenCalledWith(
+      1,
+      10,
+      undefined,
+      ['Portal', 'LoanOrigination', 'Wires', 'System'],
+      undefined,
+      undefined
+    );
   });
 
   it('should handle Step-Up requirement error', () => {

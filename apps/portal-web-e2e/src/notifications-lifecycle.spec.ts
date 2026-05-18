@@ -71,6 +71,8 @@ test.describe('notification lifecycle', () => {
     // Wait for the notification to appear with a longer timeout
     // SignalR notifications may take a few seconds to propagate
     await expect(notificationItem).toBeVisible({ timeout: 30000 });
+    const notificationId = await notificationItem.getAttribute('data-notification-id');
+    expect(notificationId).toBeTruthy();
 
     // 11. Verify the unread badge is present on the toggle (indicates unread notifications exist)
     await expect(page.locator('.unread-badge')).toBeVisible();
@@ -102,7 +104,7 @@ test.describe('notification lifecycle', () => {
 
     // 16. Verify the notification persists with correct read state
     // The notification should still be visible and marked as read
-    const refreshedItem = panel.getByTestId('notification-item').filter({ hasText: /privilege/i }).first();
+    const refreshedItem = panel.locator(`[data-notification-id="${notificationId}"]`);
     await expect(refreshedItem).toBeVisible({ timeout: 10000 });
     await expect(refreshedItem).toHaveAccessibleName(/read notification/i, { timeout: 5000 });
 

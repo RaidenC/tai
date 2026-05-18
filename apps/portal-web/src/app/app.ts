@@ -1,4 +1,4 @@
-import { Component, DestroyRef, Inject, OnInit, Optional, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { RouterModule, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -8,7 +8,7 @@ import { OnboardingStore } from './features/onboarding/onboarding.store';
 import { RealTimeService } from './real-time.service';
 import { NotificationSignalStore } from './store/notification-signal.store';
 import { NotificationHistoryService } from './notifications/notification-history.service';
-import { CONNECTION_TEST_HOOK_SERVICE, ConnectionTestHookServiceInterface } from './notifications/connection-test-hook.token';
+import { CONNECTION_TEST_HOOK_SERVICE } from './notifications/connection-test-hook.token';
 import { HubConnectionState } from '@microsoft/signalr';
 import { combineLatest, map, of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, filter, pairwise, withLatestFrom } from 'rxjs/operators';

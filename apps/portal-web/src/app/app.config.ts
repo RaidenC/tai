@@ -9,7 +9,7 @@ import { appRoutes } from './app.routes';
 import { dpopInterceptor } from './dpop.interceptor';
 import { PrivilegeChecker } from '@tai/ui-design-system';
 import { AuthService } from './auth.service';
-import { environment, environmentProviders } from '../environments/environment';
+import { environmentProviders } from '../environments/environment';
 
 const SYSTEM_CONFIG = {
     gatewayPort: 5217,
@@ -29,9 +29,7 @@ export const appConfig: ApplicationConfig = {
         // This handles the authentication flow with our Identity Server (OpenIddict).
         provideAuth({
             config: {
-                // JUNIOR RATIONALE: We use the root domain as the authority.
-                // This matches the 'Clean Root' backend strategy where the
-                // issuer is simply the gateway URL.
+                // Use the root domain as the authority to match the gateway issuer.
                 authority: `http://${window.location.hostname}:${SYSTEM_CONFIG.gatewayPort}`,
                 authWellknownEndpoints: {
                     issuer: `http://${window.location.hostname}:${SYSTEM_CONFIG.gatewayPort}/`,
@@ -55,11 +53,7 @@ export const appConfig: ApplicationConfig = {
                 secureRoutes: ['/api'],
             },
         }),
-        // JUNIOR RATIONALE: environmentProviders comes from the environment file replacement.
-        // In production builds, this is an empty array (environment.ts).
-        // In test builds, this includes ConnectionTestHookService (environment.e2e.ts).
-        // This pattern ensures the __testConnectionStateOverride__ hook string is
-        // tree-shaken from production builds, satisfying the spec requirement.
+        // Environment-specific providers keep E2E-only hooks out of production bundles.
         ...environmentProviders,
     ],
 };
