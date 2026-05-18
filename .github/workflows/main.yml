@@ -80,6 +80,16 @@ jobs:
       - name: Build Affected
         run: npx nx affected -t build
 
+      - name: Build portal-web production
+        run: npx nx build portal-web --configuration=production --skip-nx-cache
+
+      - name: Verify notification E2E hook is absent from production bundle
+        run: |
+          if rg "__testConnectionStateOverride__" dist/apps/portal-web/browser; then
+            echo "Test-only notification connection hook leaked into production bundle"
+            exit 1
+          fi
+
       - name: Install EF Tools
         run: dotnet tool install --global dotnet-ef || true
 
@@ -184,7 +194,7 @@ jobs:
           npx nx run portal-gateway:serve &
           
           # 3. Start Portal Web
-          npx nx run portal-web:serve --port=4200 --host=0.0.0.0 &
+          npx nx run portal-web:serve --configuration=test --port=4200 --host=0.0.0.0 &
           
           # 4. Start Identity UI
           npx nx run identity-ui:serve --host=0.0.0.0 &

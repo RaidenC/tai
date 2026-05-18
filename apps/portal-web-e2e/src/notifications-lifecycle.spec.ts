@@ -28,7 +28,7 @@ test.describe('notification lifecycle', () => {
     await page.locator('[data-testid^="action-menu-"]').first().click();
     const editMenuItem = page.getByRole('menuitem', { name: /edit/i });
     await expect(editMenuItem).toBeVisible({ timeout: 10000 });
-    await editMenuItem.click({ force: true });
+    await editMenuItem.click();
 
     // 5. Wait for navigation to detail page
     await page.waitForURL(/.*\/admin\/privileges\/.*/, { timeout: 10000 });
@@ -71,6 +71,9 @@ test.describe('notification lifecycle', () => {
     // Wait for the notification to appear with a longer timeout
     // SignalR notifications may take a few seconds to propagate
     await expect(notificationItem).toBeVisible({ timeout: 30000 });
+    await expect(notificationItem).toHaveAttribute('data-notification-id', /.+/);
+    // Store notification ID for lookup after page reload
+    const notificationId = await notificationItem.getAttribute('data-notification-id');
 
     // 11. Verify the unread badge is present on the toggle (indicates unread notifications exist)
     await expect(page.locator('.unread-badge')).toBeVisible();
@@ -86,6 +89,9 @@ test.describe('notification lifecycle', () => {
     const isCritical = await acknowledgeButton.isVisible();
     if (isCritical) {
       await acknowledgeButton.click();
+      // Wait for acknowledge button to disappear (confirms state change)
+      await expect(acknowledgeButton).toBeHidden({ timeout: 5000 });
+      // Now verify acknowledged label appears
       await expect(notificationItem.getByLabel(/acknowledged notification/i)).toBeVisible({ timeout: 5000 });
     }
 
@@ -99,7 +105,7 @@ test.describe('notification lifecycle', () => {
 
     // 16. Verify the notification persists with correct read state
     // The notification should still be visible and marked as read
-    const refreshedItem = panel.getByTestId('notification-item').filter({ hasText: /privilege/i }).first();
+    const refreshedItem = panel.locator(`[data-notification-id="${notificationId}"]`);
     await expect(refreshedItem).toBeVisible({ timeout: 10000 });
     await expect(refreshedItem).toHaveAccessibleName(/read notification/i, { timeout: 5000 });
 

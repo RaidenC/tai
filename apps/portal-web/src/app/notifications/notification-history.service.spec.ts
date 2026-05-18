@@ -11,9 +11,7 @@ describe('NotificationHistoryService', () => {
   let user$: BehaviorSubject<User | null>;
   let http: { get: ReturnType<typeof vi.fn> };
   let store: NotificationSignalStore;
-  // Service is injected to trigger constructor which sets up subscriptions
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  let _service: NotificationHistoryService;
+  let service: NotificationHistoryService;
 
   // Spies on store methods for verification
   let setLifecycleScopeSpy: ReturnType<typeof vi.spyOn>;
@@ -81,7 +79,7 @@ describe('NotificationHistoryService', () => {
 
   // Helper to instantiate service after test setup
   function instantiateService(): NotificationHistoryService {
-    return (_service = TestBed.inject(NotificationHistoryService));
+    return (service = TestBed.inject(NotificationHistoryService));
   }
 
   it('hydrates recent audit rows after user tenant is available', () => {
@@ -200,6 +198,118 @@ describe('NotificationHistoryService', () => {
     expect(setLifecycleScopeSpy).toHaveBeenCalledWith({ tenantId: 'tenant-1', userId: 'user-sub-1' });
     expect(setLifecycleScopeSpy).toHaveBeenCalledWith({ tenantId: 'tenant-2', userId: 'user-sub-1' });
     expect(http.get).toHaveBeenCalledTimes(3);
+  });
+
+  describe('forceRetry', () => {
+    it('skips when hydration is already in flight', () => {
+      http.get.mockReturnValue(new Subject<AuditLogDetails[]>().asObservable());
+      instantiateService();
+      user$.next(adminUser);
+
+      expect(http.get).toHaveBeenCalledTimes(1);
+      // Simulate hydration in flight by setting the signal
+      (store as unknown as { _isHydrating: { set: (v: boolean) => void } })._isHydrating.set(true);
+      service.forceRetry();
+
+      expect(http.get).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips when user context is missing', () => {
+      instantiateService();
+      user$.next(null);
+      service.forceRetry();
+
+      expect(http.get).not.toHaveBeenCalled();
+    });
+
+    it('allows at most 10 attempts per tenant user in 60 seconds (throttles on failures, clears on success)', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-05-15T12:00:00.000Z'));
+      // Mock FAILED responses so force retry counters accumulate
+      http.get.mockReturnValue(throwError(() => ({ status: 500 })));
+      instantiateService();
+      user$.next(adminUser);
+
+      // Initial hydration attempt (fails)
+      expect(http.get).toHaveBeenCalledTimes(1);
+
+      // 9 more failed force retries within the window
+      for (let i = 0; i < 9; i += 1) {
+        service.forceRetry();
+        vi.advanceTimersByTime(100);
+      }
+
+      expect(http.get).toHaveBeenCalledTimes(10);
+
+      // 10th force retry should succeed (within limit)
+      service.forceRetry();
+      expect(http.get).toHaveBeenCalledTimes(11);
+
+      // 11th force retry should be throttled
+      service.forceRetry();
+      expect(http.get).toHaveBeenCalledTimes(11);
+      expect(service.forceRetryNotice()).toBe('Updates paused briefly. Cached notifications are still available.');
+
+      // After 60+ seconds, the window expires and throttling resets
+      vi.setSystemTime(new Date('2026-05-15T12:01:01.000Z'));
+      service.forceRetry();
+      expect(http.get).toHaveBeenCalledTimes(12);
+      expect(service.forceRetryNotice()).toBeNull();
+
+      // Now mock SUCCESS to verify counters are cleared after successful hydrate
+      http.get.mockReturnValue(of([]));
+      vi.advanceTimersByTime(100);
+      service.forceRetry();
+      expect(http.get).toHaveBeenCalledTimes(13);
+      expect(service.forceRetryNotice()).toBeNull();
+
+      // After successful hydrate, counters cleared - can force retry again immediately
+      vi.setSystemTime(new Date('2026-05-15T12:01:02.000Z'));
+      service.forceRetry();
+      expect(http.get).toHaveBeenCalledTimes(14);
+      expect(service.forceRetryNotice()).toBeNull();
+
+      vi.useRealTimers();
+    });
+
+    it('normal retry remains governed by isRetryThrottled when force retry is paused (throttles on failures)', () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-05-15T12:00:00.000Z'));
+      // Mock FAILED responses so force retry counters accumulate
+      http.get.mockReturnValue(throwError(() => ({ status: 500 })));
+      instantiateService();
+      user$.next(adminUser);
+
+      // Initial hydration attempt (fails)
+      expect(http.get).toHaveBeenCalledTimes(1);
+
+      // 9 more failed force retries within the window
+      for (let i = 0; i < 9; i += 1) {
+        service.forceRetry();
+        vi.advanceTimersByTime(100);
+      }
+
+      // 10th force retry succeeds (within limit)
+      service.forceRetry();
+      expect(http.get).toHaveBeenCalledTimes(11);
+
+      // 11th force retry should be throttled, notice set
+      service.forceRetry();
+      expect(service.forceRetryNotice()).toBe('Updates paused briefly. Cached notifications are still available.');
+      expect(service.isRetryThrottled()).toBe(false);
+
+      // Normal retry should still work (different throttling mechanism)
+      // Mock SUCCESS for normal retry
+      http.get.mockReturnValue(of([]));
+      service.retry();
+      vi.advanceTimersByTime(1000);
+      expect(http.get).toHaveBeenCalledTimes(12);
+
+      // After successful hydration via normal retry, force retry counters are cleared
+      expect(service.forceRetryNotice()).toBeNull();
+
+      vi.useRealTimers();
+    });
   });
 });
 

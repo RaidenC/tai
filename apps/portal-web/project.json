@@ -52,12 +52,35 @@
                             "maximumError": "8kb"
                         }
                     ],
-                    "outputHashing": "all"
+                    "outputHashing": "all",
+                    "fileReplacements": [
+                        {
+                            "replace": "apps/portal-web/src/environments/environment.ts",
+                            "with": "apps/portal-web/src/environments/environment.prod.ts"
+                        }
+                    ]
                 },
                 "development": {
                     "optimization": false,
                     "extractLicenses": false,
-                    "sourceMap": true
+                    "sourceMap": true,
+                    "fileReplacements": [
+                        {
+                            "replace": "apps/portal-web/src/environments/environment.ts",
+                            "with": "apps/portal-web/src/environments/environment.development.ts"
+                        }
+                    ]
+                },
+                "test": {
+                    "optimization": false,
+                    "extractLicenses": false,
+                    "sourceMap": true,
+                    "fileReplacements": [
+                        {
+                            "replace": "apps/portal-web/src/environments/environment.ts",
+                            "with": "apps/portal-web/src/environments/environment.e2e.ts"
+                        }
+                    ]
                 }
             },
             "defaultConfiguration": "production"
@@ -75,6 +98,9 @@
                 },
                 "development": {
                     "buildTarget": "portal-web:build:development"
+                },
+                "test": {
+                    "buildTarget": "portal-web:build:test"
                 }
             },
             "defaultConfiguration": "development"
@@ -86,7 +112,8 @@
             "executor": "@angular/build:unit-test",
             "options": {
                 "watch": false,
-                "coverage": true
+                "coverage": true,
+                "exclude": ["**/environments/**/*.ts"]
             }
         },
         "serve-static": {

@@ -1,4 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk" InitialTargets="EnsureOutputDirectory">
+
+  <!-- Create bin directory before project evaluation to fix Linux glob pattern issue -->
+  <Target Name="EnsureOutputDirectory">
+    <MakeDir Directories="$(MSBuildProjectDirectory)/bin/$(Configuration)/$(TargetFramework)" />
+  </Target>
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>

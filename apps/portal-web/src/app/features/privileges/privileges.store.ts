@@ -22,6 +22,8 @@ export class PrivilegesStore {
   private readonly _pageIndex = signal<number>(1);
   private readonly _pageSize = signal<number>(10);
   private readonly _search = signal<string | null>(null);
+  private readonly _sortColumn = signal<string | null>(null);
+  private readonly _sortDirection = signal<'asc' | 'desc' | null>(null);
   private readonly _status = signal<PrivilegesStatus>('Idle');
   private readonly _errorMessage = signal<string | null>(null);
 
@@ -32,6 +34,8 @@ export class PrivilegesStore {
   public readonly pageIndex = this._pageIndex.asReadonly();
   public readonly pageSize = this._pageSize.asReadonly();
   public readonly search = this._search.asReadonly();
+  public readonly sortColumn = this._sortColumn.asReadonly();
+  public readonly sortDirection = this._sortDirection.asReadonly();
   public readonly status = this._status.asReadonly();
   public readonly errorMessage = this._errorMessage.asReadonly();
 
@@ -52,10 +56,12 @@ export class PrivilegesStore {
   /**
    * Loads the list of privileges.
    */
-  public loadPrivileges(pageIndex?: number, pageSize?: number, search?: string): void {
+  public loadPrivileges(pageIndex?: number, pageSize?: number, search?: string, sortColumn?: string, sortDirection?: 'asc' | 'desc'): void {
     if (pageIndex !== undefined) this._pageIndex.set(pageIndex);
     if (pageSize !== undefined) this._pageSize.set(pageSize);
     if (search !== undefined) this._search.set(search || null);
+    if (sortColumn !== undefined) this._sortColumn.set(sortColumn || null);
+    if (sortDirection !== undefined) this._sortDirection.set(sortDirection || null);
 
     this._status.set('Loading');
     this._errorMessage.set(null);
@@ -63,7 +69,14 @@ export class PrivilegesStore {
     // Pass the mock licensed modules to the backend so pagination matches the exact count.
     const modules = this._licensedModules();
 
-    this.privilegesService.getPrivileges(this._pageIndex(), this._pageSize(), this._search() || undefined, modules)
+    this.privilegesService.getPrivileges(
+      this._pageIndex(),
+      this._pageSize(),
+      this._search() || undefined,
+      modules,
+      this._sortColumn() || undefined,
+      this._sortDirection() || undefined
+    )
       .subscribe({
         next: (response: PaginatedList<Privilege>) => {
           this._privileges.set(response.items);
@@ -109,16 +122,16 @@ export class PrivilegesStore {
         next: (response: any) => {
           this._selectedPrivilege.set(response.body);
           this._status.set('Success');
-          // Refresh catalog in background
-          this.loadPrivileges();
+          // Refresh catalog in background without changing status
+          this.loadPrivilegesSilently();
         },
         error: (err: HttpErrorResponse) => {
           console.error('[PrivilegesStore] Update failed:', err);
-          
+
           // Case-insensitive header check
           const stepUpHeader = err.headers.get('X-Step-Up-Required') || err.headers.get('x-step-up-required');
           console.log('[PrivilegesStore] Step-Up Header Value:', stepUpHeader);
-          
+
           if (err.status === 403 && stepUpHeader === 'true') {
             this._status.set('StepUpRequired');
           } else {
@@ -127,6 +140,31 @@ export class PrivilegesStore {
             const message = err.error?.detail || (typeof err.error === 'string' ? err.error : null) || 'Failed to update privilege.';
             this._errorMessage.set(message);
           }
+        }
+      });
+  }
+
+  /**
+   * Loads privileges without changing status (for background refresh after update).
+   */
+  private loadPrivilegesSilently(): void {
+    const modules = this._licensedModules();
+
+    this.privilegesService.getPrivileges(
+      this._pageIndex(),
+      this._pageSize(),
+      this._search() || undefined,
+      modules,
+      this._sortColumn() || undefined,
+      this._sortDirection() || undefined
+    )
+      .subscribe({
+        next: (response: PaginatedList<Privilege>) => {
+          this._privileges.set(response.items);
+          this._totalCount.set(response.totalCount);
+        },
+        error: () => {
+          // Silently ignore - catalog refresh failure shouldn't affect update success
         }
       });
   }

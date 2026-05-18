@@ -20,6 +20,9 @@ export default defineConfig({
     /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
     use: {
         baseURL,
+        // Notification Sprint 4 specs require portal-web to be served with:
+        // npx nx run portal-web:serve --configuration=test --port=4200 --host=0.0.0.0
+        // The test configuration enables window.__testConnectionStateOverride__.
         /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
         trace: 'on-first-retry',
         launchOptions: {

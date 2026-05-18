@@ -25,6 +25,8 @@ describe('PrivilegesPage', () => {
       totalCount: signal(2),
       pageIndex: signal(1),
       pageSize: signal(10),
+      sortColumn: signal<string | null>(null),
+      sortDirection: signal<'asc' | 'desc' | null>(null),
       isLoading: signal(false),
       isError: signal(false),
       isStepUpRequired: signal(false),

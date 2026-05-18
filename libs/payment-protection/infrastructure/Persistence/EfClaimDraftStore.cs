@@ -21,12 +21,14 @@ public class EfClaimDraftStore : IClaimDraftStore {
 
   public async Task SaveAsync(ClaimDraft draft, CancellationToken cancellationToken = default) {
     var existing = await _ctx.ClaimDrafts
+      .AsTracking()
       .FirstOrDefaultAsync(d => d.UserId == draft.UserId && d.ClaimId == draft.ClaimId, cancellationToken);
 
     if (existing == null) {
       _ctx.ClaimDrafts.Add(draft);
+    } else {
+      existing.Update(draft.EncryptedPayload, draft.ExpiresAt);
     }
-    // If existing != null, EF tracking already captured the Update() mutation on the entity.
 
     await _ctx.SaveChangesAsync(cancellationToken);
   }

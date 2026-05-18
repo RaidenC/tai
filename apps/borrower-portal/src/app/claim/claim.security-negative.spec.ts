@@ -6,7 +6,6 @@ import {
   claimFeature,
   ClaimActions,
   initialClaimState,
-  selectBorrower,
   autoSaveDraft,
   loadDraft,
   clearDraftOnReset,
@@ -18,27 +17,25 @@ import { ClaimDraftService } from './services/claim-draft.service';
 import { mockApiInterceptor } from './services/mock-api.interceptor';
 
 describe('Negative Security Tests', () => {
-  it('reducer strips SSN even on direct draftLoaded dispatch (bypass effect)', () => {
-    TestBed.configureTestingModule({
-      providers: [
-        provideStore({ [claimFeature.name]: claimFeature.reducer }, {
-          initialState: { [claimFeature.name]: initialClaimState }
-        }),
-      ],
-    });
-    const store = TestBed.inject(Store);
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    sessionStorage.clear();
+    vi.restoreAllMocks();
+  });
 
+  it('reducer strips SSN even on direct draftLoaded dispatch (bypass effect)', () => {
     const draftWithSSN = {
       ...initialClaimState,
       borrower: { ...initialClaimState.borrower, firstName: 'Jane', ssnLastFour: '9999' },
     };
 
-    store.dispatch(ClaimActions.draftLoaded({ draft: draftWithSSN }));
+    const result = claimFeature.reducer(
+      initialClaimState,
+      ClaimActions.draftLoaded({ draft: draftWithSSN }),
+    );
 
-    let result: any;
-    store.select(selectBorrower).subscribe((b) => (result = b));
-    expect(result.ssnLastFour).toBe('');
-    expect(result.firstName).toBe('Jane');
+    expect(result.borrower.ssnLastFour).toBe('');
+    expect(result.borrower.firstName).toBe('Jane');
   });
 
   it('sanitizeForPersistence is the only code path writing to draftService', async () => {

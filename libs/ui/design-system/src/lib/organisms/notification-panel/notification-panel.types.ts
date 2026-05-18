@@ -15,6 +15,12 @@ export interface NotificationPanelItem {
 }
 
 /**
+ * Connection state for notification panel UI
+ * Maps SignalR's 5 states to 3 UI states for display
+ */
+export type NotificationPanelConnectionState = 'connected' | 'reconnecting' | 'disconnected';
+
+/**
  * Full audit log details (deprecated - use NotificationPanelItem)
  * @deprecated Use NotificationPanelItem instead
  */

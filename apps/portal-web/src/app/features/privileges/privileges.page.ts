@@ -86,6 +86,8 @@ import { debounceTime, distinctUntilChanged, Subject } from 'rxjs';
           [totalCount]="store.totalCount()"
           [pageIndex]="store.pageIndex()"
           [pageSize]="store.pageSize()"
+          [sortColumnId]="store.sortColumn()"
+          [sortDirection]="store.sortDirection()"
           (pageChanged)="onPageChange($event)"
           (sortChanged)="onSortChange($event)"
           (actionTriggered)="onAction($event)">
@@ -147,13 +149,11 @@ export class PrivilegesPage implements OnInit {
       const page = +params['page'] || 1;
       const size = +params['size'] || 10;
       const search = params['search'] || '';
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const sort = params['sort'] || '';
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const dir = params['dir'] || '';
+      const sort = params['sort'] || null;
+      const dir = params['dir'] as 'asc' | 'desc' || null;
 
       this.searchTerm = search;
-      this.store.loadPrivileges(page, size, search);
+      this.store.loadPrivileges(page, size, search, sort, dir);
     });
 
     this.searchSubject.pipe(

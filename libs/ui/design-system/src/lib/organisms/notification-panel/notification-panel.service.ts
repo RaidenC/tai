@@ -1,4 +1,4 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 
 export type SeverityFilter = 'all' | 'critical' | 'warning' | 'info';
 
@@ -11,10 +11,10 @@ export class NotificationPanelService {
   private readonly _severityFilter = signal<SeverityFilter>('all');
   private readonly _searchText = signal('');
 
-  readonly isOpen = computed(() => this._isOpen);
-  readonly unreadCount = computed(() => this._unreadCount);
-  readonly severityFilter = computed(() => this._severityFilter);
-  readonly searchText = computed(() => this._searchText);
+  readonly isOpen = this._isOpen.asReadonly();
+  readonly unreadCount = this._unreadCount.asReadonly();
+  readonly severityFilter = this._severityFilter.asReadonly();
+  readonly searchText = this._searchText.asReadonly();
 
   toggle(): void {
     this._isOpen.update(v => !v);

@@ -1,4 +1,4 @@
-import { DestroyRef, Injectable, inject } from '@angular/core';
+import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { HttpClient } from '@angular/common/http';
 import { EMPTY, Subject, catchError, debounceTime, filter, switchMap, tap, timeout } from 'rxjs';
@@ -12,6 +12,9 @@ const HYDRATION_TIMEOUT_MS = 10_000;
 const RETRY_DEBOUNCE_MS = 1_000;
 const RETRY_WINDOW_MS = 30_000;
 const MAX_RETRIES_PER_WINDOW = 3;
+const FORCE_RETRY_WINDOW_MS = 60_000;
+const MAX_FORCE_RETRIES_PER_WINDOW = 10;
+const FORCE_RETRY_NOTICE = 'Updates paused briefly. Cached notifications are still available.';
 
 @Injectable({ providedIn: 'root' })
 export class NotificationHistoryService {
@@ -22,7 +25,18 @@ export class NotificationHistoryService {
   private readonly retryRequests$ = new Subject<void>();
   private readonly hydratedTenants = new Set<string>();
   private readonly retryAttemptsByTenant = new Map<string, number[]>();
+  private readonly forceRetryAttemptsByTenant = new Map<string, number[]>();
+  private readonly forceRetryPausedUntilSignal = signal<number | null>(null);
+  private readonly forceRetryNoticeSignal = signal<string | null>(null);
+  private readonly retryThrottledUntilSignal = signal<number | null>(null);
   private currentUser: Pick<User, 'id' | 'tenantId'> | null = null;
+
+  readonly forceRetryPausedUntil = this.forceRetryPausedUntilSignal.asReadonly();
+  readonly forceRetryNotice = this.forceRetryNoticeSignal.asReadonly();
+  readonly isRetryThrottled = computed(() => {
+    const retryUntil = this.retryThrottledUntilSignal();
+    return retryUntil !== null && Date.now() < retryUntil;
+  });
 
   constructor() {
     this.authService.user$.pipe(
@@ -58,6 +72,41 @@ export class NotificationHistoryService {
     this.retryRequests$.next();
   }
 
+  forceRetry(): void {
+    const user = this.currentUser;
+    if (!user?.tenantId || !user.id || this.store.isHydrating()) {
+      return;
+    }
+
+    const hydrationKey = this.getHydrationKey({ tenantId: user.tenantId, id: user.id });
+    if (!this.canForceRetry(hydrationKey)) {
+      console.warn('Notification reconnect recovery paused after force retry limit.');
+      this.forceRetryNoticeSignal.set(FORCE_RETRY_NOTICE);
+      return;
+    }
+
+    this.hydratedTenants.delete(hydrationKey);
+    this.hydrateTenant(user.tenantId, user.id).subscribe();
+  }
+
+  private canForceRetry(hydrationKey: string): boolean {
+    const now = Date.now();
+    const attempts = (this.forceRetryAttemptsByTenant.get(hydrationKey) ?? [])
+      .filter(timestamp => now - timestamp < FORCE_RETRY_WINDOW_MS);
+
+    if (attempts.length >= MAX_FORCE_RETRIES_PER_WINDOW) {
+      this.forceRetryAttemptsByTenant.set(hydrationKey, attempts);
+      this.forceRetryPausedUntilSignal.set(attempts[0] + FORCE_RETRY_WINDOW_MS);
+      return false;
+    }
+
+    attempts.push(now);
+    this.forceRetryAttemptsByTenant.set(hydrationKey, attempts);
+    this.forceRetryPausedUntilSignal.set(null);
+    this.forceRetryNoticeSignal.set(null);
+    return true;
+  }
+
   private handleAuthBoundary(user: User | null): void {
     const previousUser = this.currentUser;
     const previousKey = previousUser ? this.getHydrationKey(previousUser) : null;
@@ -76,6 +125,10 @@ export class NotificationHistoryService {
     // Clear retry attempts when auth boundary changes
     if (previousKey !== nextKey) {
       this.retryAttemptsByTenant.clear();
+      this.forceRetryAttemptsByTenant.clear();
+      this.retryThrottledUntilSignal.set(null);
+      this.forceRetryPausedUntilSignal.set(null);
+      this.forceRetryNoticeSignal.set(null);
     }
 
     if (!user?.tenantId || !user.id) {
@@ -130,6 +183,14 @@ export class NotificationHistoryService {
     this.store.setHydrationError(null);
     this.store.setHydrating(false);
 
+    // Clear retry counters for the current hydration key after successful hydration
+    const hydrationKey = this.getHydrationKey({ tenantId: expectedTenantId, id: expectedUserId });
+    this.retryAttemptsByTenant.delete(hydrationKey);
+    this.retryThrottledUntilSignal.set(null);
+    this.forceRetryAttemptsByTenant.delete(hydrationKey);
+    this.forceRetryPausedUntilSignal.set(null);
+    this.forceRetryNoticeSignal.set(null);
+
     if (this.currentUser?.tenantId === expectedTenantId && this.currentUser.id === expectedUserId) {
       this.hydratedTenants.add(this.getHydrationKey({ tenantId: expectedTenantId, id: expectedUserId }));
     }
@@ -148,6 +209,7 @@ export class NotificationHistoryService {
 
     if (attempts.length >= MAX_RETRIES_PER_WINDOW) {
       this.retryAttemptsByTenant.set(tenantId, attempts);
+      this.retryThrottledUntilSignal.set(attempts[0] + RETRY_WINDOW_MS);
       return false;
     }
 

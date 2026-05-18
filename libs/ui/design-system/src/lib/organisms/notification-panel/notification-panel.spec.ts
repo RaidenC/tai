@@ -3,6 +3,7 @@ import { NotificationPanelComponent } from './notification-panel.component';
 import { NotificationPanelService } from './notification-panel.service';
 import { NotificationPanelItem } from './notification-panel.types';
 import { isSignal } from '@angular/core';
+import { vi } from 'vitest';
 
 describe('NotificationPanelComponent', () => {
   let component: NotificationPanelComponent;
@@ -267,14 +268,16 @@ describe('NotificationPanelComponent', () => {
   });
 
   describe('Loading state', () => {
-    it('renders loading state with polite status live region while keeping notifications visible', () => {
+    it('renders reconnect syncing status when hydrated and reconnecting', () => {
       component.isLoading = true;
+      component.hasHydrated = true;
+      component.connectionState = 'reconnecting';
       component.notifications = mockNotifications;
       panelService.open();
       fixture.detectChanges();
 
       const status = fixture.nativeElement.querySelector('[role="status"][aria-live="polite"]');
-      expect(status?.textContent).toContain('Loading recent notifications');
+      expect(status?.textContent).toContain('Syncing notifications...');
       expect(fixture.nativeElement.textContent).toContain('Login Anomaly Detected');
     });
   });
@@ -320,15 +323,15 @@ describe('NotificationPanelComponent', () => {
 
   describe('Helper methods', () => {
     it('should get severity class for critical', () => {
-      expect(component.getSeverityClass('critical')).toBe('severity-critical');
+      expect(component.getSeverityClass('critical')).toBe('bg-red-600');
     });
 
     it('should get severity class for warning', () => {
-      expect(component.getSeverityClass('warning')).toBe('severity-warning');
+      expect(component.getSeverityClass('warning')).toBe('bg-amber-500');
     });
 
     it('should get severity class for info', () => {
-      expect(component.getSeverityClass('info')).toBe('severity-info');
+      expect(component.getSeverityClass('info')).toBe('bg-blue-500');
     });
 
     it('should format time as Just now', () => {
@@ -470,6 +473,253 @@ describe('NotificationPanelComponent', () => {
       expect(ackButton).toBeNull();
       expect(fixture.nativeElement.querySelector('[aria-label="Acknowledged notification"]')).toBeTruthy();
       expect(ackSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Panel state and connection banners', () => {
+    const privilegeNotification: NotificationPanelItem = {
+      id: 'priv-1',
+      title: 'Privilege Modified',
+      summary: 'Admin permissions granted',
+      severity: 'critical',
+      category: 'privilege',
+      actor: 'admin',
+      timestamp: new Date().toISOString(),
+      readAt: null,
+      acknowledgedAt: null,
+    };
+
+    const otherNotification: NotificationPanelItem = {
+      id: 'other-1',
+      title: 'Security Alert',
+      summary: 'Security event detected',
+      severity: 'warning',
+      category: 'security',
+      actor: 'user',
+      timestamp: new Date().toISOString(),
+      readAt: null,
+      acknowledgedAt: null,
+    };
+
+    it('shows reconnect syncing instead of skeleton after initial hydrate', () => {
+      panelService.open();
+      fixture.componentRef.setInput('isLoading', true);
+      fixture.componentRef.setInput('hasHydrated', true);
+      fixture.componentRef.setInput('connectionState', 'reconnecting');
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('Syncing notifications...');
+      expect(fixture.nativeElement.querySelectorAll('.skeleton-item').length).toBe(0);
+    });
+
+    it('suppresses connected banner for healthy empty state', () => {
+      panelService.open();
+      fixture.componentRef.setInput('notifications', []);
+      fixture.componentRef.setInput('connectionState', 'connected');
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).not.toContain('Notifications are live.');
+      expect(fixture.nativeElement.textContent).toContain('All caught up! No recent notifications');
+    });
+
+    it('shows error before reconnecting banner', () => {
+      panelService.open();
+      fixture.componentRef.setInput('connectionState', 'reconnecting');
+      fixture.componentRef.setInput('error', 'Could not load notifications. Check your connection and try again.');
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('Could not load notifications. Check your connection and try again.');
+      expect(fixture.nativeElement.textContent).not.toContain('Reconnecting to notification updates.');
+    });
+
+    it('renders one retry button when recovery notice and retry throttle are both active', () => {
+      panelService.open();
+      fixture.componentRef.setInput('recoveryNotice', 'Updates paused briefly. Cached notifications are still available.');
+      fixture.componentRef.setInput('isRetryThrottled', true);
+      fixture.detectChanges();
+
+      const retryButtons = fixture.nativeElement.querySelectorAll('.retry-btn');
+      expect(retryButtons.length).toBe(1);
+      expect(retryButtons[0].getAttribute('aria-disabled')).toBe('true');
+      expect(fixture.nativeElement.textContent).toContain('Updates paused briefly. Cached notifications are still available.');
+      expect(fixture.nativeElement.textContent).toContain('Try again shortly.');
+    });
+
+    it('delays initial skeleton for 300ms and keeps it visible for at least 300ms', async () => {
+      vi.useFakeTimers();
+      panelService.open();
+      fixture.componentRef.setInput('isLoading', true);
+      fixture.componentRef.setInput('hasHydrated', false);
+      fixture.detectChanges();
+
+      // Initial state: no skeleton yet
+      expect(fixture.nativeElement.querySelectorAll('.skeleton-item').length).toBe(0);
+
+      // Advance timers past the 300ms delay - skeleton should appear
+      await vi.advanceTimersByTimeAsync(300);
+      // Trigger change detection after timer callback runs
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('.skeleton-item').length).toBe(3);
+
+      // Set loading to false - skeleton should stay visible for min display time
+      fixture.componentRef.setInput('isLoading', false);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('.skeleton-item').length).toBe(3);
+
+      // Advance past min display time - skeleton should disappear
+      await vi.advanceTimersByTimeAsync(300);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('.skeleton-item').length).toBe(0);
+
+      vi.useRealTimers();
+    });
+
+    it('shows search-specific empty copy when reconnect hydrate removes prior search matches', () => {
+      panelService.open();
+      panelService.setSearchText('privilege');
+      fixture.componentRef.setInput('notifications', [privilegeNotification]); // Matches 'privilege'
+      fixture.componentRef.setInput('hasHydrated', true);
+      fixture.componentRef.setInput('isLoading', true);
+      fixture.componentRef.setInput('connectionState', 'reconnecting');
+      fixture.detectChanges();
+
+      // Now simulate reconnect where the matching notification is replaced by non-matching one
+      fixture.componentRef.setInput('notifications', [otherNotification]); // No longer matches 'privilege'
+      fixture.componentRef.setInput('isLoading', false);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).toContain('No results for "privilege" among recent notifications.');
+    });
+  });
+
+  describe('Focus management and keyboard', () => {
+    const criticalNotification: NotificationPanelItem = {
+      id: 'crit-1',
+      title: 'Critical Event',
+      summary: 'Critical event summary',
+      severity: 'critical',
+      category: 'security',
+      actor: 'admin',
+      timestamp: new Date().toISOString(),
+      readAt: null,
+      acknowledgedAt: null,
+    };
+
+    const warningNotification: NotificationPanelItem = {
+      id: 'warn-1',
+      title: 'Warning Event',
+      summary: 'Warning event summary',
+      severity: 'warning',
+      category: 'security',
+      actor: 'user',
+      timestamp: new Date().toISOString(),
+      readAt: null,
+      acknowledgedAt: null,
+    };
+
+    const newerNotification: NotificationPanelItem = {
+      id: 'new-1',
+      title: 'Newer Event',
+      summary: 'Newer event summary',
+      severity: 'info',
+      category: 'security',
+      actor: 'user',
+      timestamp: new Date().toISOString(),
+      readAt: null,
+      acknowledgedAt: null,
+    };
+
+    beforeEach(() => {
+      panelService.open();
+      panelService.setSearchText('');
+      panelService.setSeverityFilter('all');
+    });
+
+    it('uses search as initial focus target when notifications exist', () => {
+      fixture.componentRef.setInput('notifications', [criticalNotification]);
+      fixture.detectChanges();
+      const search = fixture.nativeElement.querySelector('#notification-search');
+      expect(search.hasAttribute('cdkFocusInitial')).toBe(true);
+    });
+
+    it('makes the first visible notification tabbable by default', () => {
+      fixture.componentRef.setInput('notifications', [criticalNotification, warningNotification]);
+      fixture.detectChanges();
+
+      const items = fixture.nativeElement.querySelectorAll('[data-testid="notification-item"]');
+      expect(items[0].getAttribute('tabindex')).toBe('0');
+      expect(items[1].getAttribute('tabindex')).toBe('-1');
+    });
+
+    it('keeps filter focus after filter removes previously focused item', () => {
+      fixture.componentRef.setInput('notifications', [criticalNotification, warningNotification]);
+      fixture.detectChanges();
+      component.focusNotificationForTest(criticalNotification.id);
+
+      const warningButton = fixture.nativeElement.querySelector('[data-testid="filter-warning"]') as HTMLButtonElement;
+      warningButton.focus();
+      warningButton.click();
+      fixture.detectChanges();
+
+      expect(document.activeElement).toBe(warningButton);
+      expect(component.focusedNotificationIdForTest()).toBe(warningNotification.id);
+    });
+
+    it('clears non-empty search on Escape before closing panel', () => {
+      panelService.setSearchText('privilege');
+      fixture.componentRef.setInput('notifications', [criticalNotification]);
+      fixture.detectChanges();
+
+      const search = fixture.nativeElement.querySelector('#notification-search') as HTMLInputElement;
+      search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+      expect(panelService.searchText()).toBe('');
+      expect(fixture.nativeElement.querySelector('.notification-panel')).toBeTruthy();
+    });
+
+    it('moves focus after Mark All Read disables the native button', async () => {
+      fixture.componentRef.setInput('notifications', [criticalNotification]);
+      fixture.detectChanges();
+
+      const markAllButton = fixture.nativeElement.querySelector('.mark-all-btn') as HTMLButtonElement;
+      markAllButton.focus();
+      markAllButton.click();
+
+      fixture.componentRef.setInput('notifications', [{ ...criticalNotification, readAt: '2026-05-15T12:00:00.000Z' }]);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(document.activeElement).toBe(fixture.nativeElement.querySelector('[data-testid="notification-item"]'));
+    });
+
+    it('moves focus to close button when mutation leaves no visible notifications', async () => {
+      fixture.componentRef.setInput('notifications', [criticalNotification]);
+      fixture.detectChanges();
+      component.focusNotificationForTest(criticalNotification.id);
+
+      fixture.componentRef.setInput('notifications', []);
+      fixture.detectChanges();
+      component.applyFocusAfterMutationForTest(criticalNotification.id, 0);
+      await fixture.whenStable();
+
+      expect(document.activeElement).toBe(fixture.nativeElement.querySelector('.close-btn'));
+    });
+
+    it('preserves scroll position relative to focused notification when hydrated items prepend', async () => {
+      fixture.componentRef.setInput('notifications', [criticalNotification, warningNotification]);
+      fixture.detectChanges();
+
+      const list = fixture.nativeElement.querySelector('.notification-scroll-region') as HTMLElement;
+      const focusedId = criticalNotification.id;
+      list.scrollTop = 400;
+
+      component.preserveScrollDuringPrependForTest(list, focusedId, () => {
+        fixture.componentRef.setInput('notifications', [newerNotification, criticalNotification, warningNotification]);
+        fixture.detectChanges();
+      });
+      await fixture.whenStable();
+
+      expect(list.scrollTop).toBeGreaterThanOrEqual(400);
     });
   });
 });
