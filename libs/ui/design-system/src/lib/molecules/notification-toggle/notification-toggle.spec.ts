@@ -70,4 +70,16 @@ describe('NotificationToggleComponent', () => {
     const button = fixture.nativeElement.querySelector('button');
     expect(button.getAttribute('aria-label')).toBe('Toggle notifications, updates offline');
   });
+
+  it('hides connection indicator when connected', () => {
+    fixture.componentRef.setInput('connectionState', 'connected');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.connection-indicator')).toBeNull();
+  });
+
+  it('shows connection indicator when disconnected', () => {
+    fixture.componentRef.setInput('connectionState', 'disconnected');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.connection-indicator')).toBeTruthy();
+  });
 });

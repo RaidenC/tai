@@ -3,7 +3,8 @@ import { afterNextRender, ChangeDetectionStrategy, ChangeDetectorRef, Component,
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NotificationPanelService, SeverityFilter } from './notification-panel.service';
-import { NotificationPanelItem, NotificationPanelConnectionState } from './notification-panel.types';
+import { NotificationPanelItem } from './notification-panel.types';
+import type { NotificationPanelConnectionState } from './notification-panel.types';
 
 type FocusTarget =
   | { kind: 'item'; id: string; index: number }

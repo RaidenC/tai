@@ -477,6 +477,9 @@ describe('NotificationSignalStore', () => {
     });
 
     it('keeps lifecycle event retention queue bounded to 1500 ids', () => {
+      // This test runs 1501 addNotification + markRead iterations.
+      // Sprint 3 added NgZone.run() to markRead, which triggers change detection
+      // for each iteration, making the test slower than the default 5000ms timeout.
       store.setLifecycleScope({ tenantId: 'tenant-1', userId: 'user-sub-1' });
 
       for (let i = 0; i < 1501; i += 1) {
@@ -489,7 +492,7 @@ describe('NotificationSignalStore', () => {
       expect(Object.keys(stored)).toHaveLength(1500);
       expect(stored['evt-0000']).toBeUndefined();
       expect(stored['evt-1500']?.readAt).toBe('2026-05-07T18:00:00.000Z');
-    });
+    }, 15000);
 
     it('clears active lifecycle scope on auth boundary without deleting persisted records', () => {
       store.setLifecycleScope({ tenantId: 'tenant-1', userId: 'user-sub-1' });
