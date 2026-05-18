@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, Inject, OnInit, Optional, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { RouterModule, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -8,16 +8,10 @@ import { OnboardingStore } from './features/onboarding/onboarding.store';
 import { RealTimeService } from './real-time.service';
 import { NotificationSignalStore } from './store/notification-signal.store';
 import { NotificationHistoryService } from './notifications/notification-history.service';
+import { CONNECTION_TEST_HOOK_SERVICE, ConnectionTestHookServiceInterface } from './notifications/connection-test-hook.token';
 import { HubConnectionState } from '@microsoft/signalr';
 import { combineLatest, map, of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, filter, pairwise, withLatestFrom } from 'rxjs/operators';
-import { environment } from '../environments/environment';
-
-declare global {
-  interface Window {
-    __testConnectionStateOverride__?: (state: HubConnectionState | keyof typeof HubConnectionState) => void;
-  }
-}
 
 /**
  * Maps SignalR's 5 connection states to the panel's 3 UI states.
@@ -39,24 +33,6 @@ export function mapToNotificationPanelConnectionState(state: HubConnectionState)
   }
 }
 
-/**
- * Coerces a HubConnectionState value or enum member name to the actual enum value.
- * Returns null for invalid values.
- */
-function coerceHubConnectionState(state: HubConnectionState | keyof typeof HubConnectionState): HubConnectionState | null {
-  // Handle numeric enum values
-  if (typeof state === 'number' && Object.values(HubConnectionState).includes(state)) {
-    return state;
-  }
-
-  // Handle string enum member names (e.g., 'Connected', 'Disconnected')
-  if (typeof state === 'string' && Object.prototype.hasOwnProperty.call(HubConnectionState, state)) {
-    return HubConnectionState[state as keyof typeof HubConnectionState] as HubConnectionState;
-  }
-
-  return null;
-}
-
 @Component({
     imports: [RouterModule, CommonModule, AppShellComponent, NotificationToggleComponent, NotificationPanelComponent, ToastComponent],
     selector: 'app-root',
@@ -72,6 +48,7 @@ export class App implements OnInit {
     protected readonly onboardingStore = inject(OnboardingStore);
     protected readonly notificationStore = inject(NotificationSignalStore);
     protected readonly notificationPanelService = inject(NotificationPanelService);
+    private readonly testHook = inject(CONNECTION_TEST_HOOK_SERVICE, { optional: true });
 
     protected title = 'portal-web';
     protected user$ = this.authService.user$;
@@ -98,11 +75,10 @@ export class App implements OnInit {
     private readonly realTimeConnectionState = toSignal(this.connectionStatus$, {
       initialValue: HubConnectionState.Disconnected,
     });
-    private readonly connectionStateOverride = signal<HubConnectionState | null>(null);
     private readonly reconnectDebounceMs = 500;
 
     protected readonly connectionState = computed(() =>
-      this.connectionStateOverride() ?? this.realTimeConnectionState()
+      this.testHook?.connectionStateOverride() ?? this.realTimeConnectionState()
     );
 
     private readonly observedConnectionState$ = toObservable(this.connectionState);
@@ -120,9 +96,8 @@ export class App implements OnInit {
     }
 
     constructor() {
-      if (environment.enableE2eConnectionHook) {
-        this.installConnectionStateTestHook();
-      }
+      // Install test hook if service is provided (only in test builds)
+      this.testHook?.installHook();
 
       // Reconnect recovery stream: debounces rapid reconnect->connected transitions
       // and calls forceRetry() once per recovery sequence
@@ -187,24 +162,5 @@ export class App implements OnInit {
 
     logout() {
         this.authService.logout();
-    }
-
-    /**
-     * Installs the E2E test hook on the window object for Playwright tests.
-     * Only enabled when environment.enableE2eConnectionHook is true (test config).
-     */
-    private installConnectionStateTestHook(): void {
-      if (typeof window === 'undefined') {
-        return;
-      }
-
-      window.__testConnectionStateOverride__ = (state: HubConnectionState | keyof typeof HubConnectionState) => {
-        const nextState = coerceHubConnectionState(state);
-        if (nextState === null) {
-          // Invalid state name - ignore and keep current state
-          return;
-        }
-        this.connectionStateOverride.set(nextState);
-      };
     }
 }
