@@ -2,6 +2,7 @@ import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
 import { within, expect, userEvent } from '@storybook/test';
 import { SecurityAlertComponent } from './security-alert';
 
+// Story-only diagnostic change used to verify the current affected CI behavior.
 const meta: Meta<SecurityAlertComponent> = {
   title: 'Molecules/SecurityAlert',
   component: SecurityAlertComponent,
