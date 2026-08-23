@@ -62,6 +62,8 @@ const DEFAULT_I18N: TransferListI18n = {
   noItemsAssigned: 'No items assigned',
 };
 
+let transferListInstanceId = 0;
+
 /**
  * TransferListComponent
  *
@@ -94,6 +96,9 @@ export class TransferListComponent<T extends TransferItem>
 {
   private readonly breakpointObserver = inject(BreakpointObserver);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
+  private readonly instanceId = transferListInstanceId++;
+  public readonly availableTitleId = `available-title-${this.instanceId}`;
+  public readonly assignedTitleId = `assigned-title-${this.instanceId}`;
 
   /** IDs of items that are available. */
   public readonly items = input.required<T[]>();

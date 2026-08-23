@@ -12,7 +12,7 @@
       <div
         class="p-3 border-b border-gray-200 font-bold bg-gray-50 text-xs uppercase tracking-wider flex justify-between items-center"
       >
-        <span id="available-title">{{ i18n().availableTitle }}</span>
+        <span [id]="availableTitleId">{{ i18n().availableTitle }}</span>
         <span
           class="text-[10px] text-gray-700 bg-gray-200 px-2 py-0.5 rounded-full"
         >
@@ -43,7 +43,7 @@
           [cdkListboxValue]="selectedAvailable()"
           [cdkListboxDisabled]="_isDisabled()"
           (cdkListboxValueChange)="updateSelectedAvailable($event)"
-          aria-labelledby="available-title"
+          [attr.aria-labelledby]="availableTitleId"
         >
           <li
             *cdkVirtualFor="let item of availableItems(); trackBy: trackByFn()"
@@ -128,7 +128,7 @@
       <div
         class="p-3 border-b border-gray-200 font-bold bg-gray-50 text-xs uppercase tracking-wider flex justify-between items-center"
       >
-        <span id="assigned-title">{{ i18n().assignedTitle }}</span>
+        <span [id]="assignedTitleId">{{ i18n().assignedTitle }}</span>
         <span
           class="text-[10px] text-gray-700 bg-gray-200 px-2 py-0.5 rounded-full"
         >
@@ -159,7 +159,7 @@
           [cdkListboxValue]="selectedAssigned()"
           [cdkListboxDisabled]="_isDisabled()"
           (cdkListboxValueChange)="updateSelectedAssigned($event)"
-          aria-labelledby="assigned-title"
+          [attr.aria-labelledby]="assignedTitleId"
         >
           <li
             *cdkVirtualFor="let item of assignedItems(); trackBy: trackByFn()"
