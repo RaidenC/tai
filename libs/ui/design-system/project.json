@@ -55,12 +55,25 @@
     },
     "build-storybook": {
       "executor": "@storybook/angular:build-storybook",
+      "dependsOn": [
+        {
+          "projects": ["portal-web"],
+          "target": "build-tailwind"
+        }
+      ],
       "options": {
         "configDir": "libs/ui/design-system/.storybook",
         "outputDir": "dist/storybook/design-system",
         "compodoc": false,
         "tsConfig": "libs/ui/design-system/.storybook/tsconfig.json",
         "browserTarget": "portal-web:build"
+      }
+    },
+    "test-storybook": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build-storybook"],
+      "options": {
+        "command": "start-server-and-test \"http-server dist/storybook/design-system -p 6007 -c-1 --silent\" http://127.0.0.1:6007 \"test-storybook --url http://127.0.0.1:6007 --config-dir libs/ui/design-system/.storybook\""
       }
     }
   }
