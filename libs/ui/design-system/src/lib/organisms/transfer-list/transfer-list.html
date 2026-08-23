@@ -12,9 +12,9 @@
       <div
         class="p-3 border-b border-gray-200 font-bold bg-gray-50 text-xs uppercase tracking-wider flex justify-between items-center"
       >
-        <span>{{ i18n().availableTitle }}</span>
+        <span id="available-title">{{ i18n().availableTitle }}</span>
         <span
-          class="text-[10px] text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full"
+          class="text-[10px] text-gray-700 bg-gray-200 px-2 py-0.5 rounded-full"
         >
           {{ availableItems().length }} / {{ totalAvailableCount() }}
         </span>
@@ -34,14 +34,15 @@
         id="available-list"
         [itemSize]="density() === 'compact' ? 32 : 44"
         class="flex-1 h-64 outline-none custom-scrollbar"
-        cdkListbox
-        cdkListboxMultiple
-        [cdkListboxValue]="selectedAvailable()"
-        [cdkListboxDisabled]="_isDisabled()"
-        (cdkListboxValueChange)="updateSelectedAvailable($event)"
       >
+        @if (availableItems().length > 0) {
         <ul
           class="m-0 p-0 list-none outline-none"
+          cdkListbox
+          cdkListboxMultiple
+          [cdkListboxValue]="selectedAvailable()"
+          [cdkListboxDisabled]="_isDisabled()"
+          (cdkListboxValueChange)="updateSelectedAvailable($event)"
           aria-labelledby="available-title"
         >
           <li
@@ -57,12 +58,12 @@
               *ngTemplateOutlet="itemTemplate() || defaultItemTemplate; context: { $implicit: item }"
             ></ng-container>
           </li>
-          @if (availableItems().length === 0) {
-          <li class="p-8 text-sm text-gray-400 italic text-center">
-            {{ i18n().noItemsAvailable }}
-          </li>
-          }
         </ul>
+        } @else {
+        <div class="p-8 text-sm text-gray-400 italic text-center" role="status">
+          {{ i18n().noItemsAvailable }}
+        </div>
+        }
       </cdk-virtual-scroll-viewport>
     </div>
 
@@ -127,9 +128,9 @@
       <div
         class="p-3 border-b border-gray-200 font-bold bg-gray-50 text-xs uppercase tracking-wider flex justify-between items-center"
       >
-        <span>{{ i18n().assignedTitle }}</span>
+        <span id="assigned-title">{{ i18n().assignedTitle }}</span>
         <span
-          class="text-[10px] text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full"
+          class="text-[10px] text-gray-700 bg-gray-200 px-2 py-0.5 rounded-full"
         >
           {{ assignedItems().length }} / {{ totalAssignedCount() }}
         </span>
@@ -149,14 +150,15 @@
         id="assigned-list"
         [itemSize]="density() === 'compact' ? 32 : 44"
         class="flex-1 h-64 outline-none custom-scrollbar"
-        cdkListbox
-        cdkListboxMultiple
-        [cdkListboxValue]="selectedAssigned()"
-        [cdkListboxDisabled]="_isDisabled()"
-        (cdkListboxValueChange)="updateSelectedAssigned($event)"
       >
+        @if (assignedItems().length > 0) {
         <ul
           class="m-0 p-0 list-none outline-none"
+          cdkListbox
+          cdkListboxMultiple
+          [cdkListboxValue]="selectedAssigned()"
+          [cdkListboxDisabled]="_isDisabled()"
+          (cdkListboxValueChange)="updateSelectedAssigned($event)"
           aria-labelledby="assigned-title"
         >
           <li
@@ -172,12 +174,12 @@
               *ngTemplateOutlet="itemTemplate() || defaultItemTemplate; context: { $implicit: item }"
             ></ng-container>
           </li>
-          @if (assignedItems().length === 0) {
-          <li class="p-8 text-sm text-gray-400 italic text-center">
-            {{ i18n().noItemsAssigned }}
-          </li>
-          }
         </ul>
+        } @else {
+        <div class="p-8 text-sm text-gray-400 italic text-center" role="status">
+          {{ i18n().noItemsAssigned }}
+        </div>
+        }
       </cdk-virtual-scroll-viewport>
     </div>
   </div>
