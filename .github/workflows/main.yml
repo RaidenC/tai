@@ -2,9 +2,9 @@ name: TAI Portal CI
 
 on:
   push:
-    branches: [ main, 'epic/*' ]
+    branches: [main, 'epic/*']
   pull_request:
-    branches: [ main, 'epic/*' ]
+    branches: [main, 'epic/*']
 
 permissions:
   contents: read
@@ -20,7 +20,7 @@ env:
 jobs:
   ci:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:17
@@ -115,11 +115,30 @@ jobs:
             node scripts/check-coverage.js
           fi
 
+      - name: Detect affected Storybook projects
+        id: affected-storybook
+        shell: bash
+        run: |
+          if npx nx show projects --affected --with-target test-storybook | grep -Fxq design-system; then
+            echo "run_design_system=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_design_system=false" >> "$GITHUB_OUTPUT"
+            echo "Design system is not affected; skipping Storybook tests."
+          fi
+
+      - name: Install Storybook test browser
+        if: steps.affected-storybook.outputs.run_design_system == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Test affected design-system stories
+        if: steps.affected-storybook.outputs.run_design_system == 'true'
+        run: npx nx run design-system:test-storybook
+
   e2e:
     needs: ci
     if: github.base_ref == 'main' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:17
@@ -188,20 +207,20 @@ jobs:
         run: |
           # 1. Build Tailwind sequentially to prevent race conditions
           npx nx run-many -t build-tailwind
-          
+
           # 2. Start Backend
           npx nx run portal-api:serve --launchProfile=http &
           npx nx run portal-gateway:serve &
-          
+
           # 3. Start Portal Web
           npx nx run portal-web:serve --configuration=test --port=4200 --host=0.0.0.0 &
-          
+
           # 4. Start Identity UI
           npx nx run identity-ui:serve --host=0.0.0.0 &
 
           # 5. Start DocViewer Mock (Federation Testing)
           npx nx run docviewer-mock:serve --port=4201 --host=0.0.0.0 &
-          
+
           # 6. Wait for services to be ready via TCP
           npx wait-on tcp:127.0.0.1:5031 tcp:127.0.0.1:5217 tcp:127.0.0.1:4200 tcp:127.0.0.1:4300 tcp:127.0.0.1:4201 --timeout 180000
 
