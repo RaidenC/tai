@@ -119,7 +119,8 @@ jobs:
         id: affected-storybook
         shell: bash
         run: |
-          if npx nx show projects --affected --with-target test-storybook | grep -Fxq design-system; then
+          affected_projects="$(npx nx show projects --affected --with-target test-storybook)"
+          if grep -Fxq design-system <<< "$affected_projects"; then
             echo "run_design_system=true" >> "$GITHUB_OUTPUT"
           else
             echo "run_design_system=false" >> "$GITHUB_OUTPUT"
