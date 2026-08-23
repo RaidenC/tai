@@ -5,6 +5,10 @@
   to { transform: translateX(0); }
 }
 
+.notification-panel-enter {
+  animation: slideIn 0.3s ease-out;
+}
+
 @keyframes skeleton-shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }

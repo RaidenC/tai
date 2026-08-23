@@ -3,7 +3,7 @@
   <div class="notification-panel-container fixed inset-0 z-[99]" tabindex="-1" cdkTrapFocus cdkTrapFocusAutoCapture (keydown.escape)="close()">
     <div class="panel-overlay fixed inset-0 bg-gray-950/45 z-0" (click)="close()" role="presentation" aria-hidden="true"></div>
 
-    <div class="notification-panel fixed top-0 right-0 w-[400px] h-screen bg-white shadow-xl z-[1] flex flex-col max-h-screen" style="animation: slideIn 0.3s ease-out;" role="dialog" aria-modal="true" aria-labelledby="notifications-heading">
+    <div class="notification-panel notification-panel-enter fixed top-0 right-0 w-[400px] h-screen bg-white shadow-xl z-[1] flex flex-col max-h-screen" role="dialog" aria-modal="true" aria-labelledby="notifications-heading">
       <div class="panel-header p-4 border-b border-gray-200 flex justify-between items-center">
       <h3 id="notifications-heading" class="m-0 text-lg font-semibold">Notifications</h3>
       <div class="flex items-center gap-3">

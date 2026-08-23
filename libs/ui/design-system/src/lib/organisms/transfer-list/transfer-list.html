@@ -51,7 +51,6 @@
             [class.p-1.5]="density() === 'compact'"
             [class.p-2.5]="density() === 'comfortable'"
             class="text-sm cursor-pointer rounded-sm hover:bg-blue-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 mx-1 my-0.5 flex items-center"
-            [style.view-transition-name]="'item-' + item[trackKey()]"
             (dblclick)="!_isDisabled() && moveRight([$any(item[trackKey()])])"
           >
             <ng-container
@@ -167,7 +166,6 @@
             [class.p-1.5]="density() === 'compact'"
             [class.p-2.5]="density() === 'comfortable'"
             class="text-sm cursor-pointer rounded-sm hover:bg-blue-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 mx-1 my-0.5 flex items-center"
-            [style.view-transition-name]="'item-' + item[trackKey()]"
             (dblclick)="!_isDisabled() && moveLeft([$any(item[trackKey()])])"
           >
             <ng-container
