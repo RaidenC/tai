@@ -246,4 +246,3 @@ git status --short
 ```
 
 Expected: no whitespace errors and only intentional implementation changes, if any remain uncommitted.
-

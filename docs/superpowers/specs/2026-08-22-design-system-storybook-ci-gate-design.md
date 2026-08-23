@@ -57,4 +57,3 @@ The server must not remain running after completion or failure.
 ## Scope
 
 This change activates existing Storybook tests. It does not repair story, accessibility, or CSP failures discovered once the gate runs; those failures will be handled explicitly rather than weakened or suppressed.
-
