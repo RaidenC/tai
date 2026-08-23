@@ -20,6 +20,7 @@
 ### Task 1: Add compatible Storybook test tooling
 
 **Files:**
+
 - Modify: `package.json`
 - Modify: `package-lock.json`
 
@@ -63,6 +64,7 @@ git commit -m "test: add Storybook browser test tooling"
 ### Task 2: Add the reproducible Nx Storybook test target
 
 **Files:**
+
 - Modify: `libs/ui/design-system/project.json:56`
 
 - [ ] **Step 1: Prove the target is currently missing**
@@ -131,6 +133,7 @@ git commit -m "test: add design-system Storybook target"
 ### Task 3: Add affected-only CI execution
 
 **Files:**
+
 - Modify: `.github/workflows/main.yml:109`
 
 - [ ] **Step 1: Add affected-project detection after unit tests**
@@ -138,24 +141,24 @@ git commit -m "test: add design-system Storybook target"
 Add these steps to the existing `ci` job after `Test Affected`:
 
 ```yaml
-      - name: Detect affected Storybook projects
-        id: affected-storybook
-        shell: bash
-        run: |
-          if npx nx show projects --affected --with-target test-storybook | grep -Fxq design-system; then
-            echo "run_design_system=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run_design_system=false" >> "$GITHUB_OUTPUT"
-            echo "Design system is not affected; skipping Storybook tests."
-          fi
+- name: Detect affected Storybook projects
+  id: affected-storybook
+  shell: bash
+  run: |
+    if npx nx show projects --affected --with-target test-storybook | grep -Fxq design-system; then
+      echo "run_design_system=true" >> "$GITHUB_OUTPUT"
+    else
+      echo "run_design_system=false" >> "$GITHUB_OUTPUT"
+      echo "Design system is not affected; skipping Storybook tests."
+    fi
 
-      - name: Install Storybook test browser
-        if: steps.affected-storybook.outputs.run_design_system == 'true'
-        run: npx playwright install --with-deps chromium
+- name: Install Storybook test browser
+  if: steps.affected-storybook.outputs.run_design_system == 'true'
+  run: npx playwright install --with-deps chromium
 
-      - name: Test affected design-system stories
-        if: steps.affected-storybook.outputs.run_design_system == 'true'
-        run: npx nx run design-system:test-storybook
+- name: Test affected design-system stories
+  if: steps.affected-storybook.outputs.run_design_system == 'true'
+  run: npx nx run design-system:test-storybook
 ```
 
 - [ ] **Step 2: Validate workflow parsing**
@@ -188,6 +191,7 @@ git commit -m "ci: gate affected design-system stories"
 ### Task 4: Verify failure propagation and regression safety
 
 **Files:**
+
 - Temporarily modify and restore: `libs/ui/design-system/.storybook/test-runner.ts`
 
 - [ ] **Step 1: Establish the successful baseline**
