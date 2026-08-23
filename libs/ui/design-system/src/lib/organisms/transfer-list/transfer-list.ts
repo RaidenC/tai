@@ -14,7 +14,6 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkListboxModule } from '@angular/cdk/listbox';
-import { ScrollingModule } from '@angular/cdk/scrolling';
 import {
   FormsModule,
   ControlValueAccessor,
@@ -79,7 +78,7 @@ let transferListInstanceId = 0;
 @Component({
   selector: 'tai-transfer-list',
   standalone: true,
-  imports: [CommonModule, CdkListboxModule, ScrollingModule, FormsModule],
+  imports: [CommonModule, CdkListboxModule, FormsModule],
   templateUrl: './transfer-list.html',
   styleUrl: './transfer-list.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -186,7 +185,7 @@ export class TransferListComponent<T extends TransferItem>
   /** IDs of currently selected items in the assigned list. */
   public readonly selectedAssigned = signal<(string | number)[]>([]);
 
-  /** trackBy function for virtual scroll. */
+  /** Track items by their configured identity key. */
   public readonly trackByFn = computed(() => {
     const key = this.trackKey();
     return (index: number, item: T) => (item as any)[key];
