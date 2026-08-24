@@ -203,6 +203,15 @@ export class DataTableComponent<T> {
     return this.actions().filter((action) => this.isActionVisible(action, row));
   }
 
+  /** Returns a stable DOM identifier for row action controls when available. */
+  public rowActionId(row: T): string {
+    const candidate = row as T & {
+      id?: string | number;
+      Id?: string | number;
+    };
+    return String(candidate.id ?? candidate.Id ?? 'row');
+  }
+
   /**
    * Returns dropdown menu items for a specific row.
    */

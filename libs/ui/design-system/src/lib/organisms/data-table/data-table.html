@@ -81,7 +81,7 @@
             mobileMode="sheet"
             density="compact"
             [items]="dropdownItemsFor(row)"
-            [testId]="'action-menu-' + (row.id || row.Id)"
+            [testId]="'action-menu-' + rowActionId(row)"
             (itemSelected)="onDropdownItemSelected($event, row)"
           ></tai-dropdown-menu>
         </td>
