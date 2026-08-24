@@ -39,7 +39,7 @@
           [attr.aria-disabled]="item.disabled ? 'true' : null"
           [attr.aria-current]="item.active ? 'page' : null"
           [attr.data-testid]="'action-' + item.id"
-          [class]="itemClasses() + (item.destructive ? ' text-red-700' : ' text-gray-900')"
+          [class]="itemClasses() + (item.destructive ? ' text-red-900' : ' text-gray-900')"
           [class.bg-blue-50]="item.active"
           [class.hover:bg-gray-50]="!item.disabled"
           (click)="selectItem(item)"
