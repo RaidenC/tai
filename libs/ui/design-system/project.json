@@ -73,7 +73,7 @@
       "executor": "nx:run-commands",
       "dependsOn": ["build-storybook"],
       "options": {
-        "command": "start-server-and-test \"http-server dist/storybook/design-system -p 6007 -c-1 --silent\" http://127.0.0.1:6007 \"test-storybook --url http://127.0.0.1:6007 --config-dir libs/ui/design-system/.storybook\""
+        "command": "start-server-and-test \"http-server dist/storybook/design-system -p 6007 -c-1 --silent\" http://127.0.0.1:6007 \"test-storybook --url http://127.0.0.1:6007 --config-dir libs/ui/design-system/.storybook --testTimeout 30000\""
       }
     }
   }

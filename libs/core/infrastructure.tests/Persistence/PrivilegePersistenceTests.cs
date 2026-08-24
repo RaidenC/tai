@@ -115,10 +115,6 @@ public class PrivilegePersistenceTests : IAsyncLifetime {
       roleManagerMock.Setup(m => m.RoleExistsAsync(It.IsAny<string>())).ReturnsAsync(false);
       roleManagerMock.Setup(m => m.CreateAsync(It.IsAny<IdentityRole>())).ReturnsAsync(IdentityResult.Success);
 
-      // Reset the static _seeded field
-      var seededField = typeof(Tai.Portal.Api.SeedData).GetField("_seeded", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
-      seededField?.SetValue(null, false);
-
       // Ensure schema exists
       await context.Database.EnsureCreatedAsync();
 
