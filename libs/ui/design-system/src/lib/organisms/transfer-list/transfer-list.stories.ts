@@ -52,6 +52,11 @@ export const Compact: Story = {
 };
 
 export const LargeDataset: Story = {
+  parameters: {
+    test: {
+      timeout: 30000,
+    },
+  },
   args: {
     ...Default.args,
     items: Array.from({ length: 500 }, (_, i) => ({

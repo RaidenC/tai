@@ -19,92 +19,76 @@
   }
 
   <table
-    cdk-table
-    [dataSource]="data()"
     class="w-full text-sm text-left text-gray-700 bg-white"
     data-testid="data-table"
   >
-    <!-- Dynamic Columns -->
-    @for (column of columns(); track column.id) {
-    <ng-container [cdkColumnDef]="column.id">
-      <th
-        cdk-header-cell
-        *cdkHeaderCellDef
-        class="px-6 py-4 font-bold text-gray-900 bg-gray-50/80 border-b border-gray-200 uppercase tracking-wider"
-        [attr.data-testid]="'header-' + column.id"
-      >
-        @if (column.sortable) {
-        <tai-button
-          type="button"
-          variant="ghost"
-          [testId]="'sort-button-' + column.id"
-          [ariaLabel]="'Sort by ' + column.header"
-          (pressed)="toggleSort(column.id)"
+    <thead>
+      <tr class="sticky top-0 z-0">
+        @for (column of columns(); track column.id) {
+        <th
+          class="px-6 py-4 font-bold text-gray-900 bg-gray-50/80 border-b border-gray-200 uppercase tracking-wider"
+          [attr.data-testid]="'header-' + column.id"
         >
-          <span [textContent]="column.header"></span>
-          @if (sortState()?.columnId === column.id) {
-            <tai-icon
-              [name]="sortState()?.direction === 'asc' ? 'chevron-up' : 'chevron-down'"
-              size="sm"
-            />
+          @if (column.sortable) {
+          <tai-button
+            type="button"
+            variant="ghost"
+            [testId]="'sort-button-' + column.id"
+            [ariaLabel]="'Sort by ' + column.header"
+            (pressed)="toggleSort(column.id)"
+          >
+            <span [textContent]="column.header"></span>
+            @if (sortState()?.columnId === column.id) {
+              <tai-icon
+                [name]="sortState()?.direction === 'asc' ? 'chevron-up' : 'chevron-down'"
+                size="sm"
+              />
+            } @else {
+              <tai-icon name="chevron-up-down" size="sm" />
+            }
+          </tai-button>
           } @else {
-            <tai-icon name="chevron-up-down" size="sm" />
+          <div class="flex items-center gap-2">{{ column.header }}</div>
           }
-        </tai-button>
-        } @else {
-        <div class="flex items-center gap-2">{{ column.header }}</div>
+        </th>
         }
-      </th>
-      <td
-        cdk-cell
-        *cdkCellDef="let row"
-        class="px-6 py-4 border-b border-gray-100"
-        [attr.data-testid]="'cell-' + column.id"
-      >
-        {{ column.cell(row) }}
-      </td>
-    </ng-container>
-    }
-
-    <!-- Actions Column -->
-    @if (actions().length > 0) {
-    <ng-container cdkColumnDef="actions">
-      <th
-        cdk-header-cell
-        *cdkHeaderCellDef
-        class="px-6 py-4 font-bold text-gray-900 bg-gray-50/80 border-b border-gray-200 text-right"
-      >
-        Actions
-      </th>
-      <td
-        cdk-cell
-        *cdkCellDef="let row"
-        class="px-6 py-4 border-b border-gray-100 text-right"
-      >
-        <tai-dropdown-menu
-          ariaLabel="Row actions"
-          triggerIcon="more-vertical"
-          placement="bottom-end"
-          mobileMode="sheet"
-          density="compact"
-          [items]="dropdownItemsFor(row)"
-          [testId]="'action-menu-' + (row.id || row.Id)"
-          (itemSelected)="onDropdownItemSelected($event, row)"
-        ></tai-dropdown-menu>
-      </td>
-    </ng-container>
-    }
-
-    <tr
-      cdk-header-row
-      *cdkHeaderRowDef="displayedColumns()"
-      class="sticky top-0 z-0"
-    ></tr>
-    <tr
-      cdk-row
-      *cdkRowDef="let row; columns: displayedColumns()"
-      class="hover:bg-gray-50/50 transition-colors duration-200"
-    ></tr>
+        @if (actions().length > 0) {
+        <th
+          class="px-6 py-4 font-bold text-gray-900 bg-gray-50/80 border-b border-gray-200 text-right"
+        >
+          Actions
+        </th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of data(); track row) {
+      <tr class="hover:bg-gray-50/50 transition-colors duration-200">
+        @for (column of columns(); track column.id) {
+        <td
+          class="px-6 py-4 border-b border-gray-100"
+          [attr.data-testid]="'cell-' + column.id"
+        >
+          {{ column.cell(row) }}
+        </td>
+        }
+        @if (actions().length > 0) {
+        <td class="px-6 py-4 border-b border-gray-100 text-right">
+          <tai-dropdown-menu
+            ariaLabel="Row actions"
+            triggerIcon="more-vertical"
+            placement="bottom-end"
+            mobileMode="sheet"
+            density="compact"
+            [items]="dropdownItemsFor(row)"
+            [testId]="'action-menu-' + (row.id || row.Id)"
+            (itemSelected)="onDropdownItemSelected($event, row)"
+          ></tai-dropdown-menu>
+        </td>
+        }
+      </tr>
+      }
+    </tbody>
   </table>
 
   <!-- Empty State -->

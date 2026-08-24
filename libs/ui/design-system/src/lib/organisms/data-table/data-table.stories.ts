@@ -5,7 +5,6 @@ import {
   TableColumnDef,
   TableActionDef,
 } from './data-table';
-import { CdkTableModule } from '@angular/cdk/table';
 import {
   expect,
   fn,
@@ -66,7 +65,7 @@ const meta: Meta<DataTableComponent<TestData>> = {
   component: DataTableComponent,
   decorators: [
     moduleMetadata({
-      imports: [CommonModule, CdkTableModule],
+      imports: [CommonModule],
     }),
   ],
   args: {

@@ -8,7 +8,6 @@ import {
   effect,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CdkTableModule } from '@angular/cdk/table';
 import { ButtonComponent } from '../../atoms/button/button.component';
 import { IconComponent } from '../../atoms/icon/icon.component';
 import {
@@ -63,7 +62,6 @@ export interface TableColumnDef<T> {
   standalone: true,
   imports: [
     CommonModule,
-    CdkTableModule,
     DropdownMenuComponent,
     ButtonComponent,
     IconComponent,

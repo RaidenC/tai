@@ -44,8 +44,8 @@
           (cdkListboxValueChange)="updateSelectedAvailable($event)"
           [attr.aria-labelledby]="availableTitleId"
         >
+          @for (item of availableItems(); track item[trackKey()]) {
           <li
-            *ngFor="let item of availableItems(); trackBy: trackByFn()"
             [cdkOption]="item[trackKey()]"
             [class.bg-blue-100]="selectedAvailable().includes($any(item[trackKey()]))"
             [class.p-1.5]="density() === 'compact'"
@@ -57,6 +57,7 @@
               *ngTemplateOutlet="itemTemplate() || defaultItemTemplate; context: { $implicit: item }"
             ></ng-container>
           </li>
+          }
         </ul>
         } @else {
         <div class="p-8 text-sm text-gray-400 italic text-center" role="status">
@@ -159,8 +160,8 @@
           (cdkListboxValueChange)="updateSelectedAssigned($event)"
           [attr.aria-labelledby]="assignedTitleId"
         >
+          @for (item of assignedItems(); track item[trackKey()]) {
           <li
-            *ngFor="let item of assignedItems(); trackBy: trackByFn()"
             [cdkOption]="item[trackKey()]"
             [class.bg-blue-100]="selectedAssigned().includes($any(item[trackKey()]))"
             [class.p-1.5]="density() === 'compact'"
@@ -172,6 +173,7 @@
               *ngTemplateOutlet="itemTemplate() || defaultItemTemplate; context: { $implicit: item }"
             ></ng-container>
           </li>
+          }
         </ul>
         } @else {
         <div class="p-8 text-sm text-gray-400 italic text-center" role="status">
