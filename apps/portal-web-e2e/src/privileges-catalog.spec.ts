@@ -37,7 +37,7 @@ test.describe('Privileges Catalog E2E', () => {
     await expect(table).toBeVisible();
     
     // Should have at least one row (from seed data)
-    const rows = table.locator('tr[cdk-row]');
+    const rows = table.locator('tbody tr');
     await expect(rows.first()).toBeVisible();
   });
 
@@ -53,7 +53,7 @@ test.describe('Privileges Catalog E2E', () => {
     const table = page.getByTestId('data-table');
     const row = table.locator('tr', { hasText: 'Portal.Users.Read' });
     await expect(row).toBeVisible();
-    await expect(table.locator('tr[cdk-row]')).toHaveCount(1);
+    await expect(table.locator('tbody tr')).toHaveCount(1);
   });
 
   test('should support keyboard navigation', async ({ page }) => {
@@ -87,7 +87,7 @@ test.describe('Privileges Catalog E2E', () => {
     const firstMenuItem = page.getByTestId('action-view');
     await expect(firstMenuItem).toBeVisible({ timeout: 15000 });
 
-    // Note: CDK Menu doesn't always focus the first item when opened via keyboard
+    // The dropdown opens with the first action visible; focus is not part of this assertion.
     // Just verify the menu is open and visible
     await expect(firstMenuItem).toBeInViewport();
   });

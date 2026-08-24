@@ -22,7 +22,7 @@ test.describe('User Privileges Negative E2E (409 Conflict)', () => {
     // Wait for table to stabilize after search results load
     await page.waitForTimeout(500);
 
-    const row = page.locator('tr[cdk-row]').filter({ hasText: userEmail });
+    const row = page.locator('tbody tr').filter({ hasText: userEmail });
     await expect(row).toBeVisible();
     await row.getByRole('button', { name: /actions/i }).first().click();
     await page.getByRole('menuitem', { name: /view details/i }).click();
