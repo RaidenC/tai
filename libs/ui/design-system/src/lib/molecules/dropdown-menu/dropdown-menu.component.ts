@@ -3,9 +3,11 @@ import {
   Component,
   ElementRef,
   HostListener,
+  Injector,
   QueryList,
   ViewChild,
   ViewChildren,
+  afterNextRender,
   computed,
   inject,
   input,
@@ -62,6 +64,7 @@ export class DropdownMenuComponent {
   private readonly menuItemButtons?: QueryList<ElementRef<HTMLButtonElement>>;
 
   private readonly host = inject(ElementRef<HTMLElement>);
+  private readonly injector = inject(Injector);
 
   protected readonly isOpen = signal(false);
 
@@ -88,13 +91,18 @@ export class DropdownMenuComponent {
     return `${base}${densityClass}`;
   });
 
-  open(): void {
+  open(focusTarget: 'first' | 'last' = 'first'): void {
     if (this.isOpen()) {
       return;
     }
     this.isOpen.set(true);
     this.opened.emit();
-    queueMicrotask(() => this.focusFirstEnabledItem());
+    afterNextRender(
+      {
+        write: () => this.focusEnabledItem(focusTarget),
+      },
+      { injector: this.injector },
+    );
   }
 
   close(options: { restoreFocus?: boolean } = {}): void {
@@ -104,7 +112,12 @@ export class DropdownMenuComponent {
     this.isOpen.set(false);
     this.closed.emit();
     if (options.restoreFocus) {
-      setTimeout(() => this.triggerButton?.nativeElement.focus(), 0);
+      afterNextRender(
+        {
+          write: () => this.triggerButton?.nativeElement.focus(),
+        },
+        { injector: this.injector },
+      );
     }
   }
 
@@ -125,13 +138,11 @@ export class DropdownMenuComponent {
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       this.open();
-      queueMicrotask(() => this.focusFirstEnabledItem());
     }
 
     if (event.key === 'ArrowUp') {
       event.preventDefault();
-      this.open();
-      queueMicrotask(() => this.focusLastEnabledItem());
+      this.open('last');
     }
   }
 
@@ -214,6 +225,14 @@ export class DropdownMenuComponent {
 
   private focusFirstEnabledItem(): void {
     this.enabledButtons()[0]?.focus();
+  }
+
+  private focusEnabledItem(target: 'first' | 'last'): void {
+    if (target === 'last') {
+      this.focusLastEnabledItem();
+      return;
+    }
+    this.focusFirstEnabledItem();
   }
 
   private focusLastEnabledItem(): void {
