@@ -10,6 +10,7 @@
     "@angular/router": "^21.1.0",
     "@storybook/angular": "^8.6.18",
     "@storybook/test": "^8.6.18",
+    "@storybook/test-runner": "^0.22.1",
     "axe-playwright": "^2.0.0",
     "rxjs": "^7.8.0",
     "vitest": "^4.0.0",

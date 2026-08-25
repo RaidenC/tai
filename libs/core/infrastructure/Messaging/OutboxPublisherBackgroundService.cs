@@ -53,11 +53,13 @@ public class OutboxPublisherBackgroundService : BackgroundService {
 
     while (!stoppingToken.IsCancellationRequested) {
       try {
-        var processed = await ProcessBatchAsync(stoppingToken);
-        if (processed == 0) {
+        var result = await ProcessBatchAsync(stoppingToken);
+        if (result.Failed > 0) {
+          await Task.Delay(_options.ErrorBackoff, stoppingToken);
+        } else if (result.Attempted == 0) {
           await Task.Delay(_options.PollInterval, stoppingToken);
         }
-        // Full batch -> loop immediately to drain backlog.
+        // A full successful batch loops immediately to drain backlog.
       } catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) {
         break;
       } catch (Exception ex) {
@@ -69,7 +71,8 @@ public class OutboxPublisherBackgroundService : BackgroundService {
     _logger.LogInformation("Outbox publisher stopping");
   }
 
-  private async Task<int> ProcessBatchAsync(CancellationToken cancellationToken) {
+  private async Task<(int Attempted, int Failed)> ProcessBatchAsync(
+      CancellationToken cancellationToken) {
     await using var scope = _scopeFactory.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
     await using var tx = await db.Database.BeginTransactionAsync(cancellationToken);
@@ -94,9 +97,10 @@ public class OutboxPublisherBackgroundService : BackgroundService {
 
     if (batch.Count == 0) {
       await tx.CommitAsync(cancellationToken);
-      return 0;
+      return (0, 0);
     }
 
+    var failed = 0;
     foreach (var msg in batch) {
       try {
         await _publisher.PublishAsync(
@@ -108,6 +112,7 @@ public class OutboxPublisherBackgroundService : BackgroundService {
         msg.ProcessedAt = DateTimeOffset.UtcNow;
         msg.Error = null;
       } catch (Exception ex) {
+        failed++;
         msg.RetryCount++;
         msg.Error = ex.Message.Length > 2000 ? ex.Message[..2000] : ex.Message;
         // ProcessedAt stays null -> retry on next poll.
@@ -118,6 +123,6 @@ public class OutboxPublisherBackgroundService : BackgroundService {
 
     await db.SaveChangesAsync(cancellationToken);
     await tx.CommitAsync(cancellationToken);
-    return batch.Count;
+    return (batch.Count, failed);
   }
 }

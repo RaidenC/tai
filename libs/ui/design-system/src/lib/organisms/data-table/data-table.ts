@@ -8,7 +8,6 @@ import {
   effect,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CdkTableModule } from '@angular/cdk/table';
 import { ButtonComponent } from '../../atoms/button/button.component';
 import { IconComponent } from '../../atoms/icon/icon.component';
 import {
@@ -63,7 +62,6 @@ export interface TableColumnDef<T> {
   standalone: true,
   imports: [
     CommonModule,
-    CdkTableModule,
     DropdownMenuComponent,
     ButtonComponent,
     IconComponent,
@@ -203,6 +201,15 @@ export class DataTableComponent<T> {
    */
   public visibleActionsFor(row: T): TableActionDef<T>[] {
     return this.actions().filter((action) => this.isActionVisible(action, row));
+  }
+
+  /** Returns a stable DOM identifier for row action controls when available. */
+  public rowActionId(row: T): string {
+    const candidate = row as T & {
+      id?: string | number;
+      Id?: string | number;
+    };
+    return String(candidate.id ?? candidate.Id ?? 'row');
   }
 
   /**

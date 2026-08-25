@@ -12,9 +12,9 @@
       <div
         class="p-3 border-b border-gray-200 font-bold bg-gray-50 text-xs uppercase tracking-wider flex justify-between items-center"
       >
-        <span>{{ i18n().availableTitle }}</span>
+        <span [id]="availableTitleId">{{ i18n().availableTitle }}</span>
         <span
-          class="text-[10px] text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full"
+          class="text-[10px] text-gray-700 bg-gray-200 px-2 py-0.5 rounded-full"
         >
           {{ availableItems().length }} / {{ totalAvailableCount() }}
         </span>
@@ -30,41 +30,41 @@
         />
       </div>
 
-      <cdk-virtual-scroll-viewport
+      <div
         id="available-list"
-        [itemSize]="density() === 'compact' ? 32 : 44"
-        class="flex-1 h-64 outline-none custom-scrollbar"
-        cdkListbox
-        cdkListboxMultiple
-        [cdkListboxValue]="selectedAvailable()"
-        [cdkListboxDisabled]="_isDisabled()"
-        (cdkListboxValueChange)="updateSelectedAvailable($event)"
+        class="flex-none h-64 overflow-y-auto outline-none custom-scrollbar"
       >
+        @if (availableItems().length > 0) {
         <ul
           class="m-0 p-0 list-none outline-none"
-          aria-labelledby="available-title"
+          cdkListbox
+          cdkListboxMultiple
+          [cdkListboxValue]="selectedAvailable()"
+          [cdkListboxDisabled]="_isDisabled()"
+          (cdkListboxValueChange)="updateSelectedAvailable($event)"
+          [attr.aria-labelledby]="availableTitleId"
         >
+          @for (item of availableItems(); track item[trackKey()]) {
           <li
-            *cdkVirtualFor="let item of availableItems(); trackBy: trackByFn()"
             [cdkOption]="item[trackKey()]"
             [class.bg-blue-100]="selectedAvailable().includes($any(item[trackKey()]))"
             [class.p-1.5]="density() === 'compact'"
             [class.p-2.5]="density() === 'comfortable'"
             class="text-sm cursor-pointer rounded-sm hover:bg-blue-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 mx-1 my-0.5 flex items-center"
-            [style.view-transition-name]="'item-' + item[trackKey()]"
             (dblclick)="!_isDisabled() && moveRight([$any(item[trackKey()])])"
           >
             <ng-container
               *ngTemplateOutlet="itemTemplate() || defaultItemTemplate; context: { $implicit: item }"
             ></ng-container>
           </li>
-          @if (availableItems().length === 0) {
-          <li class="p-8 text-sm text-gray-400 italic text-center">
-            {{ i18n().noItemsAvailable }}
-          </li>
           }
         </ul>
-      </cdk-virtual-scroll-viewport>
+        } @else {
+        <div class="p-8 text-sm text-gray-400 italic text-center" role="status">
+          {{ i18n().noItemsAvailable }}
+        </div>
+        }
+      </div>
     </div>
 
     <!-- Actions -->
@@ -128,9 +128,9 @@
       <div
         class="p-3 border-b border-gray-200 font-bold bg-gray-50 text-xs uppercase tracking-wider flex justify-between items-center"
       >
-        <span>{{ i18n().assignedTitle }}</span>
+        <span [id]="assignedTitleId">{{ i18n().assignedTitle }}</span>
         <span
-          class="text-[10px] text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full"
+          class="text-[10px] text-gray-700 bg-gray-200 px-2 py-0.5 rounded-full"
         >
           {{ assignedItems().length }} / {{ totalAssignedCount() }}
         </span>
@@ -146,41 +146,41 @@
         />
       </div>
 
-      <cdk-virtual-scroll-viewport
+      <div
         id="assigned-list"
-        [itemSize]="density() === 'compact' ? 32 : 44"
-        class="flex-1 h-64 outline-none custom-scrollbar"
-        cdkListbox
-        cdkListboxMultiple
-        [cdkListboxValue]="selectedAssigned()"
-        [cdkListboxDisabled]="_isDisabled()"
-        (cdkListboxValueChange)="updateSelectedAssigned($event)"
+        class="flex-none h-64 overflow-y-auto outline-none custom-scrollbar"
       >
+        @if (assignedItems().length > 0) {
         <ul
           class="m-0 p-0 list-none outline-none"
-          aria-labelledby="assigned-title"
+          cdkListbox
+          cdkListboxMultiple
+          [cdkListboxValue]="selectedAssigned()"
+          [cdkListboxDisabled]="_isDisabled()"
+          (cdkListboxValueChange)="updateSelectedAssigned($event)"
+          [attr.aria-labelledby]="assignedTitleId"
         >
+          @for (item of assignedItems(); track item[trackKey()]) {
           <li
-            *cdkVirtualFor="let item of assignedItems(); trackBy: trackByFn()"
             [cdkOption]="item[trackKey()]"
             [class.bg-blue-100]="selectedAssigned().includes($any(item[trackKey()]))"
             [class.p-1.5]="density() === 'compact'"
             [class.p-2.5]="density() === 'comfortable'"
             class="text-sm cursor-pointer rounded-sm hover:bg-blue-50 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-blue-500 mx-1 my-0.5 flex items-center"
-            [style.view-transition-name]="'item-' + item[trackKey()]"
             (dblclick)="!_isDisabled() && moveLeft([$any(item[trackKey()])])"
           >
             <ng-container
               *ngTemplateOutlet="itemTemplate() || defaultItemTemplate; context: { $implicit: item }"
             ></ng-container>
           </li>
-          @if (assignedItems().length === 0) {
-          <li class="p-8 text-sm text-gray-400 italic text-center">
-            {{ i18n().noItemsAssigned }}
-          </li>
           }
         </ul>
-      </cdk-virtual-scroll-viewport>
+        } @else {
+        <div class="p-8 text-sm text-gray-400 italic text-center" role="status">
+          {{ i18n().noItemsAssigned }}
+        </div>
+        }
+      </div>
     </div>
   </div>
 </div>

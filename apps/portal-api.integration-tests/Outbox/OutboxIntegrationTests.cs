@@ -7,11 +7,14 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using Tai.Portal.Core.Application.Interfaces;
+using Tai.Portal.Core.Application.Services;
 using Tai.Portal.Core.Infrastructure.Persistence;
 using Tai.Portal.Core.Infrastructure.Persistence.Entities;
+using Testcontainers.PostgreSql;
 using Xunit;
 
 namespace portal_api.integration_tests.Outbox;
@@ -77,12 +80,20 @@ public class OutboxIntegrationTests {
 
   [Fact]
   public async Task SkipLocked_TwoConcurrentReaders_PartitionRowsExclusively() {
+    // Use a database without the fixture's hosted publisher so it cannot claim
+    // rows while this test verifies partitioning between the two readers.
+    await using var database = new PostgreSqlBuilder("postgres:17")
+      .WithDatabase("portal_skip_locked_test")
+      .WithUsername("postgres")
+      .WithPassword("postgres")
+      .Build();
+    await database.StartAsync();
+
+    var connectionString = database.GetConnectionString();
+
     // Seed 100 rows directly via DbContext.
-    using (var scope = _fx.Factory.Services.CreateScope()) {
-      var ctx = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
-      // Wipe any earlier test rows from prior tests in this collection.
-      ctx.OutboxMessages.RemoveRange(ctx.OutboxMessages);
-      await ctx.SaveChangesAsync();
+    await using (var ctx = CreateStandaloneContext(connectionString)) {
+      await ctx.Database.MigrateAsync();
 
       for (int i = 0; i < 100; i++) {
         ctx.OutboxMessages.Add(new OutboxMessage {
@@ -98,8 +109,7 @@ public class OutboxIntegrationTests {
     // Two parallel readers each take SKIP LOCKED batches and accumulate IDs.
     async Task<List<Guid>> DrainAsync() {
       var taken = new List<Guid>();
-      using var scope = _fx.Factory.Services.CreateScope();
-      var ctx = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
+      await using var ctx = CreateStandaloneContext(connectionString);
       while (true) {
         await using var tx = await ctx.Database.BeginTransactionAsync();
         var batch = await ctx.OutboxMessages
@@ -129,6 +139,19 @@ public class OutboxIntegrationTests {
     union.Should().HaveCount(100, "every row must be claimed exactly once");
     union.Distinct().Should().HaveCount(100, "no duplicate claims across readers");
     idsA.Intersect(idsB).Should().BeEmpty("disjoint partitioning");
+  }
+
+  private static PortalDbContext CreateStandaloneContext(string connectionString) {
+    var dataSource = new NpgsqlDataSourceBuilder(connectionString);
+    dataSource.EnableDynamicJson();
+    var options = new DbContextOptionsBuilder<PortalDbContext>()
+      .UseNpgsql(dataSource.Build())
+      .Options;
+
+    return new PortalDbContext(
+      options,
+      new TenantService(),
+      new ServiceCollection().BuildServiceProvider());
   }
 
   [Fact]

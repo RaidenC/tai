@@ -14,7 +14,6 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CdkListboxModule } from '@angular/cdk/listbox';
-import { ScrollingModule } from '@angular/cdk/scrolling';
 import {
   FormsModule,
   ControlValueAccessor,
@@ -62,6 +61,8 @@ const DEFAULT_I18N: TransferListI18n = {
   noItemsAssigned: 'No items assigned',
 };
 
+let transferListInstanceId = 0;
+
 /**
  * TransferListComponent
  *
@@ -77,7 +78,7 @@ const DEFAULT_I18N: TransferListI18n = {
 @Component({
   selector: 'tai-transfer-list',
   standalone: true,
-  imports: [CommonModule, CdkListboxModule, ScrollingModule, FormsModule],
+  imports: [CommonModule, CdkListboxModule, FormsModule],
   templateUrl: './transfer-list.html',
   styleUrl: './transfer-list.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -94,6 +95,9 @@ export class TransferListComponent<T extends TransferItem>
 {
   private readonly breakpointObserver = inject(BreakpointObserver);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
+  private readonly instanceId = transferListInstanceId++;
+  public readonly availableTitleId = `available-title-${this.instanceId}`;
+  public readonly assignedTitleId = `assigned-title-${this.instanceId}`;
 
   /** IDs of items that are available. */
   public readonly items = input.required<T[]>();
@@ -181,7 +185,7 @@ export class TransferListComponent<T extends TransferItem>
   /** IDs of currently selected items in the assigned list. */
   public readonly selectedAssigned = signal<(string | number)[]>([]);
 
-  /** trackBy function for virtual scroll. */
+  /** Track items by their configured identity key. */
   public readonly trackByFn = computed(() => {
     const key = this.trackKey();
     return (index: number, item: T) => (item as any)[key];

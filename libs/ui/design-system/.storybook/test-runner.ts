@@ -10,6 +10,21 @@ const config: TestRunnerConfig = {
     await injectAxe(page);
   },
   async postVisit(page) {
+    await page.evaluate(async () => {
+      const finiteAnimations = document.getAnimations().filter((animation) => {
+        const endTime = animation.effect?.getComputedTiming().endTime;
+        return (
+          animation.playState === 'running' &&
+          typeof endTime === 'number' &&
+          Number.isFinite(endTime)
+        );
+      });
+
+      await Promise.allSettled(
+        finiteAnimations.map((animation) => animation.finished),
+      );
+    });
+
     // 1. Accessibility Check
     await checkA11y(page, '#storybook-root', {
       detailedReport: true,

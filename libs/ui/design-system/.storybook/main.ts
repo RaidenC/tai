@@ -7,6 +7,9 @@ const config: StorybookConfig = {
     name: '@storybook/angular',
     options: {},
   },
+  core: {
+    disableTelemetry: true,
+  },
 };
 
 export default config;

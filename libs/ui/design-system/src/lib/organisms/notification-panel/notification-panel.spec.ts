@@ -291,7 +291,9 @@ describe('NotificationPanelComponent', () => {
       fixture.detectChanges();
 
       const status = fixture.nativeElement.querySelector('[role="status"][aria-live="polite"]');
+      const list = fixture.nativeElement.querySelector('[data-testid="notification-list"]');
       expect(status?.textContent).toContain('No recent notifications');
+      expect(list.getAttribute('role')).toBeNull();
     });
   });
 

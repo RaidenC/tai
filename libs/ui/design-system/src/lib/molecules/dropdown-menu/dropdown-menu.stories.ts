@@ -1,5 +1,5 @@
 import { type Meta, type StoryObj } from '@storybook/angular';
-import { fn, userEvent, within, expect } from '@storybook/test';
+import { fn, userEvent, within, expect, waitFor } from '@storybook/test';
 import { DropdownMenuComponent, DropdownMenuItem } from './dropdown-menu.component';
 
 const items: DropdownMenuItem[] = [
@@ -58,9 +58,15 @@ export const OpensWithKeyboard: Story = {
     const canvas = within(canvasElement);
     const trigger = canvas.getByTestId('story-dropdown-trigger');
     await userEvent.tab();
-    await userEvent.keyboard('{Enter}');
-    await expect(canvas.getByRole('menu')).toBeInTheDocument();
-    await userEvent.keyboard('{Escape}');
     await expect(trigger).toHaveFocus();
+    await userEvent.keyboard('{Enter}');
+    const firstItem = canvas.getByTestId('action-profile');
+    await waitFor(() => expect(firstItem).toHaveFocus());
+
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(canvas.queryByRole('menu')).not.toBeInTheDocument(),
+    );
+    await waitFor(() => expect(trigger).toHaveFocus());
   },
 };

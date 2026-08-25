@@ -48,18 +48,50 @@ describe('DropdownMenuComponent', () => {
     expect(fixture.nativeElement.querySelector('[role="menu"]')).toBeNull();
   });
 
-  it('emits selected item for enabled item and closes', () => {
+  it('focuses the first enabled item after a keyboard open renders', async () => {
+    const trigger = fixture.nativeElement.querySelector('[data-testid="actions-trigger"]') as HTMLButtonElement;
+
+    trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await Promise.resolve();
+    fixture.detectChanges();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const firstEnabledItem = fixture.nativeElement.querySelector(
+      '[role="menuitem"]:not([disabled])',
+    ) as HTMLButtonElement;
+    expect(document.activeElement).toBe(firstEnabledItem);
+  });
+
+  it('focuses the last enabled item when ArrowUp opens the menu', async () => {
+    const trigger = fixture.nativeElement.querySelector('[data-testid="actions-trigger"]') as HTMLButtonElement;
+
+    trigger.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+    await Promise.resolve();
+    fixture.detectChanges();
+    await new Promise(resolve => setTimeout(resolve, 0));
+
+    const enabledItems = Array.from(
+      fixture.nativeElement.querySelectorAll('[role="menuitem"]:not([disabled])'),
+    ) as HTMLButtonElement[];
+    expect(document.activeElement).toBe(enabledItems[enabledItems.length - 1]);
+  });
+
+  it('emits selected item for enabled item, closes, and restores trigger focus', async () => {
     const spy = vi.fn();
     component.itemSelected.subscribe(spy);
 
     component.open();
     fixture.detectChanges();
+    const trigger = fixture.nativeElement.querySelector('[data-testid="actions-trigger"]') as HTMLButtonElement;
     const profile = fixture.nativeElement.querySelector('[data-testid="action-profile"]') as HTMLButtonElement;
     profile.click();
+    fixture.detectChanges();
+    await new Promise(resolve => setTimeout(resolve, 0));
     fixture.detectChanges();
 
     expect(spy).toHaveBeenCalledWith(items[0]);
     expect(fixture.nativeElement.querySelector('[role="menu"]')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
   });
 
   it('does not emit for disabled item', () => {

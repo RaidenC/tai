@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/angular';
+import { expect, within } from '@storybook/test';
 import { TransferListComponent, TransferItem } from './transfer-list';
 
 const meta: Meta<TransferListComponent<TransferItem>> = {
@@ -52,6 +53,11 @@ export const Compact: Story = {
 };
 
 export const LargeDataset: Story = {
+  parameters: {
+    test: {
+      timeout: 30000,
+    },
+  },
   args: {
     ...Default.args,
     items: Array.from({ length: 500 }, (_, i) => ({
@@ -60,6 +66,18 @@ export const LargeDataset: Story = {
       description: `Description for item ${i + 1}`,
     })),
     manualIds: [10, 20, 30, 40, 50],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const availableList = canvas.getByRole('listbox', {
+      name: /available items/i,
+    });
+    const viewport = availableList.parentElement as HTMLElement;
+
+    await expect(viewport.clientHeight).toBe(256);
+    await expect(viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight);
+    viewport.scrollTop = viewport.scrollHeight;
+    await expect(viewport.scrollTop).toBeGreaterThan(0);
   },
 };
 

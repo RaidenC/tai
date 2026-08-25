@@ -4,9 +4,6 @@ import {
   TableColumnDef,
   TableActionDef,
 } from './data-table';
-import { CdkTableModule } from '@angular/cdk/table';
-import { ButtonComponent } from '../../atoms/button/button.component';
-import { IconComponent } from '../../atoms/icon/icon.component';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 interface TestData {
@@ -40,7 +37,7 @@ describe('DataTableComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [DataTableComponent, CdkTableModule],
+      imports: [DataTableComponent],
     }).compileComponents();
 
     fixture = TestBed.createComponent(DataTableComponent<TestData>);
@@ -60,7 +57,7 @@ describe('DataTableComponent', () => {
 
   it('should render the correct number of headers and data rows', () => {
     const headers = fixture.nativeElement.querySelectorAll('th');
-    const rows = fixture.nativeElement.querySelectorAll('tr[cdk-row]');
+    const rows = fixture.nativeElement.querySelectorAll('tbody tr');
 
     // 2 data columns + 1 actions column = 3
     expect(headers.length).toBe(3);

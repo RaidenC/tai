@@ -15,20 +15,20 @@ namespace Tai.Portal.Api;
 
 public static class SeedData {
   private static readonly object _lock = new object();
-  private static bool _seeded = false;
+  private static readonly HashSet<string> _seededDatabases = new(StringComparer.OrdinalIgnoreCase);
 
   public static void Initialize(IServiceProvider services, bool force = false) {
     try {
-      if (_seeded && !force) return;
-
       lock (_lock) {
-        if (_seeded && !force) return;
-
         Console.WriteLine(" [SEED] Starting initialization...");
         var totalSw = System.Diagnostics.Stopwatch.StartNew();
+        string databaseKey;
 
         using (var scope = services.CreateScope()) {
           var context = scope.ServiceProvider.GetRequiredService<PortalDbContext>();
+          databaseKey = context.Database.GetDbConnection().ConnectionString;
+
+          if (_seededDatabases.Contains(databaseKey) && !force) return;
 
           var databaseCreator = context.Database.GetService<IDatabaseCreator>() as IRelationalDatabaseCreator;
           if (databaseCreator != null) {
@@ -334,7 +334,7 @@ public static class SeedData {
           }
         }
 
-        _seeded = true;
+        _seededDatabases.Add(databaseKey);
         Console.WriteLine($" [SEED] Seeding completed successfully in {totalSw.ElapsedMilliseconds}ms");
       }
     } catch (Exception ex) {
