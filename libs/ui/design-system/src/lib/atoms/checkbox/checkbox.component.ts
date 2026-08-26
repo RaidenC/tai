@@ -13,24 +13,8 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
   selector: 'tai-checkbox',
   standalone: true,
   imports: [CommonModule],
-  template: `
-<input
-  [id]="id()"
-  type="checkbox"
-  [checked]="checked()"
-  [disabled]="disabled()"
-  [attr.aria-label]="ariaLabel()"
-  [attr.aria-invalid]="invalid()"
-  [class]="checkboxClasses()"
-  (change)="onInput($event)"
-  (blur)="onBlur()"
-/>
-  `,
-  styles: [`
-:host {
-  display: inline-flex;
-}
-  `],
+  templateUrl: './checkbox.component.html',
+  styleUrl: './checkbox.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     {
