@@ -10,7 +10,7 @@ import { Toast, ToastService } from './toast.service';
 import { expect, userEvent, within } from '@storybook/test';
 
 @Component({
-  selector: 'storybook-toast-host',
+  selector: 'tai-storybook-toast-host',
   standalone: true,
   imports: [ToastComponent],
   template: '<tai-toast />',
@@ -50,7 +50,7 @@ type Story = StoryObj<ToastComponent>;
 export const Info: Story = {
   render: () => ({
     template:
-      '<storybook-toast-host message="This is an info message" severity="info"></storybook-toast-host>',
+      '<tai-storybook-toast-host message="This is an info message" severity="info"></tai-storybook-toast-host>',
   }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -62,7 +62,7 @@ export const Info: Story = {
 export const Warning: Story = {
   render: () => ({
     template:
-      '<storybook-toast-host message="This is a warning message" severity="warning"></storybook-toast-host>',
+      '<tai-storybook-toast-host message="This is a warning message" severity="warning"></tai-storybook-toast-host>',
   }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -74,7 +74,7 @@ export const Warning: Story = {
 export const Critical: Story = {
   render: () => ({
     template:
-      '<storybook-toast-host message="This is a critical message" severity="critical"></storybook-toast-host>',
+      '<tai-storybook-toast-host message="This is a critical message" severity="critical"></tai-storybook-toast-host>',
   }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
@@ -86,7 +86,7 @@ export const Critical: Story = {
 export const Dismissible: Story = {
   render: () => ({
     template:
-      '<storybook-toast-host message="Click the X to dismiss" severity="info"></storybook-toast-host>',
+      '<tai-storybook-toast-host message="Click the X to dismiss" severity="info"></tai-storybook-toast-host>',
   }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
