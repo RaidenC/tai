@@ -15,7 +15,9 @@ export type TaiIconName =
   standalone: true,
   imports: [CommonModule],
   templateUrl: './icon.component.html',
-  styleUrl: './icon.component.scss',
+  host: {
+    class: 'inline-flex leading-none',
+  },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class IconComponent {

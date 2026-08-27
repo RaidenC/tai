@@ -44,6 +44,7 @@ export const Primary: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const button = canvas.getByRole('button', { name: 'Sign In' });
+    await expect(canvasElement.querySelector('tai-button')).toHaveClass('inline-flex');
 
     await expect(button).toHaveAttribute('type', 'button');
     await expect(button).toHaveTextContent('Sign In');

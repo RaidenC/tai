@@ -40,7 +40,7 @@
 
     <div class="filter-buttons p-4 flex gap-2 border-b border-gray-200" role="group" aria-label="Filter notifications by severity">
       <button
-        class="px-3 py-1.5 border rounded-full text-[0.8125rem] cursor-pointer transition-all duration-200"
+        class="px-3 py-1.5 border rounded-full text-[0.8125rem] cursor-pointer transition-all duration-200 focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2"
         [class]="severityFilter() === 'all' ? 'bg-blue-700 text-white border-blue-700' : 'bg-transparent border-gray-300 text-gray-700 hover:bg-gray-50'"
         (click)="onFilterClick('all')"
         data-testid="filter-all"
@@ -48,7 +48,7 @@
         aria-label="Show all notifications"
       >All</button>
       <button
-        class="px-3 py-1.5 border rounded-full text-[0.8125rem] cursor-pointer transition-all duration-200"
+        class="px-3 py-1.5 border rounded-full text-[0.8125rem] cursor-pointer transition-all duration-200 focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2"
         [class]="severityFilter() === 'critical' ? 'bg-red-600 text-white border-red-600' : 'bg-transparent border-gray-300 text-gray-700 hover:bg-gray-50'"
         (click)="onFilterClick('critical')"
         data-testid="filter-critical"
@@ -56,7 +56,7 @@
         aria-label="Show critical notifications only"
       >Critical</button>
       <button
-        class="px-3 py-1.5 border rounded-full text-[0.8125rem] cursor-pointer transition-all duration-200"
+        class="px-3 py-1.5 border rounded-full text-[0.8125rem] cursor-pointer transition-all duration-200 focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2"
         [class]="severityFilter() === 'warning' ? 'bg-amber-500 text-white border-amber-500' : 'bg-transparent border-gray-300 text-gray-700 hover:bg-gray-50'"
         (click)="onFilterClick('warning')"
         data-testid="filter-warning"
@@ -64,7 +64,7 @@
         aria-label="Show warning notifications only"
       >Warning</button>
       <button
-        class="px-3 py-1.5 border rounded-full text-[0.8125rem] cursor-pointer transition-all duration-200"
+        class="px-3 py-1.5 border rounded-full text-[0.8125rem] cursor-pointer transition-all duration-200 focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2"
         [class]="severityFilter() === 'info' ? 'bg-blue-700 text-white border-blue-700' : 'bg-transparent border-gray-300 text-gray-700 hover:bg-gray-50'"
         (click)="onFilterClick('info')"
         data-testid="filter-info"

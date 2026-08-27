@@ -23,7 +23,6 @@ export interface PendingUser {
   standalone: true,
   imports: [CommonModule],
   templateUrl: './pending-approvals-tile.html',
-  styleUrl: './pending-approvals-tile.scss',
 })
 export class PendingApprovalsTileComponent {
   /**

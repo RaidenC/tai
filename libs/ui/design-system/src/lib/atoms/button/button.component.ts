@@ -10,7 +10,9 @@ export type TaiButtonShape = 'rounded' | 'circle';
   standalone: true,
   imports: [CommonModule],
   templateUrl: './button.component.html',
-  styleUrl: './button.component.scss',
+  host: {
+    class: 'inline-flex',
+  },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ButtonComponent {

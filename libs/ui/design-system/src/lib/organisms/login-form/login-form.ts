@@ -32,7 +32,6 @@ import { FormFieldComponent } from '../../molecules/form-field/form-field.compon
     FormFieldComponent,
   ],
   templateUrl: './login-form.html',
-  styleUrl: './login-form.scss',
 })
 export class LoginFormComponent {
   /**

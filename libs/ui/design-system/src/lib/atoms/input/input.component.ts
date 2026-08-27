@@ -17,7 +17,9 @@ export type TaiInputType = 'text' | 'email' | 'password' | 'search' | 'number';
   standalone: true,
   imports: [CommonModule],
   templateUrl: './input.component.html',
-  styleUrl: './input.component.scss',
+  host: {
+    class: 'block w-full',
+  },
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     {

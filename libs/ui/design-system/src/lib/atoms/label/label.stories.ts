@@ -20,6 +20,7 @@ export const Default: Story = {
     const canvas = within(canvasElement);
     const text = canvas.getByText('Corporate Email');
     const label = text.closest('label');
+    await expect(canvasElement.querySelector('tai-label')).toHaveClass('inline-flex');
 
     await expect(text).toBeInTheDocument();
     await expect(label).toHaveAttribute('for', 'email');

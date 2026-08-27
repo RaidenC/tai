@@ -28,6 +28,8 @@ type Story = StoryObj<IconComponent>;
 export const MoreVertical: Story = {
   play: async ({ canvasElement }) => {
     const svg = getSvg(canvasElement);
+    await expect(canvasElement.querySelector('tai-icon')).toHaveClass('inline-flex');
+    await expect(canvasElement.querySelector('tai-icon')).toHaveClass('leading-none');
 
     await expect(svg).toHaveClass('tai-icon');
     await expect(svg).toHaveClass('h-5');

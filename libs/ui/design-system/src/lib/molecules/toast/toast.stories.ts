@@ -1,7 +1,36 @@
-import type { Meta, StoryObj } from '@storybook/angular';
+import { Component, inject, Input, OnChanges, OnDestroy } from '@angular/core';
+import {
+  type Meta,
+  type StoryObj,
+  applicationConfig,
+  moduleMetadata,
+} from '@storybook/angular';
 import { ToastComponent } from './toast.component';
-import { ToastService } from './toast.service';
-import { fn } from '@storybook/test';
+import { Toast, ToastService } from './toast.service';
+import { expect, userEvent, within } from '@storybook/test';
+
+@Component({
+  selector: 'storybook-toast-host',
+  standalone: true,
+  imports: [ToastComponent],
+  template: '<tai-toast />',
+})
+class ToastStoryHostComponent implements OnChanges, OnDestroy {
+  @Input() message = '';
+  @Input() severity: Toast['severity'] = 'info';
+
+  private readonly toastService = inject(ToastService);
+
+  ngOnChanges(): void {
+    if (this.message) {
+      this.toastService.show(this.message, this.severity);
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.toastService.hide();
+  }
+}
 
 const meta: Meta<ToastComponent> = {
   component: ToastComponent,
@@ -10,48 +39,61 @@ const meta: Meta<ToastComponent> = {
   parameters: {
     layout: 'fullscreen',
   },
+  decorators: [
+    applicationConfig({ providers: [ToastService] }),
+    moduleMetadata({ imports: [ToastStoryHostComponent] }),
+  ],
 };
 export default meta;
 type Story = StoryObj<ToastComponent>;
 
 export const Info: Story = {
-  args: {
-    // Storybook will handle the toast signal via the service
-  },
+  render: () => ({
+    template:
+      '<storybook-toast-host message="This is an info message" severity="info"></storybook-toast-host>',
+  }),
   play: async ({ canvasElement }) => {
-    const toastService = new ToastService();
-    toastService.show('This is an info message', 'info');
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('This is an info message')).toBeVisible();
+    await expect(canvasElement.querySelector('.toast-info')).toBeTruthy();
   },
 };
 
 export const Warning: Story = {
-  args: {},
-  play: async () => {
-    const toastService = new ToastService();
-    toastService.show('This is a warning message', 'warning');
+  render: () => ({
+    template:
+      '<storybook-toast-host message="This is a warning message" severity="warning"></storybook-toast-host>',
+  }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('This is a warning message')).toBeVisible();
+    await expect(canvasElement.querySelector('.toast-warning')).toBeTruthy();
   },
 };
 
 export const Critical: Story = {
-  args: {},
-  play: async () => {
-    const toastService = new ToastService();
-    toastService.show('This is a critical message', 'critical');
+  render: () => ({
+    template:
+      '<storybook-toast-host message="This is a critical message" severity="critical"></storybook-toast-host>',
+  }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByText('This is a critical message')).toBeVisible();
+    await expect(canvasElement.querySelector('.toast-critical')).toBeTruthy();
   },
 };
 
 export const Dismissible: Story = {
-  args: {},
+  render: () => ({
+    template:
+      '<storybook-toast-host message="Click the X to dismiss" severity="info"></storybook-toast-host>',
+  }),
   play: async ({ canvasElement }) => {
-    const toastService = new ToastService();
-    toastService.show('Click the X to dismiss', 'info');
+    const canvas = within(canvasElement);
+    const closeButton = canvas.getByRole('button', { name: 'Dismiss' });
 
-    // Wait a moment for render then click close
-    setTimeout(() => {
-      const closeButton = canvasElement.querySelector('.toast-close') as HTMLButtonElement;
-      if (closeButton) {
-        closeButton.click();
-      }
-    }, 100);
+    await expect(closeButton).toBeVisible();
+    await userEvent.click(closeButton);
+    await expect(canvas.queryByText('Click the X to dismiss')).not.toBeInTheDocument();
   },
 };

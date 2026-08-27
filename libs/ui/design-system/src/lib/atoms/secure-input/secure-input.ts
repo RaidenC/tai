@@ -30,7 +30,6 @@ import { LabelComponent } from '../label/label.component';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, InputComponent, LabelComponent],
   templateUrl: './secure-input.html',
-  styleUrl: './secure-input.scss',
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -72,7 +71,10 @@ export class SecureInputComponent implements ControlValueAccessor {
         ? ' border-red-600 focus:ring-red-600/10'
         : '';
 
-    const password = this.type() === 'password' ? ' secure-password-input password-mask' : '';
+    const password =
+      this.type() === 'password'
+        ? ' secure-password-input [-webkit-text-security:disc]'
+        : '';
 
     return `${base}${error}${password}`;
   });

@@ -14,7 +14,9 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
   standalone: true,
   imports: [CommonModule],
   templateUrl: './checkbox.component.html',
-  styleUrl: './checkbox.component.scss',
+  host: {
+    class: 'inline-flex',
+  },
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     {

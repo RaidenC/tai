@@ -31,7 +31,11 @@ const meta: Meta<ConfirmationPanelComponent> = {
 export default meta;
 type Story = StoryObj<ConfirmationPanelComponent>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  play: async ({ canvasElement }) => {
+    await expect(canvasElement.querySelector('tai-confirmation-panel')).toHaveClass('block');
+  },
+};
 
 export const Danger: Story = {
   args: {

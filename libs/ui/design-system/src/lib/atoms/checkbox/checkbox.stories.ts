@@ -51,6 +51,7 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const checkbox = canvas.getByRole('checkbox', { name: 'Select row' });
+    await expect(canvasElement.querySelector('tai-checkbox')).toHaveClass('inline-flex');
 
     await expect(checkbox).toHaveAttribute('type', 'checkbox');
     await expect(checkbox).toHaveAttribute('id', 'select-row');

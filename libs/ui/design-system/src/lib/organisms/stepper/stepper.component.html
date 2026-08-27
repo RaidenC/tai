@@ -5,7 +5,7 @@
 >
   <ol [class]="listClasses()">
     @for (step of steps(); track step.id; let i = $index; let last = $last) {
-      <li class="tai-stepper__item">
+      <li [class]="itemClasses()">
         <button
           type="button"
           [class]="stepButtonClasses(step)"
@@ -42,7 +42,7 @@
         </button>
 
         @if (!last) {
-          <span class="tai-stepper__connector" aria-hidden="true"></span>
+          <span [class]="connectorClasses()" aria-hidden="true"></span>
         }
       </li>
     }

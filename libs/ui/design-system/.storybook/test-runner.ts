@@ -39,7 +39,7 @@ const config: TestRunnerConfig = {
       .count();
     if (inlineStylesCount > 0) {
       throw new Error(
-        `CSP Violation: Found ${inlineStylesCount} elements with inline styles. Inline styles are prohibited by SWBC Zero-Trust architecture.`,
+        `CSP Violation: Found ${inlineStylesCount} elements with inline styles. Inline styles are prohibited by Zero-Trust architecture.`,
       );
     }
   },

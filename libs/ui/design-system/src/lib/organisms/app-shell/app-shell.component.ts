@@ -16,7 +16,6 @@ import {
   standalone: true,
   imports: [CommonModule, SidebarComponent, UserProfileComponent],
   templateUrl: './app-shell.component.html',
-  styleUrls: ['./app-shell.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppShellComponent {

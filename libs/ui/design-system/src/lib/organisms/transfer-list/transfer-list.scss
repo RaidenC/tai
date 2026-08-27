@@ -17,19 +17,6 @@
   }
 }
 
-:host {
-  display: block;
-  width: 100%;
-}
-
-.transfer-list-container {
-  // Smooth transition for layout changes
-  transition: all 0.3s ease-in-out;
-
-  // Ensure the container is always accessible
-  min-width: 300px;
-}
-
 // Support for CSS View Transitions
 ::view-transition-old(*),
 ::view-transition-new(*) {

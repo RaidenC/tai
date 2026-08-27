@@ -64,6 +64,8 @@ export const Email: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const input = canvas.getByRole('textbox');
+    await expect(canvasElement.querySelector('tai-input')).toHaveClass('block');
+    await expect(canvasElement.querySelector('tai-input')).toHaveClass('w-full');
 
     emailControl.reset('');
     emailControl.markAsUntouched();
