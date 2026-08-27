@@ -40,6 +40,10 @@ Record the current passing test counts and preserve any pre-existing warnings fo
 ## Task 2: Migrate ConfirmationPanel and ConfirmationDialog
 
 **Files:**
+- Modify: `apps/portal-web/src/app/features/users/users-confirmation-host.component.ts`
+- Modify: `libs/ui/design-system/src/lib/atoms/button/button.component.ts`
+- Modify: `libs/ui/design-system/src/lib/atoms/button/button.component.html`
+- Modify: `libs/ui/design-system/src/lib/atoms/button/button.stories.ts`
 - Modify: `libs/ui/design-system/src/lib/molecules/confirmation-panel/confirmation-panel.component.ts`
 - Modify: `libs/ui/design-system/src/lib/molecules/confirmation-panel/confirmation-panel.component.html`
 - Modify: `libs/ui/design-system/src/lib/molecules/confirmation-panel/confirmation-panel.stories.ts`
@@ -62,15 +66,17 @@ Extend the existing stories with assertions for:
 - literal security strings remaining text rather than creating `img` or `script` elements
 - confirm and cancel `actionSelected` payloads, with duplicate clicks producing one call
 
-Use the Storybook args spy in the play function:
+Use one isolated `fn()` per interactive story and pass that exact spy through the custom Angular render props. Storybook 8.6 does not reliably expose Angular output spies through `play({ args })` when a custom render is used, so each play must assert the same per-story spy that the render binds:
 
 ```ts
-play: async ({ args, canvasElement }) => {
+const cancelActionSelected = fn();
+
+play: async ({ canvasElement }) => {
   const canvas = within(canvasElement);
   const cancel = canvas.getByRole('button', { name: 'Cancel' });
 
   await userEvent.click(cancel);
-  await expect(args.actionSelected).toHaveBeenCalledWith({ action: 'cancel' });
+  await expect(cancelActionSelected).toHaveBeenCalledWith({ action: 'cancel' });
 }
 ```
 
@@ -96,7 +102,7 @@ Import `ButtonComponent` into `ConfirmationPanelComponent` and replace the two a
   variant="secondary"
   [disabled]="vm.cancelDisabled"
   (pressed)="select('cancel')"
-  data-confirmation-focus="cancel"
+  [focusTarget]="'cancel'"
   testId="modal-cancel-button"
 >
   <span [textContent]="vm.cancelLabel"></span>
@@ -107,7 +113,7 @@ Import `ButtonComponent` into `ConfirmationPanelComponent` and replace the two a
   [variant]="vm.tone === 'danger' ? 'danger' : 'primary'"
   [disabled]="vm.confirmDisabled"
   (pressed)="select('confirm')"
-  data-confirmation-focus="confirm"
+  [focusTarget]="'confirm'"
   testId="modal-confirm-button"
 >
   <span [textContent]="vm.confirmLoading ? 'Working...' : vm.confirmLabel"></span>
@@ -119,6 +125,8 @@ Remove the obsolete button-class methods after the stories prove the atom varian
 - [ ] **Step 4: Verify ConfirmationPanel stories and preserve the architecture guard.**
 
 Run the focused Storybook target and confirm the newly added plays pass. Move the existing source-level check that the panel does not import CDK dialog/overlay/a11y or Material primitives into `confirmation-panel.architecture.spec.ts`. The new spec must contain only that source-boundary test and no TestBed fixture.
+
+The atom's generic `focusTarget` input must render `data-focus-target` on the native button. Update `users-confirmation-host.component.ts` to query `data-focus-target` so the existing parent-owned initial-focus behavior remains intact.
 
 Run:
 

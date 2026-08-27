@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ButtonComponent } from '../../atoms/button/button.component';
 
 export type ConfirmationTone = 'default' | 'danger';
 export type ConfirmationActionId = 'confirm' | 'cancel';
@@ -35,7 +36,7 @@ const MAX_MESSAGE_LENGTH = 500;
 @Component({
   selector: 'tai-confirmation-panel',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ButtonComponent],
   templateUrl: './confirmation-panel.component.html',
   styleUrl: './confirmation-panel.component.scss',
   host: {
@@ -57,12 +58,6 @@ export class ConfirmationPanelComponent {
     const tone = data.confirm?.tone === 'danger' ? 'danger' : 'default';
     const confirmLoading = data.confirm?.loading === true;
     const confirmDisabled = confirmLoading || data.confirm?.disabled === true;
-    const initialFocus = data.initialFocus === 'confirm' || data.initialFocus === 'cancel'
-      ? data.initialFocus
-      : tone === 'danger'
-        ? 'cancel'
-        : 'confirm';
-
     return {
       title: this.normalizeText(data.title, DEFAULT_TITLE, MAX_TITLE_LENGTH),
       message: this.normalizeText(data.message, DEFAULT_MESSAGE, MAX_MESSAGE_LENGTH),
@@ -73,28 +68,8 @@ export class ConfirmationPanelComponent {
       confirmLoading,
       confirmDisabled,
       cancelDisabled: data.cancel?.disabled === true || confirmLoading,
-      initialFocus,
     };
   });
-
-  initialFocusTarget(): ConfirmationInitialFocus {
-    return this.viewModel().initialFocus;
-  }
-
-  protected confirmButtonClasses(): string {
-    const base =
-      'inline-flex min-h-11 items-center justify-center rounded-md px-5 py-2.5 text-sm font-semibold text-white shadow-sm outline-none transition-colors duration-200 focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-60';
-    const toneClasses =
-      this.viewModel().tone === 'danger'
-        ? ' bg-red-700 hover:bg-red-800 focus-visible:ring-red-700/25'
-        : ' bg-blue-600 hover:bg-blue-700 focus-visible:ring-blue-600/25';
-
-    return `${base}${toneClasses}`;
-  }
-
-  protected cancelButtonClasses(): string {
-    return 'inline-flex min-h-11 items-center justify-center rounded-md border border-gray-300 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 outline-none transition-colors duration-200 hover:bg-gray-50 focus-visible:border-blue-600 focus-visible:ring-3 focus-visible:ring-blue-600/20 disabled:cursor-not-allowed disabled:opacity-60';
-  }
 
   protected select(action: ConfirmationActionId): void {
     if (this.emittedAction() !== null) {

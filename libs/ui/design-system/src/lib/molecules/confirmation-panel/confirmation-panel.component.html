@@ -30,26 +30,26 @@
   }
 
   <div class="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-    <button
+    <tai-button
       type="button"
-      [class]="cancelButtonClasses()"
+      variant="secondary"
       [disabled]="vm.cancelDisabled"
-      (click)="select('cancel')"
-      data-confirmation-focus="cancel"
-      data-testid="modal-cancel-button"
+      [focusTarget]="'cancel'"
+      (pressed)="select('cancel')"
+      testId="modal-cancel-button"
     >
       <span [textContent]="vm.cancelLabel"></span>
-    </button>
+    </tai-button>
 
-    <button
+    <tai-button
       type="button"
-      [class]="confirmButtonClasses()"
+      [variant]="vm.tone === 'danger' ? 'danger' : 'primary'"
       [disabled]="vm.confirmDisabled"
-      (click)="select('confirm')"
-      data-confirmation-focus="confirm"
-      data-testid="modal-confirm-button"
+      [focusTarget]="'confirm'"
+      (pressed)="select('confirm')"
+      testId="modal-confirm-button"
     >
       <span [textContent]="vm.confirmLoading ? 'Working...' : vm.confirmLabel"></span>
-    </button>
+    </tai-button>
   </div>
 </section>
