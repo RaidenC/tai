@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { CommonModule } from '@angular/common';
 
 export type TaiIconName =
+  | 'bell'
   | 'chevron-up'
   | 'chevron-down'
   | 'chevron-up-down'

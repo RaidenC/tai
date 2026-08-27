@@ -10,7 +10,11 @@ const meta: Meta<ButtonComponent> = {
   args: {
     type: 'button',
     variant: 'primary',
+    shape: 'rounded',
+    iconOnly: false,
     disabled: false,
+    ariaExpanded: null,
+    ariaControls: null,
   },
   render: (args) => ({
     props: {
@@ -20,8 +24,12 @@ const meta: Meta<ButtonComponent> = {
     template: `<tai-button
       [type]="type"
       [variant]="variant"
+      [shape]="shape"
+      [iconOnly]="iconOnly"
       [disabled]="disabled"
       [ariaLabel]="ariaLabel"
+      [ariaExpanded]="ariaExpanded"
+      [ariaControls]="ariaControls"
       [testId]="testId"
       (pressed)="onPressed($event)">
       Sign In
@@ -133,5 +141,26 @@ export const Accessible: Story = {
 
     await expect(button).toHaveAttribute('aria-label', 'Submit form');
     await expect(button).toHaveAttribute('data-testid', 'submit-btn');
+  },
+};
+
+export const CircularIconOnly: Story = {
+  args: {
+    shape: 'circle',
+    iconOnly: true,
+    ariaLabel: 'Notifications',
+    ariaExpanded: false,
+    ariaControls: 'notification-panel',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const button = canvas.getByRole('button', { name: 'Notifications' });
+
+    await expect(button).toHaveClass('rounded-full');
+    await expect(button).toHaveClass('h-12');
+    await expect(button).toHaveClass('w-12');
+    await expect(button).toHaveClass('p-0');
+    await expect(button).toHaveAttribute('aria-expanded', 'false');
+    await expect(button).toHaveAttribute('aria-controls', 'notification-panel');
   },
 };

@@ -2,6 +2,8 @@
   [type]="type()"
   [disabled]="disabled()"
   [attr.aria-label]="ariaLabel() || null"
+  [attr.aria-expanded]="ariaExpanded()"
+  [attr.aria-controls]="ariaControls()"
   [attr.data-testid]="testId() || null"
   [class]="buttonClasses()"
   (click)="onClick($event)"

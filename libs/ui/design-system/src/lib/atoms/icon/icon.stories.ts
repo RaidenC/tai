@@ -42,6 +42,18 @@ export const MoreVertical: Story = {
   },
 };
 
+export const Bell: Story = {
+  args: {
+    name: 'bell',
+  },
+  play: async ({ canvasElement }) => {
+    const svg = getSvg(canvasElement);
+
+    await expect(svg).toHaveAttribute('aria-hidden', 'true');
+    await expect(svg.querySelectorAll('path').length).toBe(2);
+  },
+};
+
 export const Sort: Story = {
   args: {
     name: 'chevron-up-down',
