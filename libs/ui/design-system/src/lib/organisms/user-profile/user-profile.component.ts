@@ -34,7 +34,6 @@ export interface UserProfile {
   standalone: true,
   imports: [CommonModule, DropdownMenuComponent],
   templateUrl: './user-profile.component.html',
-  styleUrls: ['./user-profile.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class UserProfileComponent {

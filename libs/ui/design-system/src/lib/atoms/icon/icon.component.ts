@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, input } from '@angular/co
 import { CommonModule } from '@angular/common';
 
 export type TaiIconName =
+  | 'bell'
   | 'chevron-up'
   | 'chevron-down'
   | 'chevron-up-down'
@@ -14,7 +15,9 @@ export type TaiIconName =
   standalone: true,
   imports: [CommonModule],
   templateUrl: './icon.component.html',
-  styleUrl: './icon.component.scss',
+  host: {
+    class: 'inline-flex leading-none',
+  },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class IconComponent {

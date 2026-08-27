@@ -13,7 +13,6 @@ import { SecureInputComponent } from '../../atoms/secure-input/secure-input';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, SecureInputComponent],
   templateUrl: './otp-verification-form.html',
-  styleUrl: './otp-verification-form.scss',
 })
 export class OtpVerificationFormComponent {
   public readonly otpForm = new FormGroup({

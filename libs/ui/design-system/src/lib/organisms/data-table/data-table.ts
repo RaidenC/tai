@@ -67,7 +67,6 @@ export interface TableColumnDef<T> {
     IconComponent,
   ],
   templateUrl: './data-table.html',
-  styleUrl: './data-table.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DataTableComponent<T> {

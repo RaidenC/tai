@@ -23,7 +23,6 @@ export interface StepperStep {
   standalone: true,
   imports: [CommonModule],
   templateUrl: './stepper.component.html',
-  styleUrl: './stepper.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StepperComponent {
@@ -46,14 +45,28 @@ export class StepperComponent {
         ? ' tai-stepper--compact'
         : ' tai-stepper--comfortable';
 
-    return `tai-stepper${orientationClass}${densityClass}`;
+    return `tai-stepper block${orientationClass}${densityClass}`;
   });
 
   protected readonly listClasses = computed(() =>
-    this.orientation() === 'vertical'
-      ? 'tai-stepper__list tai-stepper__list--vertical'
-      : 'tai-stepper__list tai-stepper__list--horizontal',
+    `tai-stepper__list flex list-none m-0 p-0 ${
+      this.orientation() === 'vertical'
+        ? 'tai-stepper__list--vertical flex-col gap-1'
+        : 'tai-stepper__list--horizontal items-stretch gap-2 max-[640px]:flex-col'
+    }`,
   );
+
+  protected itemClasses(): string {
+    return `tai-stepper__item flex min-w-0 items-center ${
+      this.orientation() === 'vertical' ? 'flex-none' : 'flex-[1_1_0]'
+    }`;
+  }
+
+  protected connectorClasses(): string {
+    return `tai-stepper__connector block min-w-4 flex-[1_1_1rem] h-0.5 ml-2 bg-gray-200 ${
+      this.orientation() === 'vertical' ? 'hidden' : 'max-[640px]:hidden'
+    }`;
+  }
 
   protected isDisabled(step: StepperStep): boolean {
     return step.disabled === true || step.status === 'blocked';
@@ -73,7 +86,7 @@ export class StepperComponent {
 
   protected stepButtonClasses(step: StepperStep): string {
     const base =
-      'tai-stepper__button inline-flex w-full min-w-0 items-center gap-3 rounded-md border-0 bg-transparent text-left outline-none transition-colors duration-200 focus-visible:ring-3 focus-visible:ring-blue-600/25 disabled:cursor-not-allowed disabled:opacity-60';
+      'tai-stepper__button box-border inline-flex w-full min-w-0 items-center gap-3 rounded-md border-0 bg-transparent text-left outline-none transition-colors duration-200 motion-reduce:duration-0 focus-visible:ring-3 focus-visible:ring-blue-600/25 disabled:cursor-not-allowed disabled:opacity-60';
     const densityClass =
       this.density() === 'compact'
         ? ' min-h-10 px-2 py-2 text-sm'

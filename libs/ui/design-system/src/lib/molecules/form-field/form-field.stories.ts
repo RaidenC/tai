@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/angular';
+import { expect } from '@storybook/test';
 import { FormFieldComponent } from './form-field.component';
 import { InputComponent } from '../../atoms/input/input.component';
 
@@ -32,7 +33,14 @@ const meta: Meta<FormFieldComponent> = {
 export default meta;
 type Story = StoryObj<FormFieldComponent>;
 
-export const Default: Story = {};
+export const Default: Story = {
+  play: async ({ canvasElement }) => {
+    const formField = canvasElement.querySelector('tai-form-field');
+
+    await expect(formField).toHaveClass('block');
+    await expect(formField).toHaveClass('w-full');
+  },
+};
 
 export const WithError: Story = {
   args: {

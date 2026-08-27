@@ -6,7 +6,9 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   templateUrl: './label.component.html',
-  styleUrl: './label.component.scss',
+  host: {
+    class: 'inline-flex',
+  },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class LabelComponent {

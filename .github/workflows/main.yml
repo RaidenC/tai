@@ -1,6 +1,7 @@
 name: TAI Portal CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, 'epic/*']
   pull_request:

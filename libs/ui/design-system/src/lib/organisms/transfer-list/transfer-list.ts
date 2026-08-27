@@ -81,6 +81,9 @@ let transferListInstanceId = 0;
   imports: [CommonModule, CdkListboxModule, FormsModule],
   templateUrl: './transfer-list.html',
   styleUrl: './transfer-list.scss',
+  host: {
+    class: 'block w-full',
+  },
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     {

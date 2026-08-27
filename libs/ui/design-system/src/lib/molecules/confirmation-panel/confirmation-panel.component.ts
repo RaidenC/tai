@@ -38,6 +38,9 @@ const MAX_MESSAGE_LENGTH = 500;
   imports: [CommonModule],
   templateUrl: './confirmation-panel.component.html',
   styleUrl: './confirmation-panel.component.scss',
+  host: {
+    class: 'block',
+  },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ConfirmationPanelComponent {

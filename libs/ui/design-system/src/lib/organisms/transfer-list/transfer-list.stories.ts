@@ -43,6 +43,12 @@ export const Default: Story = {
     trackKey: 'id',
     density: 'comfortable',
   },
+  play: async ({ canvasElement }) => {
+    const transferList = canvasElement.querySelector('tai-transfer-list');
+
+    await expect(transferList).toHaveClass('block');
+    await expect(transferList).toHaveClass('w-full');
+  },
 };
 
 export const Compact: Story = {

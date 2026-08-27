@@ -29,7 +29,6 @@ export interface ConfirmationDialogData {
   standalone: true,
   imports: [CommonModule, ConfirmationPanelComponent],
   templateUrl: './confirmation-dialog.html',
-  styleUrl: './confirmation-dialog.scss',
 })
 export class ConfirmationDialogComponent {
   private readonly dialogRef = inject(DialogRef<boolean>);

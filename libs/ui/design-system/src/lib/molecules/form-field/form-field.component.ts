@@ -7,7 +7,9 @@ import { LabelComponent } from '../../atoms/label/label.component';
   standalone: true,
   imports: [CommonModule, LabelComponent],
   templateUrl: './form-field.component.html',
-  styleUrl: './form-field.component.scss',
+  host: {
+    class: 'block w-full',
+  },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FormFieldComponent {

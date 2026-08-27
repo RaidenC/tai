@@ -1,9 +1,13 @@
 @if (toast(); as t) {
-  <div class="toast" [class]="getSeverityClass()">
-    <div class="toast-content">
-      <span class="toast-message">{{ t.message }}</span>
+  <div [class]="getToastClasses()">
+    <div class="toast-content flex-1">
+      <span class="toast-message text-sm">{{ t.message }}</span>
     </div>
-    <button class="toast-close" (click)="dismiss()" aria-label="Dismiss">
+    <button
+      class="toast-close border-none bg-transparent p-1 cursor-pointer opacity-60 hover:opacity-100"
+      (click)="dismiss()"
+      aria-label="Dismiss"
+    >
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
       </svg>

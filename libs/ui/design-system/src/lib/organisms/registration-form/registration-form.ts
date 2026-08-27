@@ -24,7 +24,6 @@ import { SecureInputComponent } from '../../atoms/secure-input/secure-input';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, SecureInputComponent],
   templateUrl: './registration-form.html',
-  styleUrl: './registration-form.scss',
 })
 export class RegistrationFormComponent {
   /**
