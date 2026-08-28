@@ -1,5 +1,6 @@
-import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
-import { within, expect, userEvent } from '@storybook/test';
+import { moduleMetadata } from '@storybook/angular';
+import type { Meta, StoryObj } from '@storybook/angular';
+import { expect, fn, userEvent, within } from '@storybook/test';
 import { SecurityAlertComponent } from './security-alert';
 
 const meta: Meta<SecurityAlertComponent> = {
@@ -24,9 +25,11 @@ export const Warning: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const alert = canvas.getByTestId('security-alert');
-    expect(alert).toBeTruthy();
-    expect(alert.textContent).toContain('re-enter your SSN');
+    const alert = canvas.getByRole('alert');
+
+    await expect(alert).toBeVisible();
+    await expect(alert).toHaveClass('security-alert--warning');
+    await expect(alert).toHaveTextContent('re-enter your SSN');
   },
 };
 
@@ -38,8 +41,25 @@ export const Info: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const alert = canvas.getByTestId('security-alert');
-    expect(alert.classList.contains('security-alert--info')).toBe(true);
+    const alert = canvas.getByRole('alert');
+
+    await expect(alert).toBeVisible();
+    await expect(alert).toHaveClass('security-alert--info');
+    await expect(alert).toHaveTextContent('Draft saved locally (encrypted).');
+  },
+};
+
+export const Live: Story = {
+  args: {
+    message: 'Your identity was verified successfully.',
+    severity: 'info',
+    visible: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const alert = canvas.getByRole('alert');
+
+    await expect(alert).toHaveAttribute('aria-live', 'polite');
   },
 };
 
@@ -49,14 +69,17 @@ export const Dismissible: Story = {
     severity: 'warning',
     visible: true,
     dismissible: true,
+    dismissed: fn(),
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
-    const dismissBtn = canvas.getByTestId('security-alert-dismiss');
+    const alert = canvas.getByRole('alert');
+    const dismissBtn = canvas.getByRole('button', { name: 'Dismiss alert' });
+
+    await expect(alert).toBeVisible();
+    await expect(dismissBtn).toHaveTextContent('Dismiss');
     await userEvent.click(dismissBtn);
-    const alert = canvas.queryByTestId('security-alert');
-    // Note: dismissing emits event but visibility is controlled by parent
-    expect(dismissBtn).toBeTruthy();
+    await expect(args.dismissed).toHaveBeenCalledTimes(1);
   },
 };
 
@@ -67,7 +90,22 @@ export const Hidden: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const alert = canvas.queryByTestId('security-alert');
-    expect(alert).toBeNull();
+    await expect(canvas.queryByRole('alert')).toBeNull();
+  },
+};
+
+export const SecurityStrings: Story = {
+  args: {
+    message: '<img src=x onerror=alert(1)><script>alert(1)</script>',
+    severity: 'warning',
+    visible: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const alert = canvas.getByRole('alert');
+
+    await expect(alert).toHaveTextContent('<img src=x onerror=alert(1)><script>alert(1)</script>');
+    await expect(canvasElement.querySelector('img')).toBeNull();
+    await expect(canvasElement.querySelector('script')).toBeNull();
   },
 };
