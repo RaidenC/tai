@@ -3,6 +3,8 @@ import type { Meta, StoryObj } from '@storybook/angular';
 import { expect, fn, userEvent, within } from '@storybook/test';
 import { SecurityAlertComponent } from './security-alert';
 
+const dismissed = fn();
+
 const meta: Meta<SecurityAlertComponent> = {
   title: 'Molecules/SecurityAlert',
   component: SecurityAlertComponent,
@@ -12,6 +14,21 @@ const meta: Meta<SecurityAlertComponent> = {
     }),
   ],
   tags: ['autodocs'],
+  render: (args) => ({
+    props: {
+      ...args,
+      onDismissed: dismissed,
+    },
+    template: `
+      <tai-security-alert
+        [message]="message"
+        [severity]="severity"
+        [visible]="visible"
+        [dismissible]="dismissible"
+        (dismissed)="onDismissed()"
+      ></tai-security-alert>
+    `,
+  }),
 };
 
 export default meta;
@@ -69,17 +86,17 @@ export const Dismissible: Story = {
     severity: 'warning',
     visible: true,
     dismissible: true,
-    dismissed: fn(),
   },
-  play: async ({ args, canvasElement }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const alert = canvas.getByRole('alert');
     const dismissBtn = canvas.getByRole('button', { name: 'Dismiss alert' });
 
+    dismissed.mockClear();
     await expect(alert).toBeVisible();
     await expect(dismissBtn).toHaveTextContent('Dismiss');
     await userEvent.click(dismissBtn);
-    await expect(args.dismissed).toHaveBeenCalledTimes(1);
+    await expect(dismissed).toHaveBeenCalledTimes(1);
   },
 };
 
