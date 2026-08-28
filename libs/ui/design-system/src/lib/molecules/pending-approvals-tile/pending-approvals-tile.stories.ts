@@ -1,6 +1,9 @@
 import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
-import { userEvent, within, expect } from '@storybook/test';
-import { PendingApprovalsTileComponent } from './pending-approvals-tile';
+import { expect, fn, userEvent, within } from '@storybook/test';
+import {
+  PendingApprovalsTileComponent,
+  PendingUser,
+} from './pending-approvals-tile';
 import { CommonModule } from '@angular/common';
 
 /**
@@ -10,7 +13,13 @@ import { CommonModule } from '@angular/common';
  * interface, ensuring that Tenant Admins can clearly identify
  * pending users and trigger the secondary approval action.
  */
-const meta: Meta<PendingApprovalsTileComponent> = {
+const approved = fn();
+
+type PendingApprovalsTileStoryArgs = {
+  users: PendingUser[];
+};
+
+const meta: Meta<PendingApprovalsTileStoryArgs> = {
   title: 'Molecules/PendingApprovalsTile',
   component: PendingApprovalsTileComponent,
   decorators: [
@@ -18,11 +27,23 @@ const meta: Meta<PendingApprovalsTileComponent> = {
       imports: [CommonModule],
     }),
   ],
+  render: (args) => ({
+    props: {
+      ...args,
+      onApproved: approved,
+    },
+    template: `
+      <tai-pending-approvals-tile
+        [users]="users"
+        (approved)="onApproved($event)">
+      </tai-pending-approvals-tile>
+    `,
+  }),
   tags: ['autodocs'],
 };
 
 export default meta;
-type Story = StoryObj<PendingApprovalsTileComponent>;
+type Story = StoryObj<PendingApprovalsTileStoryArgs>;
 
 export const Default: Story = {
   args: {
@@ -31,11 +52,48 @@ export const Default: Story = {
       { id: '2', email: 'smith@example.com', name: 'John Smith' },
     ],
   },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(
+      canvas.getByRole('heading', { name: 'Pending Approvals' }),
+    ).toBeVisible();
+    await expect(canvas.getByText('2 Awaiting', { exact: true })).toBeVisible();
+    await expect(canvas.getByRole('table')).toBeVisible();
+    await expect(
+      canvas.getByRole('columnheader', { name: 'User' }),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole('columnheader', { name: 'Email' }),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole('columnheader', { name: 'Actions' }),
+    ).toBeVisible();
+    await expect(canvas.getByRole('cell', { name: 'Jane Doe' })).toBeVisible();
+    await expect(
+      canvas.getByRole('cell', { name: 'jdoe@example.com' }),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole('cell', { name: 'John Smith' }),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole('cell', { name: 'smith@example.com' }),
+    ).toBeVisible();
+  },
 };
 
 export const Empty: Story = {
   args: {
     users: [],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByText('0 Awaiting', { exact: true })).toBeVisible();
+    await expect(
+      canvas.getByText('All clear! No pending approvals.'),
+    ).toBeVisible();
+    await expect(canvas.queryByRole('table')).not.toBeInTheDocument();
   },
 };
 
@@ -50,19 +108,16 @@ export const ApprovalAudit: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const firstUserRow = canvas.getByText(/Jane Doe/i);
-    const approveBtn = canvas.getAllByRole('button', { name: /Approve/i })[0];
 
-    // 1. Audit Visibility
-    await expect(firstUserRow).toBeInTheDocument();
-    await expect(canvas.getByText(/2 Awaiting/i)).toBeInTheDocument();
+    const approveButtons = canvas.getAllByRole('button', { name: 'Approve' });
 
-    // 2. Audit Action Interaction
-    await userEvent.click(approveBtn);
+    await expect(canvasElement.querySelectorAll('tai-button')).toHaveLength(2);
+    await expect(canvas.getAllByTestId('approve-button')).toHaveLength(2);
+    await expect(approveButtons).toHaveLength(2);
 
-    // Verification: In Storybook interaction tests, we verify the visual
-    // and semantic state. The event emission itself is captured
-    // in unit tests, but here we prove the UI is clickable and responsive.
-    await expect(approveBtn).toBeInTheDocument();
+    approved.mockClear();
+    await userEvent.click(approveButtons[0]);
+    await expect(approved).toHaveBeenCalledTimes(1);
+    await expect(approved).toHaveBeenCalledWith('1');
   },
 };
