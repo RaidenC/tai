@@ -18,12 +18,6 @@ export class ToastComponent {
     this.toastService.hide();
   }
 
-  getSeverityClass(): string {
-    const t = this.toast();
-    if (!t) return '';
-    return `toast-${t.severity}`;
-  }
-
   getToastClasses(): string {
     const t = this.toast();
     if (!t) return '';

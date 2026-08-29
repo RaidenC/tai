@@ -47,6 +47,27 @@ const meta: Meta<ToastComponent> = {
 export default meta;
 type Story = StoryObj<ToastComponent>;
 
+export const Empty: Story = {
+  render: () => ({
+    template: '<tai-storybook-toast-host></tai-storybook-toast-host>',
+  }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const host = canvasElement.querySelector('tai-storybook-toast-host');
+    const toastComponent = host?.querySelector('tai-toast');
+
+    await expect(host).toBeInTheDocument();
+    await expect(toastComponent).toBeInTheDocument();
+    await expect(canvasElement.querySelector('.toast')).not.toBeInTheDocument();
+    await expect(
+      canvasElement.querySelector('.toast-message'),
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole('button', { name: 'Dismiss' }),
+    ).not.toBeInTheDocument();
+  },
+};
+
 export const Info: Story = {
   render: () => ({
     template:
@@ -54,8 +75,12 @@ export const Info: Story = {
   }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText('This is an info message')).toBeVisible();
-    await expect(canvasElement.querySelector('.toast-info')).toBeTruthy();
+    const message = canvas.getByText('This is an info message');
+    const dismissButton = canvas.getByRole('button', { name: 'Dismiss' });
+
+    await expect(message).toBeVisible();
+    await expect(message.closest('.toast')).toHaveClass('toast-info');
+    await expect(dismissButton).toBeVisible();
   },
 };
 
@@ -66,8 +91,12 @@ export const Warning: Story = {
   }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText('This is a warning message')).toBeVisible();
-    await expect(canvasElement.querySelector('.toast-warning')).toBeTruthy();
+    const message = canvas.getByText('This is a warning message');
+    const dismissButton = canvas.getByRole('button', { name: 'Dismiss' });
+
+    await expect(message).toBeVisible();
+    await expect(message.closest('.toast')).toHaveClass('toast-warning');
+    await expect(dismissButton).toBeVisible();
   },
 };
 
@@ -78,8 +107,12 @@ export const Critical: Story = {
   }),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByText('This is a critical message')).toBeVisible();
-    await expect(canvasElement.querySelector('.toast-critical')).toBeTruthy();
+    const message = canvas.getByText('This is a critical message');
+    const dismissButton = canvas.getByRole('button', { name: 'Dismiss' });
+
+    await expect(message).toBeVisible();
+    await expect(message.closest('.toast')).toHaveClass('toast-critical');
+    await expect(dismissButton).toBeVisible();
   },
 };
 
@@ -92,8 +125,14 @@ export const Dismissible: Story = {
     const canvas = within(canvasElement);
     const closeButton = canvas.getByRole('button', { name: 'Dismiss' });
 
+    await expect(canvas.getByText('Click the X to dismiss')).toBeVisible();
     await expect(closeButton).toBeVisible();
     await userEvent.click(closeButton);
-    await expect(canvas.queryByText('Click the X to dismiss')).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByText('Click the X to dismiss'),
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole('button', { name: 'Dismiss' }),
+    ).not.toBeInTheDocument();
   },
 };
