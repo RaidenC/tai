@@ -15,6 +15,7 @@ const meta: Meta<ButtonComponent> = {
     disabled: false,
     ariaExpanded: null,
     ariaControls: null,
+    focusTarget: null,
   },
   render: (args) => ({
     props: {
@@ -30,6 +31,7 @@ const meta: Meta<ButtonComponent> = {
       [ariaLabel]="ariaLabel"
       [ariaExpanded]="ariaExpanded"
       [ariaControls]="ariaControls"
+      [focusTarget]="focusTarget"
       [testId]="testId"
       (pressed)="onPressed($event)">
       Sign In
@@ -142,6 +144,20 @@ export const Accessible: Story = {
 
     await expect(button).toHaveAttribute('aria-label', 'Submit form');
     await expect(button).toHaveAttribute('data-testid', 'submit-btn');
+  },
+};
+
+export const FocusTarget: Story = {
+  args: {
+    focusTarget: 'confirm',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(canvas.getByRole('button', { name: 'Sign In' })).toHaveAttribute(
+      'data-focus-target',
+      'confirm',
+    );
   },
 };
 

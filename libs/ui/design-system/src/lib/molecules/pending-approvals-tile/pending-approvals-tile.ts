@@ -1,5 +1,6 @@
 import { Component, input, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ButtonComponent } from '../../atoms/button/button.component';
 
 export interface PendingUser {
   id: string;
@@ -21,7 +22,7 @@ export interface PendingUser {
 @Component({
   selector: 'tai-pending-approvals-tile',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ButtonComponent],
   templateUrl: './pending-approvals-tile.html',
 })
 export class PendingApprovalsTileComponent {

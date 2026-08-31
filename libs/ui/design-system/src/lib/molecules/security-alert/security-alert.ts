@@ -1,8 +1,10 @@
 import { Component, input, output } from '@angular/core';
+import { ButtonComponent } from '../../atoms/button/button.component';
 
 @Component({
   selector: 'tai-security-alert',
   standalone: true,
+  imports: [ButtonComponent],
   template: `
     @if (visible()) {
       <div
@@ -16,15 +18,14 @@ import { Component, input, output } from '@angular/core';
         <span class="security-alert__icon" aria-hidden="true">&#x1f512;</span>
         <span class="security-alert__message">{{ message() }}</span>
         @if (dismissible()) {
-          <button
+          <tai-button
             type="button"
-            class="security-alert__dismiss"
-            aria-label="Dismiss alert"
-            (click)="dismissed.emit()"
-            data-testid="security-alert-dismiss"
+            variant="ghost"
+            ariaLabel="Dismiss alert"
+            (pressed)="dismissed.emit()"
           >
-            &times;
-          </button>
+            Dismiss
+          </tai-button>
         }
       </div>
     }
@@ -48,15 +49,6 @@ import { Component, input, output } from '@angular/core';
       background-color: #dbeafe;
       border: 1px solid #3b82f6;
       color: #1e40af;
-    }
-    .security-alert__dismiss {
-      margin-left: auto;
-      background: none;
-      border: none;
-      font-size: 1.25rem;
-      cursor: pointer;
-      color: inherit;
-      padding: 0 0.25rem;
     }
   `,
 })

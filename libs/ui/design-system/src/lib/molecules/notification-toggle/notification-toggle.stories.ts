@@ -44,15 +44,28 @@ export const NoUnread: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const button = canvas.getByRole('button', { name: 'Toggle notifications' });
+    const taiButton = canvasElement.querySelector('tai-button');
+    const taiIcon = canvasElement.querySelector('tai-icon');
 
+    await expect(taiButton).toBeInTheDocument();
+    await expect(taiIcon).toHaveAttribute('name', 'bell');
     await expect(button).toHaveAttribute('type', 'button');
     await expect(button).toHaveAttribute('aria-expanded', 'false');
     await expect(button).toHaveAttribute('aria-controls', 'notification-panel');
-    await expect(button.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
-    await expect(canvasElement.querySelector('tai-notification-toggle')).toHaveClass('right-6');
-    await expect(canvasElement.querySelector('tai-notification-toggle')).toHaveClass('bottom-6');
+    await expect(button.querySelector('svg')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+    await expect(
+      canvasElement.querySelector('tai-notification-toggle'),
+    ).toHaveClass('right-6');
+    await expect(
+      canvasElement.querySelector('tai-notification-toggle'),
+    ).toHaveClass('bottom-6');
     await expect(canvasElement.querySelector('.unread-badge')).toBeNull();
-    await expect(canvasElement.querySelector('.connection-indicator')).toBeNull();
+    await expect(
+      canvasElement.querySelector('.connection-indicator'),
+    ).toBeNull();
 
     toggled.mockClear();
     await userEvent.click(button);
@@ -65,11 +78,51 @@ export const TopLeft: Story = {
     placement: 'top-left',
   },
   play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
     const toggle = canvasElement.querySelector('tai-notification-toggle');
 
+    await expect(
+      canvas.getByRole('button', { name: 'Toggle notifications' }),
+    ).toBeVisible();
     await expect(toggle).toHaveClass('top-6');
     await expect(toggle).toHaveClass('left-6');
     await expect(toggle).not.toHaveClass('bottom-6');
+    await expect(toggle).not.toHaveClass('right-6');
+  },
+};
+
+export const TopRight: Story = {
+  args: {
+    placement: 'top-right',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const toggle = canvasElement.querySelector('tai-notification-toggle');
+
+    await expect(
+      canvas.getByRole('button', { name: 'Toggle notifications' }),
+    ).toBeVisible();
+    await expect(toggle).toHaveClass('top-6');
+    await expect(toggle).toHaveClass('right-6');
+    await expect(toggle).not.toHaveClass('bottom-6');
+    await expect(toggle).not.toHaveClass('left-6');
+  },
+};
+
+export const BottomLeft: Story = {
+  args: {
+    placement: 'bottom-left',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const toggle = canvasElement.querySelector('tai-notification-toggle');
+
+    await expect(
+      canvas.getByRole('button', { name: 'Toggle notifications' }),
+    ).toBeVisible();
+    await expect(toggle).toHaveClass('bottom-6');
+    await expect(toggle).toHaveClass('left-6');
+    await expect(toggle).not.toHaveClass('top-6');
     await expect(toggle).not.toHaveClass('right-6');
   },
 };
@@ -93,7 +146,9 @@ export const WithManyUnread: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.getByText('9+', { exact: true })).toHaveClass('unread-badge');
+    await expect(canvas.getByText('9+', { exact: true })).toHaveClass(
+      'unread-badge',
+    );
   },
 };
 
@@ -104,10 +159,9 @@ export const Open: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(canvas.getByRole('button', { name: 'Toggle notifications' })).toHaveAttribute(
-      'aria-expanded',
-      'true',
-    );
+    await expect(
+      canvas.getByRole('button', { name: 'Toggle notifications' }),
+    ).toHaveAttribute('aria-expanded', 'true');
   },
 };
 
@@ -122,7 +176,10 @@ export const Reconnecting: Story = {
     });
     const indicator = canvasElement.querySelector('.connection-indicator');
 
-    await expect(button).toHaveAttribute('aria-label', 'Toggle notifications, updates reconnecting');
+    await expect(button).toHaveAttribute(
+      'aria-label',
+      'Toggle notifications, updates reconnecting',
+    );
     await expect(indicator).not.toBeNull();
     await expect(indicator).toHaveClass('bg-amber-700');
     await expect(indicator).toHaveAttribute('aria-hidden', 'true');
@@ -140,7 +197,10 @@ export const Disconnected: Story = {
     });
     const indicator = canvasElement.querySelector('.connection-indicator');
 
-    await expect(button).toHaveAttribute('aria-label', 'Toggle notifications, updates offline');
+    await expect(button).toHaveAttribute(
+      'aria-label',
+      'Toggle notifications, updates offline',
+    );
     await expect(indicator).not.toBeNull();
     await expect(indicator).toHaveClass('bg-red-700');
     await expect(indicator).toHaveAttribute('aria-hidden', 'true');

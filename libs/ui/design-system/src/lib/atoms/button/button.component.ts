@@ -24,6 +24,7 @@ export class ButtonComponent {
   readonly ariaLabel = input<string>('');
   readonly ariaExpanded = input<boolean | null>(null);
   readonly ariaControls = input<string | null>(null);
+  readonly focusTarget = input<string | null>(null);
   readonly testId = input<string>('');
   readonly pressed = output<MouseEvent>();
 
