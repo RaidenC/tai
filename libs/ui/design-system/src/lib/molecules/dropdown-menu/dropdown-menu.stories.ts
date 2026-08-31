@@ -51,19 +51,21 @@ const renderWithSpies = (spies: DropdownEventSpies) =>
   (args: DropdownMenuStoryArgs) => ({
     props: { ...args, ...spies },
     template: `
-      <tai-dropdown-menu
-        [items]="items"
-        [triggerLabel]="triggerLabel"
-        [triggerIcon]="triggerIcon"
-        [ariaLabel]="ariaLabel"
-        [placement]="placement"
-        [mobileMode]="mobileMode"
-        [density]="density"
-        [testId]="testId"
-        (itemSelected)="itemSelected($event)"
-        (opened)="opened()"
-        (closed)="closed()">
-      </tai-dropdown-menu>
+      <div class="flex min-h-[28rem] w-full items-center justify-center p-8">
+        <tai-dropdown-menu
+          [items]="items"
+          [triggerLabel]="triggerLabel"
+          [triggerIcon]="triggerIcon"
+          [ariaLabel]="ariaLabel"
+          [placement]="placement"
+          [mobileMode]="mobileMode"
+          [density]="density"
+          [testId]="testId"
+          (itemSelected)="itemSelected($event)"
+          (opened)="opened()"
+          (closed)="closed()">
+        </tai-dropdown-menu>
+      </div>
     `,
   });
 
