@@ -318,6 +318,7 @@ export const EmptyAfterHydration: Story = {
   args: {
     notifications: [],
     isLoading: false,
+    hasHydrated: true,
     error: null,
   },
   decorators: [withPanelState()],
