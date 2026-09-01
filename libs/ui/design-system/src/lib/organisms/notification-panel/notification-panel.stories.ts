@@ -82,11 +82,19 @@ type NotificationEventSpies = {
   acknowledge: Mock<(notificationId: string) => void>;
 };
 
-const createNotificationEventSpies = (): NotificationEventSpies => ({
-  retry: fn<() => void>(),
-  markRead: fn<(notificationId: string) => void>(),
-  markAllRead: fn<() => void>(),
-  acknowledge: fn<(notificationId: string) => void>(),
+type NotificationPanelStoryArgs = Omit<
+  NotificationPanelComponent,
+  'retry' | 'markRead' | 'markAllRead' | 'acknowledge'
+> &
+  Partial<NotificationEventSpies>;
+
+const createNotificationEventSpies = (
+  existing: Partial<NotificationEventSpies> = {},
+): NotificationEventSpies => ({
+  retry: existing.retry ?? fn<() => void>(),
+  markRead: existing.markRead ?? fn<(notificationId: string) => void>(),
+  markAllRead: existing.markAllRead ?? fn<() => void>(),
+  acknowledge: existing.acknowledge ?? fn<(notificationId: string) => void>(),
 });
 
 const withPanelState = ({
@@ -112,7 +120,7 @@ const withPanelState = ({
     ],
   });
 
-const meta: Meta<NotificationPanelComponent> = {
+const meta: Meta<NotificationPanelStoryArgs> = {
   title: 'Organisms/NotificationPanel',
   component: NotificationPanelComponent,
   tags: ['autodocs'],
@@ -159,7 +167,7 @@ const meta: Meta<NotificationPanelComponent> = {
     },
   },
   render: (args) => ({
-    props: { ...args, ...createNotificationEventSpies() },
+    props: { ...args, ...createNotificationEventSpies(args) },
     imports: [CommonModule],
     template: `
       <tai-notification-panel
@@ -180,7 +188,7 @@ const meta: Meta<NotificationPanelComponent> = {
 };
 
 export default meta;
-type Story = StoryObj<NotificationPanelComponent>;
+type Story = StoryObj<NotificationPanelStoryArgs>;
 
 export const Default: Story = {
   args: {
@@ -312,6 +320,21 @@ export const Loading: Story = {
     error: null,
   },
   decorators: [withPanelState()],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dialog = await waitFor(() =>
+      canvas.getByRole('dialog', { name: 'Notifications' }),
+    );
+
+    await expect(dialog).toBeVisible();
+    await expect(
+      canvas.getByRole('textbox', { name: 'Search notifications' }),
+    ).toBeVisible();
+    await expect(canvas.queryByRole('alert')).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByRole('button', { name: 'Retry' }),
+    ).not.toBeInTheDocument();
+  },
 };
 
 export const EmptyAfterHydration: Story = {
@@ -322,7 +345,14 @@ export const EmptyAfterHydration: Story = {
     error: null,
   },
   decorators: [withPanelState()],
-  play: EmptyState.play,
+  play: async (context) => {
+    await EmptyState.play?.(context);
+
+    const canvas = within(context.canvasElement);
+    await expect(
+      canvas.queryByRole('status', { name: 'Connection status' }),
+    ).not.toBeInTheDocument();
+  },
 };
 
 export const FilterAndSearch: Story = {
@@ -366,8 +396,22 @@ export const ErrorWithRetry: Story = {
     notifications: [],
     isLoading: false,
     error: 'Unable to load recent notifications',
+    retry: fn<() => void>(),
   },
   decorators: [withPanelState()],
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const alert = canvas.getByRole('alert');
+    const retryButton = canvas.getByRole('button', { name: 'Retry' });
+
+    await expect(alert).toBeVisible();
+    await expect(alert).toHaveTextContent(
+      'Unable to load recent notifications',
+    );
+    await expect(retryButton).toBeVisible();
+    await userEvent.click(retryButton);
+    await expect(args.retry).toHaveBeenCalledTimes(1);
+  },
 };
 
 export const PanelClosed: Story = {
@@ -428,6 +472,14 @@ export const Connected: Story = {
     hasHydrated: true,
   },
   decorators: [withPanelState()],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const status = canvas.getByRole('status', { name: 'Connection status' });
+
+    await expect(status).toBeVisible();
+    await expect(status).toHaveTextContent('Notifications are live.');
+    await expect(canvas.getAllByRole('listitem')).toHaveLength(4);
+  },
 };
 
 export const Reconnecting: Story = {
@@ -438,6 +490,19 @@ export const Reconnecting: Story = {
     isLoading: true,
   },
   decorators: [withPanelState()],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const syncingCopy = canvas.getByText('Syncing notifications...');
+    const syncingStatus = syncingCopy.closest('[role="status"]');
+
+    await expect(syncingCopy).toBeVisible();
+    await expect(syncingStatus).not.toBeNull();
+    if (!syncingStatus) {
+      return;
+    }
+    await expect(syncingStatus).toHaveAttribute('aria-live', 'polite');
+    await expect(canvas.getByText('Login Anomaly Detected')).toBeVisible();
+  },
 };
 
 export const Disconnected: Story = {
@@ -445,6 +510,41 @@ export const Disconnected: Story = {
     notifications: mockNotifications,
     connectionState: 'disconnected',
     hasHydrated: true,
+    retry: fn<() => void>(),
   },
   decorators: [withPanelState()],
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const status = canvas.getByRole('status', { name: 'Connection status' });
+    const retryButton = canvas.getByRole('button', { name: 'Retry' });
+
+    await expect(status).toBeVisible();
+    await expect(status).toHaveTextContent(
+      'Notification updates are offline. Recent items may be stale.',
+    );
+    await expect(retryButton).toBeVisible();
+    await expect(retryButton).not.toBeDisabled();
+    await userEvent.click(retryButton);
+    await expect(args.retry).toHaveBeenCalledTimes(1);
+  },
+};
+
+export const ThrottledRetry: Story = {
+  args: {
+    notifications: mockNotifications,
+    connectionState: 'disconnected',
+    hasHydrated: true,
+    isRetryThrottled: true,
+    retry: fn<() => void>(),
+  },
+  decorators: [withPanelState()],
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const retryButton = canvas.getByRole('button', { name: 'Retry' });
+
+    await expect(retryButton).toHaveAttribute('aria-disabled', 'true');
+    await expect(canvas.getByText('Try again shortly.')).toBeVisible();
+    await userEvent.click(retryButton);
+    await expect(args.retry).not.toHaveBeenCalled();
+  },
 };
