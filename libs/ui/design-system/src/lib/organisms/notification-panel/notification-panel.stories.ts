@@ -4,7 +4,14 @@ import {
   applicationConfig,
   moduleMetadata,
 } from '@storybook/angular';
-import { expect, fn, type Mock, waitFor, within } from '@storybook/test';
+import {
+  expect,
+  fn,
+  type Mock,
+  userEvent,
+  waitFor,
+  within,
+} from '@storybook/test';
 import { provideRouter } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { NotificationPanelComponent } from './notification-panel.component';
@@ -225,6 +232,31 @@ export const FilteredByCritical: Story = {
     notifications: mockNotifications,
   },
   decorators: [withPanelState({ severity: 'critical' })],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const notificationItems = canvas.getAllByRole('listitem');
+
+    await expect(notificationItems).toHaveLength(3);
+    await expect(canvas.getByText('Login Anomaly Detected')).toBeVisible();
+    await expect(canvas.getByText('Security Alert')).toBeVisible();
+    await expect(canvas.getByText('Privilege Modified')).toBeVisible();
+    await expect(
+      canvas.queryByText('Rate Limit Warning'),
+    ).not.toBeInTheDocument();
+
+    await expect(
+      canvas.getByRole('button', { name: 'Show critical notifications only' }),
+    ).toHaveAttribute('aria-pressed', 'true');
+    await expect(
+      canvas.getByRole('button', { name: 'Show all notifications' }),
+    ).toHaveAttribute('aria-pressed', 'false');
+    await expect(
+      canvas.getByRole('button', { name: 'Show warning notifications only' }),
+    ).toHaveAttribute('aria-pressed', 'false');
+    await expect(
+      canvas.getByRole('button', { name: 'Show info notifications only' }),
+    ).toHaveAttribute('aria-pressed', 'false');
+  },
 };
 
 export const WithSearchFilter: Story = {
@@ -232,6 +264,22 @@ export const WithSearchFilter: Story = {
     notifications: mockNotifications,
   },
   decorators: [withPanelState({ search: 'permission' })],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const searchField = canvas.getByRole('textbox', {
+      name: 'Search notifications',
+    });
+
+    await expect(searchField).toHaveValue('permission');
+    await expect(canvas.getAllByRole('listitem')).toHaveLength(1);
+    await expect(canvas.getByText('Privilege Modified')).toBeVisible();
+    await expect(
+      canvas.queryByText('Login Anomaly Detected'),
+    ).not.toBeInTheDocument();
+    await expect(
+      canvas.queryByText('Rate Limit Warning'),
+    ).not.toBeInTheDocument();
+  },
 };
 
 export const EmptyState: Story = {
@@ -239,6 +287,21 @@ export const EmptyState: Story = {
     notifications: [],
   },
   decorators: [withPanelState()],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const emptyCopy = canvas.getByText(
+      'All caught up! No recent notifications',
+    );
+    const emptyState = emptyCopy.closest('[role="status"]');
+
+    await expect(emptyCopy).toBeVisible();
+    await expect(emptyState).not.toBeNull();
+    if (!emptyState) {
+      return;
+    }
+    await expect(emptyState).toHaveAttribute('aria-live', 'polite');
+    await expect(canvas.queryByRole('list')).not.toBeInTheDocument();
+  },
 };
 
 export const Loading: Story = {
@@ -257,6 +320,43 @@ export const EmptyAfterHydration: Story = {
     error: null,
   },
   decorators: [withPanelState()],
+  play: EmptyState.play,
+};
+
+export const FilterAndSearch: Story = {
+  args: {
+    notifications: mockNotifications,
+  },
+  decorators: [withPanelState()],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const dialog = await waitFor(() =>
+      canvas.getByRole('dialog', { name: 'Notifications' }),
+    );
+    const criticalFilter = canvas.getByRole('button', {
+      name: 'Show critical notifications only',
+    });
+    const searchField = canvas.getByRole('textbox', {
+      name: 'Search notifications',
+    });
+
+    await userEvent.click(criticalFilter);
+    await expect(criticalFilter).toHaveAttribute('aria-pressed', 'true');
+    await expect(canvas.getAllByRole('listitem')).toHaveLength(3);
+
+    await userEvent.type(searchField, 'permission');
+    await expect(searchField).toHaveValue('permission');
+    await expect(canvas.getAllByRole('listitem')).toHaveLength(1);
+    await expect(canvas.getByText('Privilege Modified')).toBeVisible();
+    await expect(
+      canvas.queryByText('Login Anomaly Detected'),
+    ).not.toBeInTheDocument();
+
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(searchField).toHaveValue(''));
+    await expect(dialog).toBeVisible();
+    await expect(canvas.getAllByRole('listitem')).toHaveLength(3);
+  },
 };
 
 export const ErrorWithRetry: Story = {
