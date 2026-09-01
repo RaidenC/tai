@@ -4,6 +4,7 @@ import {
   applicationConfig,
   moduleMetadata,
 } from '@storybook/angular';
+import { signal } from '@angular/core';
 import {
   expect,
   fn,
@@ -546,6 +547,10 @@ export const LifecycleStates: Story = {
       canvas.getAllByRole('listitem');
 
     await expect(unreadItem).toHaveAccessibleName('Unread notification');
+    await expect(unreadItem.querySelector('.unread-marker')).toBeVisible();
+    await expect(
+      within(unreadItem).getByText('Acknowledgement required'),
+    ).toBeVisible();
     await expect(
       within(unreadItem).getByRole('button', {
         name: 'Mark notification as read',
@@ -652,6 +657,35 @@ export const KeyboardNavigation: Story = {
   },
 };
 
+export const SearchEscapeBehavior: Story = {
+  args: {
+    notifications: mockNotifications,
+  },
+  decorators: [withPanelState({ search: 'permission' })],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const searchField = canvas.getByRole('textbox', {
+      name: 'Search notifications',
+    });
+
+    await waitFor(() => expect(searchField).toHaveFocus());
+    await expect(searchField).toHaveValue('permission');
+
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(searchField).toHaveValue(''));
+    await expect(
+      canvas.getByRole('dialog', { name: 'Notifications' }),
+    ).toBeVisible();
+
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(
+        canvas.queryByRole('dialog', { name: 'Notifications' }),
+      ).not.toBeInTheDocument(),
+    );
+  },
+};
+
 export const FocusAfterLastNotificationRemoved: Story = {
   args: {
     notifications: [mockNotifications[0]],
@@ -659,6 +693,7 @@ export const FocusAfterLastNotificationRemoved: Story = {
   },
   decorators: [withPanelState()],
   render: (args) => {
+    const notificationsState = signal(args.notifications);
     const eventSpies = createNotificationEventSpies(args);
     const props = { ...args, ...eventSpies };
     const markAllRead = props.markAllRead;
@@ -666,7 +701,7 @@ export const FocusAfterLastNotificationRemoved: Story = {
 
     markAllReadWithMutation.mockImplementation(() => {
       markAllRead();
-      props.notifications = [];
+      notificationsState.set([]);
     });
     props.markAllRead = markAllReadWithMutation;
 
@@ -675,7 +710,7 @@ export const FocusAfterLastNotificationRemoved: Story = {
       imports: [CommonModule],
       template: `
         <tai-notification-panel
-          [notifications]="notifications"
+          [notifications]="notificationsState()"
           [isLoading]="isLoading"
           [hasHydrated]="hasHydrated"
           [error]="error"
