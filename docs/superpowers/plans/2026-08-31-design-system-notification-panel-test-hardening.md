@@ -13,6 +13,7 @@
 ### Task 1: Add NotificationPanelService unit coverage
 
 **Files:**
+
 - Create: `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.service.spec.ts`
 - Test: `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.service.spec.ts`
 
@@ -87,6 +88,7 @@ git commit -m "test: cover notification panel service state"
 ### Task 2: Wire Storybook output spies and strengthen the open-panel story
 
 **Files:**
+
 - Modify: `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.stories.ts:1-155`
 
 - [ ] **Step 1: Add Storybook test imports and output spy types**
@@ -139,6 +141,7 @@ git commit -m "test: wire notification panel story outputs"
 ### Task 3: Add Storybook assertions for filtering, search, and empty states
 
 **Files:**
+
 - Modify: `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.stories.ts:160-213`
 
 - [ ] **Step 1: Strengthen `FilteredByCritical`**
@@ -167,6 +170,7 @@ git commit -m "test: cover notification panel filtering and search"
 ### Task 4: Add Storybook assertions for loading, connection, error, and retry states
 
 **Files:**
+
 - Modify: `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.stories.ts:181-206,259-285`
 
 - [ ] **Step 1: Strengthen `Loading` and `Reconnecting`**
@@ -195,6 +199,7 @@ git commit -m "test: cover notification panel connection states"
 ### Task 5: Add Storybook lifecycle and output interaction coverage
 
 **Files:**
+
 - Modify: `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.stories.ts:215-257`
 
 - [ ] **Step 1: Strengthen `LifecycleStates` with semantic lifecycle assertions**
@@ -223,6 +228,7 @@ git commit -m "test: cover notification panel lifecycle interactions"
 ### Task 6: Reduce the component spec to timer-only ownership
 
 **Files:**
+
 - Modify: `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.spec.ts`
 - Review: `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.component.ts`
 
@@ -254,6 +260,7 @@ git commit -m "test: move notification panel behavior to stories"
 ### Task 7: Run full verification and audit the final ownership boundary
 
 **Files:**
+
 - Review: `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.stories.ts`
 - Review: `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.spec.ts`
 - Review: `libs/ui/design-system/src/lib/organisms/notification-panel/notification-panel.service.spec.ts`
