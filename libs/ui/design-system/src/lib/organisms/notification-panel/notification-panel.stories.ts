@@ -98,6 +98,36 @@ const createNotificationEventSpies = (
   acknowledge: existing.acknowledge ?? fn<(notificationId: string) => void>(),
 });
 
+const defaultEventSpies = createNotificationEventSpies();
+const errorWithRetrySpies = createNotificationEventSpies();
+const recoveryNoticeSpies = createNotificationEventSpies();
+const recoveryNoticeThrottledSpies = createNotificationEventSpies();
+const lifecycleStateSpies = createNotificationEventSpies();
+const focusAfterRemovalSpies = createNotificationEventSpies();
+const disconnectedSpies = createNotificationEventSpies();
+const throttledRetrySpies = createNotificationEventSpies();
+
+const renderWithSpies =
+  (spies: NotificationEventSpies) => (args: NotificationPanelStoryArgs) => ({
+    props: { ...args, ...spies },
+    imports: [CommonModule],
+    template: `
+    <tai-notification-panel
+      [notifications]="notifications"
+      [isLoading]="isLoading"
+      [hasHydrated]="hasHydrated"
+      [error]="error"
+      [isRetryThrottled]="isRetryThrottled"
+      [connectionState]="connectionState"
+      [recoveryNotice]="recoveryNotice"
+      (retry)="retry()"
+      (markRead)="markRead($event)"
+      (markAllRead)="markAllRead()"
+      (acknowledge)="acknowledge($event)">
+    </tai-notification-panel>
+  `,
+  });
+
 const withPanelState = ({
   open = true,
   severity = 'all',
@@ -136,6 +166,15 @@ const meta: Meta<NotificationPanelStoryArgs> = {
   parameters: {
     layout: 'fullscreen',
   },
+  args: {
+    notifications: mockNotifications,
+    isLoading: false,
+    hasHydrated: false,
+    error: null,
+    isRetryThrottled: false,
+    connectionState: 'connected',
+    recoveryNotice: null,
+  },
   argTypes: {
     notifications: {
       control: 'object',
@@ -167,25 +206,7 @@ const meta: Meta<NotificationPanelStoryArgs> = {
       description: 'Recovery notice message to display',
     },
   },
-  render: (args) => ({
-    props: { ...args, ...createNotificationEventSpies(args) },
-    imports: [CommonModule],
-    template: `
-      <tai-notification-panel
-        [notifications]="notifications"
-        [isLoading]="isLoading"
-        [hasHydrated]="hasHydrated"
-        [error]="error"
-        [isRetryThrottled]="isRetryThrottled"
-        [connectionState]="connectionState"
-        [recoveryNotice]="recoveryNotice"
-        (retry)="retry()"
-        (markRead)="markRead($event)"
-        (markAllRead)="markAllRead()"
-        (acknowledge)="acknowledge($event)">
-      </tai-notification-panel>
-    `,
-  }),
+  render: renderWithSpies(defaultEventSpies),
 };
 
 export default meta;
@@ -399,10 +420,11 @@ export const ErrorWithRetry: Story = {
     notifications: [],
     isLoading: false,
     error: 'Unable to load recent notifications',
-    retry: fn<() => void>(),
   },
   decorators: [withPanelState()],
-  play: async ({ canvasElement, args }) => {
+  render: renderWithSpies(errorWithRetrySpies),
+  play: async ({ canvasElement }) => {
+    errorWithRetrySpies.retry.mockClear();
     const canvas = within(canvasElement);
     const alert = canvas.getByRole('alert');
     const retryButton = canvas.getByRole('button', { name: 'Retry' });
@@ -413,7 +435,7 @@ export const ErrorWithRetry: Story = {
     );
     await expect(retryButton).toBeVisible();
     await userEvent.click(retryButton);
-    await expect(args.retry).toHaveBeenCalledTimes(1);
+    await expect(errorWithRetrySpies.retry).toHaveBeenCalledTimes(1);
   },
 };
 
@@ -422,10 +444,11 @@ export const RecoveryNotice: Story = {
     notifications: mockNotifications,
     hasHydrated: true,
     recoveryNotice: 'Notification updates have been restored.',
-    retry: fn<() => void>(),
   },
   decorators: [withPanelState()],
-  play: async ({ canvasElement, args }) => {
+  render: renderWithSpies(recoveryNoticeSpies),
+  play: async ({ canvasElement }) => {
+    recoveryNoticeSpies.retry.mockClear();
     const canvas = within(canvasElement);
     const status = canvas.getByRole('status');
     const retryButton = canvas.getByRole('button', { name: 'Retry' });
@@ -438,7 +461,7 @@ export const RecoveryNotice: Story = {
     await expect(retryButton).toBeVisible();
     await expect(retryButton).not.toHaveAttribute('aria-disabled', 'true');
     await userEvent.click(retryButton);
-    await expect(args.retry).toHaveBeenCalledTimes(1);
+    await expect(recoveryNoticeSpies.retry).toHaveBeenCalledTimes(1);
   },
 };
 
@@ -448,10 +471,11 @@ export const RecoveryNoticeThrottled: Story = {
     hasHydrated: true,
     recoveryNotice: 'Notification updates have been restored.',
     isRetryThrottled: true,
-    retry: fn<() => void>(),
   },
   decorators: [withPanelState()],
-  play: async ({ canvasElement, args }) => {
+  render: renderWithSpies(recoveryNoticeThrottledSpies),
+  play: async ({ canvasElement }) => {
+    recoveryNoticeThrottledSpies.retry.mockClear();
     const canvas = within(canvasElement);
     const status = canvas.getByRole('status');
     const retryButton = canvas.getByRole('button', { name: 'Retry' });
@@ -462,7 +486,7 @@ export const RecoveryNoticeThrottled: Story = {
     await expect(retryButton).toHaveAttribute('aria-disabled', 'true');
     await expect(canvas.getByText('Try again shortly.')).toBeVisible();
     await userEvent.click(retryButton);
-    await expect(args.retry).not.toHaveBeenCalled();
+    await expect(recoveryNoticeThrottledSpies.retry).not.toHaveBeenCalled();
   },
 };
 
@@ -536,12 +560,13 @@ export const LifecycleStates: Story = {
         acknowledgedAt: null,
       },
     ],
-    markRead: fn<(notificationId: string) => void>(),
-    markAllRead: fn<() => void>(),
-    acknowledge: fn<(notificationId: string) => void>(),
   },
   decorators: [withPanelState()],
-  play: async ({ canvasElement, args }) => {
+  render: renderWithSpies(lifecycleStateSpies),
+  play: async ({ canvasElement }) => {
+    lifecycleStateSpies.markRead.mockClear();
+    lifecycleStateSpies.acknowledge.mockClear();
+    lifecycleStateSpies.markAllRead.mockClear();
     const canvas = within(canvasElement);
     const [acknowledgedItem, unreadItem, readWarningItem] =
       canvas.getAllByRole('listitem');
@@ -561,7 +586,9 @@ export const LifecycleStates: Story = {
         name: 'Mark notification as read',
       }),
     );
-    await expect(args.markRead).toHaveBeenCalledWith('evt-unread');
+    await expect(lifecycleStateSpies.markRead).toHaveBeenCalledWith(
+      'evt-unread',
+    );
 
     await expect(acknowledgedItem).toHaveAccessibleName('Read notification');
     await expect(
@@ -599,14 +626,16 @@ export const LifecycleStates: Story = {
         name: 'Acknowledge critical notification',
       }),
     );
-    await expect(args.acknowledge).toHaveBeenCalledWith('evt-unread');
+    await expect(lifecycleStateSpies.acknowledge).toHaveBeenCalledWith(
+      'evt-unread',
+    );
 
     const markAllReadButton = canvas.getByRole('button', {
       name: 'Mark all notifications as read',
     });
     await expect(markAllReadButton).toBeEnabled();
     await userEvent.click(markAllReadButton);
-    await expect(args.markAllRead).toHaveBeenCalledTimes(1);
+    await expect(lifecycleStateSpies.markAllRead).toHaveBeenCalledTimes(1);
   },
 };
 
@@ -689,13 +718,11 @@ export const SearchEscapeBehavior: Story = {
 export const FocusAfterLastNotificationRemoved: Story = {
   args: {
     notifications: [mockNotifications[0]],
-    markAllRead: fn<() => void>(),
   },
   decorators: [withPanelState()],
   render: (args) => {
     const notificationsState = signal(args.notifications);
-    const eventSpies = createNotificationEventSpies(args);
-    const props = { ...args, ...eventSpies, notificationsState };
+    const props = { ...args, ...focusAfterRemovalSpies, notificationsState };
     const markAllRead = props.markAllRead;
     const markAllReadWithMutation = fn<() => void>();
 
@@ -725,7 +752,7 @@ export const FocusAfterLastNotificationRemoved: Story = {
       `,
     };
   },
-  play: async ({ canvasElement, args }) => {
+  play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const markAllReadButton = canvas.getByRole('button', {
       name: 'Mark all notifications as read',
@@ -734,8 +761,10 @@ export const FocusAfterLastNotificationRemoved: Story = {
       name: 'Close notifications panel',
     });
 
+    focusAfterRemovalSpies.markAllRead.mockClear();
+
     await userEvent.click(markAllReadButton);
-    await expect(args.markAllRead).toHaveBeenCalledTimes(1);
+    await expect(focusAfterRemovalSpies.markAllRead).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(closeButton).toHaveFocus());
     await expect(
       canvas.getByText('All caught up! No recent notifications'),
@@ -788,10 +817,11 @@ export const Disconnected: Story = {
     notifications: mockNotifications,
     connectionState: 'disconnected',
     hasHydrated: true,
-    retry: fn<() => void>(),
   },
   decorators: [withPanelState()],
-  play: async ({ canvasElement, args }) => {
+  render: renderWithSpies(disconnectedSpies),
+  play: async ({ canvasElement }) => {
+    disconnectedSpies.retry.mockClear();
     const canvas = within(canvasElement);
     const status = canvas.getByRole('status', { name: 'Connection status' });
     const retryButton = canvas.getByRole('button', { name: 'Retry' });
@@ -803,7 +833,7 @@ export const Disconnected: Story = {
     await expect(retryButton).toBeVisible();
     await expect(retryButton).not.toBeDisabled();
     await userEvent.click(retryButton);
-    await expect(args.retry).toHaveBeenCalledTimes(1);
+    await expect(disconnectedSpies.retry).toHaveBeenCalledTimes(1);
   },
 };
 
@@ -813,16 +843,17 @@ export const ThrottledRetry: Story = {
     connectionState: 'disconnected',
     hasHydrated: true,
     isRetryThrottled: true,
-    retry: fn<() => void>(),
   },
   decorators: [withPanelState()],
-  play: async ({ canvasElement, args }) => {
+  render: renderWithSpies(throttledRetrySpies),
+  play: async ({ canvasElement }) => {
+    throttledRetrySpies.retry.mockClear();
     const canvas = within(canvasElement);
     const retryButton = canvas.getByRole('button', { name: 'Retry' });
 
     await expect(retryButton).toHaveAttribute('aria-disabled', 'true');
     await expect(canvas.getByText('Try again shortly.')).toBeVisible();
     await userEvent.click(retryButton);
-    await expect(args.retry).not.toHaveBeenCalled();
+    await expect(throttledRetrySpies.retry).not.toHaveBeenCalled();
   },
 };
