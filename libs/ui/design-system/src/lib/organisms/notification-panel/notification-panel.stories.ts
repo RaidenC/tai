@@ -695,7 +695,7 @@ export const FocusAfterLastNotificationRemoved: Story = {
   render: (args) => {
     const notificationsState = signal(args.notifications);
     const eventSpies = createNotificationEventSpies(args);
-    const props = { ...args, ...eventSpies };
+    const props = { ...args, ...eventSpies, notificationsState };
     const markAllRead = props.markAllRead;
     const markAllReadWithMutation = fn<() => void>();
 
