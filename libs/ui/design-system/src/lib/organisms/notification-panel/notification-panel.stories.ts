@@ -472,6 +472,29 @@ export const PanelClosed: Story = {
   decorators: [withPanelState({ open: false })],
 };
 
+export const ClosePanel: Story = {
+  args: {
+    notifications: mockNotifications,
+  },
+  decorators: [withPanelState()],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const closeButton = canvas.getByRole('button', {
+      name: 'Close notifications panel',
+    });
+
+    await expect(
+      canvas.getByRole('dialog', { name: 'Notifications' }),
+    ).toBeVisible();
+    await userEvent.click(closeButton);
+    await waitFor(() =>
+      expect(
+        canvas.queryByRole('dialog', { name: 'Notifications' }),
+      ).not.toBeInTheDocument(),
+    );
+  },
+};
+
 export const LifecycleStates: Story = {
   args: {
     notifications: [
@@ -512,8 +535,177 @@ export const LifecycleStates: Story = {
         acknowledgedAt: null,
       },
     ],
+    markRead: fn<(notificationId: string) => void>(),
+    markAllRead: fn<() => void>(),
+    acknowledge: fn<(notificationId: string) => void>(),
   },
   decorators: [withPanelState()],
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const [acknowledgedItem, unreadItem, readWarningItem] =
+      canvas.getAllByRole('listitem');
+
+    await expect(unreadItem).toHaveAccessibleName('Unread notification');
+    await expect(
+      within(unreadItem).getByRole('button', {
+        name: 'Mark notification as read',
+      }),
+    ).toBeVisible();
+    await userEvent.click(
+      within(unreadItem).getByRole('button', {
+        name: 'Mark notification as read',
+      }),
+    );
+    await expect(args.markRead).toHaveBeenCalledWith('evt-unread');
+
+    await expect(acknowledgedItem).toHaveAccessibleName('Read notification');
+    await expect(
+      within(acknowledgedItem).queryByRole('button', {
+        name: 'Mark notification as read',
+      }),
+    ).not.toBeInTheDocument();
+    await expect(
+      within(acknowledgedItem).getByLabelText('Acknowledged notification'),
+    ).toBeVisible();
+    await expect(
+      within(acknowledgedItem).queryByRole('button', {
+        name: 'Acknowledge critical notification',
+      }),
+    ).not.toBeInTheDocument();
+
+    await expect(
+      within(readWarningItem).queryByRole('button', {
+        name: 'Mark notification as read',
+      }),
+    ).not.toBeInTheDocument();
+    await expect(
+      within(readWarningItem).queryByRole('button', {
+        name: 'Acknowledge critical notification',
+      }),
+    ).not.toBeInTheDocument();
+
+    await expect(
+      within(unreadItem).getByRole('button', {
+        name: 'Acknowledge critical notification',
+      }),
+    ).toBeVisible();
+    await userEvent.click(
+      within(unreadItem).getByRole('button', {
+        name: 'Acknowledge critical notification',
+      }),
+    );
+    await expect(args.acknowledge).toHaveBeenCalledWith('evt-unread');
+
+    const markAllReadButton = canvas.getByRole('button', {
+      name: 'Mark all notifications as read',
+    });
+    await expect(markAllReadButton).toBeEnabled();
+    await userEvent.click(markAllReadButton);
+    await expect(args.markAllRead).toHaveBeenCalledTimes(1);
+  },
+};
+
+export const AllNotificationsRead: Story = {
+  args: {
+    notifications: mockNotifications.map((notification) => ({
+      ...notification,
+      readAt: '2026-05-07T18:00:00.000Z',
+    })),
+  },
+  decorators: [withPanelState()],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(
+      canvas.getByRole('button', { name: 'Mark all notifications as read' }),
+    ).toBeDisabled();
+  },
+};
+
+export const KeyboardNavigation: Story = {
+  args: {
+    notifications: mockNotifications,
+  },
+  decorators: [withPanelState()],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const items = canvas.getAllByRole('listitem');
+
+    await userEvent.click(items[0]);
+    await expect(items[0]).toHaveFocus();
+
+    await userEvent.keyboard('{ArrowDown}');
+    await waitFor(() => expect(items[1]).toHaveFocus());
+    await expect(items[0]).toHaveAttribute('tabindex', '-1');
+    await expect(items[1]).toHaveAttribute('tabindex', '0');
+
+    await userEvent.keyboard('{ArrowUp}');
+    await waitFor(() => expect(items[0]).toHaveFocus());
+
+    await userEvent.keyboard('{End}');
+    await waitFor(() => expect(items[3]).toHaveFocus());
+    await expect(items[3]).toHaveAttribute('tabindex', '0');
+
+    await userEvent.keyboard('{Home}');
+    await waitFor(() => expect(items[0]).toHaveFocus());
+    await expect(items[0]).toHaveAttribute('tabindex', '0');
+  },
+};
+
+export const FocusAfterLastNotificationRemoved: Story = {
+  args: {
+    notifications: [mockNotifications[0]],
+    markAllRead: fn<() => void>(),
+  },
+  decorators: [withPanelState()],
+  render: (args) => {
+    const eventSpies = createNotificationEventSpies(args);
+    const props = { ...args, ...eventSpies };
+    const markAllRead = props.markAllRead;
+    const markAllReadWithMutation = fn<() => void>();
+
+    markAllReadWithMutation.mockImplementation(() => {
+      markAllRead();
+      props.notifications = [];
+    });
+    props.markAllRead = markAllReadWithMutation;
+
+    return {
+      props,
+      imports: [CommonModule],
+      template: `
+        <tai-notification-panel
+          [notifications]="notifications"
+          [isLoading]="isLoading"
+          [hasHydrated]="hasHydrated"
+          [error]="error"
+          [isRetryThrottled]="isRetryThrottled"
+          [connectionState]="connectionState"
+          [recoveryNotice]="recoveryNotice"
+          (retry)="retry()"
+          (markRead)="markRead($event)"
+          (markAllRead)="markAllRead()"
+          (acknowledge)="acknowledge($event)">
+        </tai-notification-panel>
+      `,
+    };
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const markAllReadButton = canvas.getByRole('button', {
+      name: 'Mark all notifications as read',
+    });
+    const closeButton = canvas.getByRole('button', {
+      name: 'Close notifications panel',
+    });
+
+    await userEvent.click(markAllReadButton);
+    await expect(args.markAllRead).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(closeButton).toHaveFocus());
+    await expect(
+      canvas.getByText('All caught up! No recent notifications'),
+    ).toBeVisible();
+  },
 };
 
 export const Connected: Story = {
