@@ -4,14 +4,7 @@ import {
   applicationConfig,
   moduleMetadata,
 } from '@storybook/angular';
-import {
-  expect,
-  fn,
-  type Mock,
-  userEvent,
-  waitFor,
-  within,
-} from '@storybook/test';
+import { expect, fn, type Mock, waitFor, within } from '@storybook/test';
 import { provideRouter } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { NotificationPanelComponent } from './notification-panel.component';
@@ -224,10 +217,6 @@ export const PanelOpen: Story = {
       canvas.getByRole('button', { name: 'Show info notifications only' }),
     ).toBeVisible();
     await waitFor(() => expect(searchField).toHaveFocus());
-
-    await userEvent.click(
-      canvas.getByRole('button', { name: 'Show all notifications' }),
-    );
   },
 };
 
