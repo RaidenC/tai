@@ -276,6 +276,7 @@ export const WithSearchFilter: Story = {
     await expect(
       canvas.queryByText('Login Anomaly Detected'),
     ).not.toBeInTheDocument();
+    await expect(canvas.queryByText('Security Alert')).not.toBeInTheDocument();
     await expect(
       canvas.queryByText('Rate Limit Warning'),
     ).not.toBeInTheDocument();
