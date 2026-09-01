@@ -1,4 +1,17 @@
-import { type Meta, type StoryObj, applicationConfig, moduleMetadata } from '@storybook/angular';
+import {
+  type Meta,
+  type StoryObj,
+  applicationConfig,
+  moduleMetadata,
+} from '@storybook/angular';
+import {
+  expect,
+  fn,
+  type Mock,
+  userEvent,
+  waitFor,
+  within,
+} from '@storybook/test';
 import { provideRouter } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { NotificationPanelComponent } from './notification-panel.component';
@@ -53,7 +66,7 @@ const mockNotifications: NotificationPanelItem[] = [
     userId: 'user-4',
     readAt: null,
     acknowledgedAt: null,
-  }
+  },
 ];
 
 interface StoryPanelState {
@@ -62,7 +75,25 @@ interface StoryPanelState {
   search?: string;
 }
 
-const withPanelState = ({ open = true, severity = 'all', search = '' }: StoryPanelState = {}) =>
+type NotificationEventSpies = {
+  retry: Mock<() => void>;
+  markRead: Mock<(notificationId: string) => void>;
+  markAllRead: Mock<() => void>;
+  acknowledge: Mock<(notificationId: string) => void>;
+};
+
+const createNotificationEventSpies = (): NotificationEventSpies => ({
+  retry: fn<() => void>(),
+  markRead: fn<(notificationId: string) => void>(),
+  markAllRead: fn<() => void>(),
+  acknowledge: fn<(notificationId: string) => void>(),
+});
+
+const withPanelState = ({
+  open = true,
+  severity = 'all',
+  search = '',
+}: StoryPanelState = {}) =>
   moduleMetadata({
     providers: [
       {
@@ -99,38 +130,52 @@ const meta: Meta<NotificationPanelComponent> = {
   argTypes: {
     notifications: {
       control: 'object',
-      description: 'Array of notifications to display'
+      description: 'Array of notifications to display',
     },
     isLoading: {
       control: 'boolean',
-      description: 'Whether notifications are loading'
+      description: 'Whether notifications are loading',
     },
     hasHydrated: {
       control: 'boolean',
-      description: 'Whether initial hydration has completed'
+      description: 'Whether initial hydration has completed',
     },
     error: {
       control: 'text',
-      description: 'Error message to display'
+      description: 'Error message to display',
     },
     isRetryThrottled: {
       control: 'boolean',
-      description: 'Whether retry is throttled'
+      description: 'Whether retry is throttled',
     },
     connectionState: {
       control: 'select',
       options: ['connected', 'reconnecting', 'disconnected'],
-      description: 'Connection state for banner display'
+      description: 'Connection state for banner display',
     },
     recoveryNotice: {
       control: 'text',
-      description: 'Recovery notice message to display'
-    }
+      description: 'Recovery notice message to display',
+    },
   },
   render: (args) => ({
-    props: args,
+    props: { ...args, ...createNotificationEventSpies() },
     imports: [CommonModule],
-    template: '<tai-notification-panel [notifications]="notifications" [isLoading]="isLoading" [hasHydrated]="hasHydrated" [error]="error" [isRetryThrottled]="isRetryThrottled" [connectionState]="connectionState" [recoveryNotice]="recoveryNotice"></tai-notification-panel>',
+    template: `
+      <tai-notification-panel
+        [notifications]="notifications"
+        [isLoading]="isLoading"
+        [hasHydrated]="hasHydrated"
+        [error]="error"
+        [isRetryThrottled]="isRetryThrottled"
+        [connectionState]="connectionState"
+        [recoveryNotice]="recoveryNotice"
+        (retry)="retry()"
+        (markRead)="markRead($event)"
+        (markAllRead)="markAllRead()"
+        (acknowledge)="acknowledge($event)">
+      </tai-notification-panel>
+    `,
   }),
 };
 
@@ -139,41 +184,70 @@ type Story = StoryObj<NotificationPanelComponent>;
 
 export const Default: Story = {
   args: {
-    notifications: mockNotifications
+    notifications: mockNotifications,
   },
   decorators: [withPanelState()],
 };
 
 export const PanelOpen: Story = {
   args: {
-    notifications: mockNotifications
+    notifications: mockNotifications,
   },
   decorators: [withPanelState()],
   play: async ({ canvasElement }) => {
-    const panel = canvasElement.querySelector('.notification-panel');
-    if (panel) {
-      console.log('Panel is visible');
-    }
+    const canvas = within(canvasElement);
+    const dialog = await waitFor(() =>
+      canvas.getByRole('dialog', { name: 'Notifications' }),
+    );
+    const heading = canvas.getByRole('heading', { name: 'Notifications' });
+    const searchField = canvas.getByRole('textbox', {
+      name: 'Search notifications',
+    });
+    const severityFilterGroup = canvas.getByRole('group', {
+      name: 'Filter notifications by severity',
+    });
+
+    await expect(dialog).toBeVisible();
+    await expect(heading).toBeVisible();
+    await expect(searchField).toBeVisible();
+    await expect(severityFilterGroup).toBeVisible();
+    await expect(
+      canvas.getByRole('button', { name: 'Show all notifications' }),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole('button', { name: 'Show critical notifications only' }),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole('button', { name: 'Show warning notifications only' }),
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole('button', { name: 'Show info notifications only' }),
+    ).toBeVisible();
+    await waitFor(() => expect(searchField).toHaveFocus());
+
+    await userEvent.click(
+      canvas.getByRole('button', { name: 'Show all notifications' }),
+    );
   },
 };
 
 export const FilteredByCritical: Story = {
   args: {
-    notifications: mockNotifications
+    notifications: mockNotifications,
   },
   decorators: [withPanelState({ severity: 'critical' })],
 };
 
 export const WithSearchFilter: Story = {
   args: {
-    notifications: mockNotifications
+    notifications: mockNotifications,
   },
   decorators: [withPanelState({ search: 'permission' })],
 };
 
 export const EmptyState: Story = {
   args: {
-    notifications: []
+    notifications: [],
   },
   decorators: [withPanelState()],
 };
@@ -207,7 +281,7 @@ export const ErrorWithRetry: Story = {
 
 export const PanelClosed: Story = {
   args: {
-    notifications: mockNotifications
+    notifications: mockNotifications,
   },
   decorators: [withPanelState({ open: false })],
 };
