@@ -1,9 +1,6 @@
-import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
-import { ReactiveFormsModule } from '@angular/forms';
-import { userEvent, within, expect, waitFor } from '@storybook/test';
+import { Meta, StoryObj } from '@storybook/angular';
+import { expect, fn, type Mock, userEvent, within } from '@storybook/test';
 import { OtpVerificationFormComponent } from './otp-verification-form';
-import { SecureInputComponent } from '../../atoms/secure-input/secure-input';
-import { CommonModule } from '@angular/common';
 
 /**
  * Storybook Configuration: OtpVerificationFormComponent
@@ -12,53 +9,105 @@ import { CommonModule } from '@angular/common';
  * strictly enforces the 6-digit numeric pattern required for
  * identity activation.
  */
-const meta: Meta<OtpVerificationFormComponent> = {
+type OtpStoryArgs = {
+  verified: Mock<(code: string) => void>;
+};
+
+const verifiedSpy = fn<(code: string) => void>();
+
+const renderWithVerifiedSpy = (verified: OtpStoryArgs['verified']) => ({
+  props: { verified },
+  template: `
+    <tai-otp-verification-form (verified)="verified($event)"></tai-otp-verification-form>
+  `,
+});
+
+const meta: Meta<OtpStoryArgs> = {
   title: 'Organisms/OtpVerificationForm',
   component: OtpVerificationFormComponent,
-  decorators: [
-    moduleMetadata({
-      imports: [CommonModule, ReactiveFormsModule, SecureInputComponent],
-    }),
-  ],
+  args: {
+    verified: verifiedSpy,
+  },
   tags: ['autodocs'],
+  render: () => renderWithVerifiedSpy(verifiedSpy),
 };
 
 export default meta;
-type Story = StoryObj<OtpVerificationFormComponent>;
+type Story = StoryObj<OtpStoryArgs>;
 
-export const Default: Story = {};
-
-/**
- * OTP Verification Invariant Audit:
- * This test verifies that the verification path is only enabled
- * when a complete 6-digit numeric code is provided.
- */
-export const VerificationAudit: Story = {
+export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const codeInput = canvas.getByLabelText(/Verification Code/i);
-    const verifyBtn = canvas.getByRole('button', { name: /Verify Code/i });
-
-    // 1. Audit Locked Initial State
-    await expect(verifyBtn).toBeDisabled();
-
-    // 2. Audit Partial Entry (Still Locked)
-    await userEvent.type(codeInput, '12345', { delay: 20 });
-    await userEvent.tab();
-    await waitFor(() => {
-      expect(
-        canvas.getByText(/Enter the 6-digit code provided/i),
-      ).toBeInTheDocument();
+    const codeInput = canvas.getByRole('textbox', {
+      name: 'Verification Code',
     });
-    await expect(verifyBtn).toBeDisabled();
+    const verifyButton = canvas.getByRole('button', { name: 'Verify Code' });
 
-    // 3. Audit Full Correct Entry (Unlocks Path)
-    await userEvent.type(codeInput, '6', { delay: 20 });
+    await expect(
+      canvas.getByRole('heading', { name: 'Verify Your Email' }),
+    ).toBeVisible();
+    await expect(
+      canvas.getByText(
+        'Please enter the 6-digit verification code sent to your email.',
+      ),
+    ).toBeVisible();
+    await expect(codeInput).toHaveAttribute('type', 'text');
+    await expect(codeInput).toHaveAttribute('placeholder', '000000');
+    await expect(codeInput).toHaveAttribute('autocomplete', 'off');
+    await expect(verifyButton).toBeDisabled();
+    await expect(
+      canvas.getByRole('button', { name: 'Resend Code' }),
+    ).toBeVisible();
+  },
+};
+
+/**
+ * Verifies that incomplete and non-numeric codes remain invalid and visible
+ * validation prevents verification.
+ */
+export const InvalidCode: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const codeInput = canvas.getByRole('textbox', {
+      name: 'Verification Code',
+    });
+    const verifyButton = canvas.getByRole('button', { name: 'Verify Code' });
+
+    verifiedSpy.mockClear();
+    await userEvent.type(codeInput, '12345');
     await userEvent.tab();
 
-    await waitFor(() => {
-      expect(verifyBtn).not.toBeDisabled();
+    await expect(canvas.getByRole('alert')).toBeVisible();
+    await expect(canvas.getByRole('alert')).toHaveTextContent(
+      'Enter the 6-digit code provided.',
+    );
+    await expect(verifyButton).toBeDisabled();
+
+    await userEvent.click(codeInput);
+    await userEvent.clear(codeInput);
+    await userEvent.type(codeInput, '12345a');
+    await expect(verifyButton).toBeDisabled();
+    await expect(verifiedSpy).not.toHaveBeenCalled();
+  },
+};
+
+/**
+ * Verifies that exactly six numeric digits enable verification and are
+ * emitted through the component's public output.
+ */
+export const SuccessfulVerification: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const codeInput = canvas.getByRole('textbox', {
+      name: 'Verification Code',
     });
-    await expect(verifyBtn).toBeEnabled();
+    const verifyButton = canvas.getByRole('button', { name: 'Verify Code' });
+
+    verifiedSpy.mockClear();
+    await userEvent.type(codeInput, '654321');
+
+    await expect(verifyButton).toBeEnabled();
+    await userEvent.click(verifyButton);
+    await expect(verifiedSpy).toHaveBeenCalledWith('654321');
   },
 };

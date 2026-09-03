@@ -5,9 +5,15 @@ import { StepperComponent, StepperStep } from './stepper.component';
 const baseSteps: StepperStep[] = [
   { id: 'borrower-info', label: 'Borrower Info', status: 'completed' },
   { id: 'incident-details', label: 'Incident Details', status: 'not-started' },
-  { id: 'medical-providers', label: 'Medical Providers', status: 'not-started' },
+  {
+    id: 'medical-providers',
+    label: 'Medical Providers',
+    status: 'not-started',
+  },
   { id: 'review-sign', label: 'Review & Sign', status: 'not-started' },
 ];
+
+const stepSelectedSpy = fn<(step: StepperStep) => void>();
 
 const meta: Meta<StepperComponent> = {
   title: 'Organisms/Stepper',
@@ -20,10 +26,10 @@ const meta: Meta<StepperComponent> = {
     density: 'comfortable',
     ariaLabel: 'Claim progress',
     testId: 'story-stepper',
-    stepSelected: fn(),
+    stepSelected: stepSelectedSpy,
   },
   render: (args) => ({
-    props: args,
+    props: { ...args, stepSelected: stepSelectedSpy },
     template: `
       <tai-stepper
         [steps]="steps"
@@ -43,6 +49,16 @@ type Story = StoryObj<StepperComponent>;
 
 export const Default: Story = {};
 
+Default.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const navigation = canvas.getByRole('navigation', { name: 'Claim progress' });
+
+  await expect(navigation).toBeVisible();
+  await expect(canvas.getByRole('list')).toBeVisible();
+  await expect(canvas.getAllByRole('listitem')).toHaveLength(4);
+  await expect(canvas.getAllByRole('button')).toHaveLength(4);
+};
+
 export const CompletedAndCurrent: Story = {
   args: {
     steps: baseSteps,
@@ -50,8 +66,12 @@ export const CompletedAndCurrent: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('story-stepper-step-incident-details')).toHaveAttribute('aria-current', 'step');
-    await expect(canvas.getByTestId('story-stepper-status-borrower-info')).toHaveTextContent('Completed');
+    await expect(
+      canvas.getByTestId('story-stepper-step-incident-details'),
+    ).toHaveAttribute('aria-current', 'step');
+    await expect(
+      canvas.getByTestId('story-stepper-status-borrower-info'),
+    ).toHaveTextContent('Completed');
   },
 };
 
@@ -60,14 +80,24 @@ export const BlockedFutureSteps: Story = {
     steps: [
       { id: 'borrower-info', label: 'Borrower Info', status: 'not-started' },
       { id: 'incident-details', label: 'Incident Details', status: 'blocked' },
-      { id: 'medical-providers', label: 'Medical Providers', status: 'blocked' },
+      {
+        id: 'medical-providers',
+        label: 'Medical Providers',
+        status: 'blocked',
+      },
       { id: 'review-sign', label: 'Review & Sign', status: 'blocked' },
     ],
     currentStepId: 'borrower-info',
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await expect(canvas.getByTestId('story-stepper-step-medical-providers')).toBeDisabled();
+    const blocked = canvas.getByRole('button', { name: /Medical Providers/ });
+
+    stepSelectedSpy.mockClear();
+    await expect(blocked).toBeDisabled();
+    await expect(blocked).toHaveAttribute('aria-disabled', 'true');
+    await userEvent.click(blocked);
+    await expect(stepSelectedSpy).not.toHaveBeenCalled();
   },
 };
 
@@ -76,22 +106,74 @@ export const ErrorState: Story = {
     steps: [
       { id: 'borrower-info', label: 'Borrower Info', status: 'completed' },
       { id: 'incident-details', label: 'Incident Details', status: 'error' },
-      { id: 'medical-providers', label: 'Medical Providers', status: 'blocked' },
+      {
+        id: 'medical-providers',
+        label: 'Medical Providers',
+        status: 'blocked',
+      },
       { id: 'review-sign', label: 'Review & Sign', status: 'blocked' },
     ],
     currentStepId: 'incident-details',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const current = canvas.getByRole('button', { name: /Incident Details/ });
+    const currentStatus = canvas.getByTestId(
+      'story-stepper-status-incident-details',
+    );
+
+    await expect(current).toHaveAttribute('aria-current', 'step');
+    await expect(currentStatus).toHaveTextContent(
+      'Current step, needs attention',
+    );
+    await expect(
+      canvas.getByTestId('story-stepper-status-medical-providers'),
+    ).toHaveTextContent('Blocked');
   },
 };
 
 export const LongLabels: Story = {
   args: {
     steps: [
-      { id: 'borrower-info', label: 'Borrower Information and Identity Confirmation', status: 'completed' },
-      { id: 'incident-details', label: 'Incident Details and Disability Timeline', status: 'not-started' },
-      { id: 'medical-providers', label: 'Medical Provider Contact and Treatment History', status: 'blocked' },
-      { id: 'review-sign', label: 'Review, Attest, and Sign Claim Submission', status: 'blocked' },
+      {
+        id: 'borrower-info',
+        label: 'Borrower Information and Identity Confirmation',
+        status: 'completed',
+      },
+      {
+        id: 'incident-details',
+        label: 'Incident Details and Disability Timeline',
+        status: 'not-started',
+      },
+      {
+        id: 'medical-providers',
+        label: 'Medical Provider Contact and Treatment History',
+        status: 'blocked',
+      },
+      {
+        id: 'review-sign',
+        label: 'Review, Attest, and Sign Claim Submission',
+        status: 'blocked',
+      },
     ],
     currentStepId: 'incident-details',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(
+      canvas.getByText('Borrower Information and Identity Confirmation'),
+    ).toBeVisible();
+    await expect(
+      canvas.getByText('Incident Details and Disability Timeline'),
+    ).toBeVisible();
+    await expect(
+      canvas.getByText('Medical Provider Contact and Treatment History'),
+    ).toBeVisible();
+    await expect(
+      canvas.getByText('Review, Attest, and Sign Claim Submission'),
+    ).toBeVisible();
+    await expect(canvas.getAllByRole('button')).toHaveLength(4);
   },
 };
 
@@ -99,11 +181,29 @@ export const Vertical: Story = {
   args: {
     orientation: 'vertical',
   },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('navigation')).toHaveClass(
+      'tai-stepper--vertical',
+    );
+    await expect(canvas.getByRole('list')).toHaveClass(
+      'tai-stepper__list--vertical',
+    );
+  },
 };
 
 export const Compact: Story = {
   args: {
     density: 'compact',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('navigation')).toHaveClass(
+      'tai-stepper--compact',
+    );
+    await expect(
+      canvas.getByRole('button', { name: /Borrower Info/ }),
+    ).toHaveClass('min-h-10');
   },
 };
 
@@ -113,13 +213,22 @@ export const Mobile: Story = {
       defaultViewport: 'mobile1',
     },
   },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getByRole('navigation')).toBeVisible();
+    await expect(canvas.getAllByRole('button')).toHaveLength(4);
+  },
 };
 
 export const Security: Story = {
   args: {
     steps: [
       { id: 'safe', label: 'Safe Label', status: 'completed' },
-      { id: 'xss', label: '<img src=x onerror=alert(1)>Injected', status: 'not-started' },
+      {
+        id: 'xss',
+        label: '<img src=x onerror=alert(1)>Injected',
+        status: 'not-started',
+      },
     ],
     currentStepId: 'xss',
   },
@@ -127,7 +236,9 @@ export const Security: Story = {
     const canvas = within(canvasElement);
     const injected = canvas.getByTestId('story-stepper-step-xss');
 
-    await expect(injected).toHaveTextContent('<img src=x onerror=alert(1)>Injected');
+    await expect(injected).toHaveTextContent(
+      '<img src=x onerror=alert(1)>Injected',
+    );
     await expect(injected.querySelector('img')).toBeNull();
   },
 };
@@ -135,24 +246,29 @@ export const Security: Story = {
 export const SelectableStep: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const stepper = canvas.getByTestId('story-stepper-step-borrower-info');
+    const stepper = canvas.getByRole('button', {
+      name: /Step 1: Borrower Info/,
+    });
 
-    // Verify the step is clickable (not disabled)
+    stepSelectedSpy.mockClear();
     await expect(stepper).toBeEnabled();
-    // Click and verify it doesn't throw
     await userEvent.click(stepper);
+    await expect(stepSelectedSpy).toHaveBeenCalledWith(baseSteps[0]);
   },
 };
 
 export const OpensWithKeyboard: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const firstStep = canvas.getByTestId('story-stepper-step-borrower-info');
+    const firstStep = canvas.getByRole('button', {
+      name: /Step 1: Borrower Info/,
+    });
 
-    firstStep.focus();
+    stepSelectedSpy.mockClear();
+    (firstStep as HTMLElement).focus();
     await expect(firstStep).toHaveFocus();
     await userEvent.keyboard('{Enter}');
-    // Verify keyboard navigation works
+    await expect(stepSelectedSpy).toHaveBeenCalledWith(baseSteps[0]);
     await expect(document.activeElement).toBe(firstStep);
   },
 };

@@ -85,7 +85,7 @@
           <span>Notification updates are offline. Recent items may be stale.</span>
           <button type="button" class="border border-current rounded bg-transparent text-inherit cursor-pointer px-2 py-1 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2 retry-btn" [disabled]="isLoading" [attr.aria-disabled]="isRetryThrottled" (click)="onRetry()">Retry</button>
           @if (isRetryThrottled) {
-            <span class="text-xs opacity-80 retry-helper">Try again shortly.</span>
+            <span class="text-xs retry-helper">Try again shortly.</span>
           }
         }
       </div>
@@ -98,7 +98,7 @@
             <span>{{ error }}</span>
             <button type="button" class="border border-current rounded bg-transparent text-inherit cursor-pointer px-2 py-1 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2 retry-btn" [disabled]="isLoading" [attr.aria-disabled]="isRetryThrottled" (click)="onRetry()">Retry</button>
             @if (isRetryThrottled) {
-              <span class="text-xs opacity-80 retry-helper">Try again shortly.</span>
+              <span class="text-xs retry-helper">Try again shortly.</span>
             }
           </div>
         } @else if (recoveryNotice) {
@@ -106,7 +106,7 @@
             <span>{{ recoveryNotice }}</span>
             <button type="button" class="border border-current rounded bg-transparent text-inherit cursor-pointer px-2 py-1 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-blue-500 focus-visible:outline-offset-2 retry-btn" [disabled]="isLoading" [attr.aria-disabled]="isRetryThrottled" (click)="onRetry()">Retry</button>
             @if (isRetryThrottled) {
-              <span class="text-xs opacity-80 retry-helper">Try again shortly.</span>
+              <span class="text-xs retry-helper">Try again shortly.</span>
             }
           </div>
         } @else if (isReconnectSyncing()) {

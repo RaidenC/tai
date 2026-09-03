@@ -1,9 +1,6 @@
-import { Meta, StoryObj, moduleMetadata } from '@storybook/angular';
-import { ReactiveFormsModule } from '@angular/forms';
-import { userEvent, within, expect, waitFor } from '@storybook/test';
+import { Meta, StoryObj } from '@storybook/angular';
+import { expect, fn, type Mock, userEvent, within } from '@storybook/test';
 import { LoginFormComponent } from './login-form';
-import { SecureInputComponent } from '../../atoms/secure-input/secure-input';
-import { CommonModule } from '@angular/common';
 
 /**
  * Storybook Configuration: LoginFormComponent
@@ -12,74 +9,142 @@ import { CommonModule } from '@angular/common';
  * identity invariants and utilizes hardware-safe input attributes before
  * allowing any data transmission.
  */
-const meta: Meta<LoginFormComponent> = {
+type LoginCredentials = {
+  email: string;
+  password: string;
+};
+
+type LoginFormStoryArgs = {
+  submitted: Mock<(credentials: LoginCredentials) => void>;
+};
+
+const submittedSpy = fn<(credentials: LoginCredentials) => void>();
+
+const renderWithSubmittedSpy = (
+  submitted: LoginFormStoryArgs['submitted'],
+) => ({
+  props: { submitted },
+  template: `
+    <tai-login-form (submitted)="submitted($event)"></tai-login-form>
+  `,
+});
+
+const meta: Meta<LoginFormStoryArgs> = {
   title: 'Organisms/LoginForm',
   component: LoginFormComponent,
-  decorators: [
-    moduleMetadata({
-      imports: [CommonModule, ReactiveFormsModule, SecureInputComponent],
-    }),
-  ],
+  args: {
+    submitted: submittedSpy,
+  },
   tags: ['autodocs'],
+  render: () => renderWithSubmittedSpy(submittedSpy),
 };
 
 export default meta;
-type Story = StoryObj<LoginFormComponent>;
+type Story = StoryObj<LoginFormStoryArgs>;
 
-export const Default: Story = {};
-
-/**
- * Security & Validation Audit:
- * This test mathematically proves that the UI handles validation securely.
- * It verifies that sensitive fields use correct autocomplete attributes
- * to prevent stealer log extraction and ensures the submit path is
- * locked behind reactive validation.
- */
-export const ValidationAudit: Story = {
+export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    // Use getAllBy and take the first element (inner input)
-    const emailInputs = canvas.getAllByPlaceholderText('e.g. jdoe@tai.com');
-    const emailInput = emailInputs[emailInputs.length - 1]; // Get the inner input
-    const passwordInputs = canvas.getAllByPlaceholderText('Enter your secure password');
-    const passwordInput = passwordInputs[passwordInputs.length - 1];
-    const submitBtn = canvas.getByRole('button', { name: /Sign In/i });
+    const emailInput = canvas.getByRole('textbox', {
+      name: 'Corporate Email',
+    });
+    const passwordInput = canvas.getByLabelText(/Password/);
+    const submitButton = canvas.getByRole('button', {
+      name: 'Sign In to Portal',
+    });
 
-    // 1. Audit Security Attributes (Stealer Log Defense)
-    await expect(passwordInput).toHaveAttribute('autocomplete', 'current-password');
+    await expect(emailInput).toHaveAttribute('type', 'email');
+    await expect(emailInput).toHaveAttribute('autocomplete', 'email');
     await expect(passwordInput).toHaveAttribute('type', 'password');
-
-    // 2. Audit Initial State (Locked by Default)
-    await expect(submitBtn).toBeDisabled();
-
-    // 3. Audit Reactive Validation (Email Invariant)
-    await userEvent.type(emailInput, 'invalid-identity', { delay: 50 });
-    await userEvent.tab();
-    await waitFor(
-      () => {
-        expect(
-          canvas.getByText(/A valid corporate email is required/i),
-        ).toBeInTheDocument();
-      },
-      { timeout: 5000 },
+    await expect(passwordInput).toHaveAttribute(
+      'autocomplete',
+      'current-password',
     );
-    await expect(submitBtn).toBeDisabled();
+    await expect(
+      canvas.getByText('Use your company email address.'),
+    ).toBeVisible();
+    await expect(submitButton).toBeDisabled();
+  },
+};
 
-    // 4. Audit Transition to Secure/Valid State
-    await userEvent.clear(emailInput);
-    await userEvent.type(emailInput, 'admin@tai.com', { delay: 50 });
-    await userEvent.type(passwordInput, 'SecurePass123!', { delay: 50 });
+/**
+ * Verifies that an invalid email is reported after the field is blurred and
+ * that invalid credentials cannot be submitted.
+ */
+export const InvalidEmail: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const emailInput = canvas.getByRole('textbox', {
+      name: 'Corporate Email',
+    });
+    const submitButton = canvas.getByRole('button', {
+      name: 'Sign In to Portal',
+    });
+
+    submittedSpy.mockClear();
+    await userEvent.type(emailInput, 'invalid-identity');
     await userEvent.tab();
 
-    // Verification: Proves that only when security criteria are met, the UI unlocks
-    await waitFor(
-      () => {
-        expect(submitBtn).not.toBeDisabled();
-      },
-      { timeout: 3000 },
-    );
+    await expect(
+      canvas.getByText('A valid corporate email is required.'),
+    ).toBeVisible();
+    await expect(submitButton).toBeDisabled();
+    await expect(submittedSpy).not.toHaveBeenCalled();
+  },
+};
 
-    // Proves the UI is ready for submission
-    await expect(submitBtn).toBeEnabled();
+/**
+ * Verifies that the password length requirement is visible to the user and
+ * prevents submission until the password is valid.
+ */
+export const InvalidPassword: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const emailInput = canvas.getByRole('textbox', {
+      name: 'Corporate Email',
+    });
+    const passwordInput = canvas.getByLabelText(/Password/);
+    const submitButton = canvas.getByRole('button', {
+      name: 'Sign In to Portal',
+    });
+
+    submittedSpy.mockClear();
+    await userEvent.type(emailInput, 'admin@tai.com');
+    await userEvent.type(passwordInput, 'short');
+    await userEvent.tab();
+
+    await expect(
+      canvas.getByText('Password must be at least 8 characters.'),
+    ).toBeVisible();
+    await expect(submitButton).toBeDisabled();
+    await expect(submittedSpy).not.toHaveBeenCalled();
+  },
+};
+
+/**
+ * Verifies the complete public submission flow with valid credentials.
+ */
+export const SuccessfulSubmission: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const emailInput = canvas.getByRole('textbox', {
+      name: 'Corporate Email',
+    });
+    const passwordInput = canvas.getByLabelText(/Password/);
+    const submitButton = canvas.getByRole('button', {
+      name: 'Sign In to Portal',
+    });
+
+    submittedSpy.mockClear();
+    await userEvent.type(emailInput, 'admin@tai.com');
+    await userEvent.type(passwordInput, 'SecurePass123!');
+
+    await expect(submitButton).toBeEnabled();
+    await userEvent.click(submitButton);
+
+    await expect(submittedSpy).toHaveBeenCalledWith({
+      email: 'admin@tai.com',
+      password: 'SecurePass123!',
+    });
   },
 };

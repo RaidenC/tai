@@ -1,8 +1,25 @@
 import { A11yModule } from '@angular/cdk/a11y';
-import { afterNextRender, ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, inject, Injector, Input, OnChanges, OnDestroy, Output, runInInjectionContext, SimpleChanges } from '@angular/core';
+import {
+  afterNextRender,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  inject,
+  Injector,
+  Input,
+  OnChanges,
+  OnDestroy,
+  Output,
+  runInInjectionContext,
+  SimpleChanges,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { NotificationPanelService, SeverityFilter } from './notification-panel.service';
+import {
+  NotificationPanelService,
+  SeverityFilter,
+} from './notification-panel.service';
 import { NotificationPanelItem } from './notification-panel.types';
 import type { NotificationPanelConnectionState } from './notification-panel.types';
 
@@ -52,23 +69,19 @@ export class NotificationPanelComponent implements OnChanges, OnDestroy {
   // Focus management
   private focusedNotificationId: string | null = null;
 
-  focusedNotificationIdForTest(): string | null {
-    return this.focusedNotificationId;
-  }
-
-  focusNotificationForTest(id: string): void {
-    this.focusedNotificationId = id;
-  }
-
-  readonly firstVisibleNotificationId = (): string | null => this.filteredNotifications()[0]?.id ?? null;
+  readonly firstVisibleNotificationId = (): string | null =>
+    this.filteredNotifications()[0]?.id ?? null;
   readonly rovingNotificationId = (): string | null =>
     this.focusedNotificationId ?? this.firstVisibleNotificationId();
 
   // Computed display helpers
   readonly showInitialSkeleton = (): boolean => this.showInitialSkeletonState;
   readonly isReconnectSyncing = (): boolean =>
-    this.isLoading && this.hasHydrated && this.connectionState !== 'disconnected';
-  readonly hasVisibleNotifications = (): boolean => this.filteredNotifications().length > 0;
+    this.isLoading &&
+    this.hasHydrated &&
+    this.connectionState !== 'disconnected';
+  readonly hasVisibleNotifications = (): boolean =>
+    this.filteredNotifications().length > 0;
   readonly showConnectionBanner = (): boolean =>
     !this.error &&
     !this.recoveryNotice &&
@@ -99,7 +112,8 @@ export class NotificationPanelComponent implements OnChanges, OnDestroy {
   private captureSearchStateBeforeHydrate(): void {
     const search = this.searchText();
     this.hydrateSearchText = search || null;
-    this.wasSearchMatchBeforeHydrate = !!search && this.filteredNotifications().length > 0;
+    this.wasSearchMatchBeforeHydrate =
+      !!search && this.filteredNotifications().length > 0;
   }
 
   private startSkeletonDelay(): void {
@@ -148,7 +162,8 @@ export class NotificationPanelComponent implements OnChanges, OnDestroy {
     this.retry.emit();
   }
 
-  readonly hasUnread = (): boolean => this.notifications.some(notification => notification.readAt === null);
+  readonly hasUnread = (): boolean =>
+    this.notifications.some((notification) => notification.readAt === null);
 
   onMarkRead(notification: NotificationPanelItem): void {
     if (notification.readAt) {
@@ -163,12 +178,17 @@ export class NotificationPanelComponent implements OnChanges, OnDestroy {
     }
 
     const previousId = this.focusedNotificationId;
-    const previousIndex = this.filteredNotifications().findIndex(item => item.id === previousId);
+    const previousIndex = this.filteredNotifications().findIndex(
+      (item) => item.id === previousId,
+    );
     this.markAllRead.emit();
 
     runInInjectionContext(this.injector, () => {
       afterNextRender(() => {
-        const target = this.resolveFocusAfterMutation(previousId, previousIndex);
+        const target = this.resolveFocusAfterMutation(
+          previousId,
+          previousIndex,
+        );
         this.focusedNotificationId = target.id;
         this.focusTarget(target);
       });
@@ -189,15 +209,21 @@ export class NotificationPanelComponent implements OnChanges, OnDestroy {
     const search = this.searchText().toLowerCase();
 
     return allNotifications
-      .filter(notification => {
-        const matchesSeverity = filter === 'all' || notification.severity === filter;
-        const matchesSearch = !search ||
+      .filter((notification) => {
+        const matchesSeverity =
+          filter === 'all' || notification.severity === filter;
+        const matchesSearch =
+          !search ||
           notification.title.toLowerCase().includes(search) ||
-          (notification.summary && notification.summary.toLowerCase().includes(search)) ||
+          (notification.summary &&
+            notification.summary.toLowerCase().includes(search)) ||
           notification.actor.toLowerCase().includes(search);
         return matchesSeverity && matchesSearch;
       })
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      .sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      );
   };
 
   setSeverity(filter: SeverityFilter): void {
@@ -229,9 +255,14 @@ export class NotificationPanelComponent implements OnChanges, OnDestroy {
 
   onFilterClick(filter: SeverityFilter): void {
     const previousId = this.focusedNotificationId;
-    const previousIndex = this.filteredNotifications().findIndex(item => item.id === previousId);
+    const previousIndex = this.filteredNotifications().findIndex(
+      (item) => item.id === previousId,
+    );
     this.panelService.setSeverityFilter(filter);
-    this.focusedNotificationId = this.resolveFocusAfterMutation(previousId, previousIndex).id;
+    this.focusedNotificationId = this.resolveFocusAfterMutation(
+      previousId,
+      previousIndex,
+    ).id;
   }
 
   onListKeydown(event: KeyboardEvent): void {
@@ -240,94 +271,86 @@ export class NotificationPanelComponent implements OnChanges, OnDestroy {
       return;
     }
 
-    const currentIndex = Math.max(0, items.findIndex(item => item.id === this.focusedNotificationId));
+    const currentIndex = Math.max(
+      0,
+      items.findIndex((item) => item.id === this.focusedNotificationId),
+    );
     const nextIndex =
-      event.key === 'ArrowDown' ? (currentIndex + 1) % items.length :
-      event.key === 'ArrowUp' ? (currentIndex - 1 + items.length) % items.length :
-      event.key === 'Home' ? 0 :
-      event.key === 'End' ? items.length - 1 :
-      -1;
+      event.key === 'ArrowDown'
+        ? (currentIndex + 1) % items.length
+        : event.key === 'ArrowUp'
+          ? (currentIndex - 1 + items.length) % items.length
+          : event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? items.length - 1
+              : -1;
 
     if (nextIndex >= 0) {
       event.preventDefault();
       this.focusedNotificationId = items[nextIndex].id;
       runInInjectionContext(this.injector, () => {
         afterNextRender(() => {
-          document.querySelector<HTMLElement>(`[data-notification-id="${items[nextIndex].id}"]`)?.focus();
+          document
+            .querySelector<HTMLElement>(
+              `[data-notification-id="${items[nextIndex].id}"]`,
+            )
+            ?.focus();
         });
       });
     }
   }
 
-  private resolveFocusAfterMutation(previousId: string | null, previousIndex: number): FocusTarget {
+  private resolveFocusAfterMutation(
+    previousId: string | null,
+    previousIndex: number,
+  ): FocusTarget {
     const visibleItems = this.filteredNotifications();
     if (visibleItems.length === 0) {
       return { kind: 'close-button', id: null, index: -1 };
     }
 
     if (previousId) {
-      const sameItemIndex = visibleItems.findIndex(item => item.id === previousId);
+      const sameItemIndex = visibleItems.findIndex(
+        (item) => item.id === previousId,
+      );
       if (sameItemIndex >= 0) {
         return { kind: 'item', id: previousId, index: sameItemIndex };
       }
     }
 
-    const clampedIndex = Math.min(Math.max(previousIndex, 0), visibleItems.length - 1);
-    return { kind: 'item', id: visibleItems[clampedIndex].id, index: clampedIndex };
+    const clampedIndex = Math.min(
+      Math.max(previousIndex, 0),
+      visibleItems.length - 1,
+    );
+    return {
+      kind: 'item',
+      id: visibleItems[clampedIndex].id,
+      index: clampedIndex,
+    };
   }
 
   private focusTarget(target: FocusTarget): void {
     if (target.kind === 'close-button') {
-      document.querySelector<HTMLElement>('.notification-panel .close-btn')?.focus();
+      document
+        .querySelector<HTMLElement>('.notification-panel .close-btn')
+        ?.focus();
       return;
     }
 
-    document.querySelector<HTMLElement>(`[data-notification-id="${target.id}"]`)?.focus();
-  }
-
-  applyFocusAfterMutationForTest(previousId: string | null, previousIndex: number): void {
-    const target = this.resolveFocusAfterMutation(previousId, previousIndex);
-    this.focusedNotificationId = target.id;
-    runInInjectionContext(this.injector, () => {
-      afterNextRender(() => this.focusTarget(target));
-    });
-  }
-
-  preserveScrollDuringPrependForTest(list: HTMLElement, focusedNotificationId: string | null, mutate: () => void): void {
-    this.preserveScrollDuringPrepend(list, focusedNotificationId, mutate);
-  }
-
-  private preserveScrollDuringPrepend(list: HTMLElement, focusedNotificationId: string | null, mutate: () => void): void {
-    const beforeScrollTop = list.scrollTop;
-    const beforeScrollHeight = list.scrollHeight;
-    const focusedBefore = focusedNotificationId
-      ? list.querySelector<HTMLElement>(`[data-notification-id="${focusedNotificationId}"]`)
-      : null;
-    const focusedViewportTop = focusedBefore ? focusedBefore.offsetTop - list.scrollTop : null;
-
-    mutate();
-
-    runInInjectionContext(this.injector, () => {
-      afterNextRender(() => {
-        if (focusedNotificationId && focusedViewportTop !== null) {
-          const focusedAfter = list.querySelector<HTMLElement>(`[data-notification-id="${focusedNotificationId}"]`);
-          if (focusedAfter) {
-            list.scrollTop = focusedAfter.offsetTop - focusedViewportTop;
-            return;
-          }
-        }
-
-        const prependedHeight = Math.max(list.scrollHeight - beforeScrollHeight, 0);
-        list.scrollTop = beforeScrollTop + prependedHeight;
-      });
-    });
+    document
+      .querySelector<HTMLElement>(`[data-notification-id="${target.id}"]`)
+      ?.focus();
   }
 
   getSeverityClass(severity: string): string {
     switch (severity) {
-      case 'critical': return 'bg-red-600';
-      case 'warning': return 'bg-amber-500';
-      default: return 'bg-blue-500';
+      case 'critical':
+        return 'bg-red-600';
+      case 'warning':
+        return 'bg-amber-500';
+      default:
+        return 'bg-blue-500';
     }
   }
 
